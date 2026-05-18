@@ -2,8 +2,9 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createServerClient } from '@hr/shared'
-import { ArrowLeft, Briefcase, Clock, CheckCircle2, Star, Share2 } from 'lucide-react'
+import { ArrowLeft, Briefcase, Clock, CheckCircle2, Star } from 'lucide-react'
 import { ShareButton } from './share-button'
+import { ApplyForm } from './apply-form'
 
 const TYPE_LABELS: Record<string, string> = {
   full_time: 'Full-time',
@@ -80,32 +81,20 @@ export default async function JobDetailPage({ params }: { params: { id: string }
             )}
           </div>
         </div>
-
-        <div className="flex flex-wrap gap-3 pt-2">
-          <a
-            href={`mailto:careers@sheerlogicltd.com?subject=Application: ${encodeURIComponent(job.title)}&body=I am applying for the ${encodeURIComponent(job.title)} position (Ref: ${job.id}).`}
-            className="btn-primary inline-flex items-center gap-2"
-          >
-            Apply for this position
-          </a>
-          <ShareButton title={job.title} />
-        </div>
+        <ShareButton title={job.title} variant="primary" />
       </div>
 
+      {/* Description + skills */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Description */}
-        <div className="md:col-span-2 space-y-6">
-          <div className="bg-surface border border-border rounded-2xl p-6 space-y-4">
-            <h2 className="font-semibold text-text-primary">About the role</h2>
-            <div className="prose prose-sm max-w-none text-text-body space-y-3">
-              {paragraphs.map((p, i) => (
-                <p key={i}>{p}</p>
-              ))}
-            </div>
+        <div className="md:col-span-2 bg-surface border border-border rounded-2xl p-6 space-y-4">
+          <h2 className="font-semibold text-text-primary">About the role</h2>
+          <div className="space-y-3 text-sm text-text-body leading-relaxed">
+            {paragraphs.map((p, i) => (
+              <p key={i}>{p}</p>
+            ))}
           </div>
         </div>
 
-        {/* Sidebar — skills */}
         <div className="space-y-4">
           {job.required_keywords.length > 0 && (
             <div className="bg-surface border border-border rounded-2xl p-5 space-y-3">
@@ -136,22 +125,11 @@ export default async function JobDetailPage({ params }: { params: { id: string }
               </div>
             </div>
           )}
-
-          <div className="bg-surface border border-border rounded-2xl p-5 space-y-2 text-sm">
-            <h3 className="font-semibold text-text-primary">How to apply</h3>
-            <p className="text-text-muted text-xs">
-              Send your CV and a short cover note to{' '}
-              <a href="mailto:careers@sheerlogicltd.com" className="text-accent underline underline-offset-2">
-                careers@sheerlogicltd.com
-              </a>{' '}
-              with the subject line &quot;{job.title}&quot;.
-            </p>
-            <div className="pt-1">
-              <ShareButton title={job.title} variant="ghost" />
-            </div>
-          </div>
         </div>
       </div>
+
+      {/* Apply form */}
+      <ApplyForm jobId={job.id} jobTitle={job.title} />
     </div>
   )
 }
