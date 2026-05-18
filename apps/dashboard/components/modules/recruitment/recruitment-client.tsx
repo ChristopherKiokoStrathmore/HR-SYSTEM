@@ -23,8 +23,8 @@ export function RecruitmentClient() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
   function copyJobLink(id: string) {
-    const url = `${window.location.origin}/jobs/${id}`
-    navigator.clipboard.writeText(url).then(() => {
+    const base = process.env.NEXT_PUBLIC_CAREERS_URL ?? 'http://localhost:3002'
+    navigator.clipboard.writeText(`${base}/jobs/${id}`).then(() => {
       setCopiedId(id)
       setTimeout(() => setCopiedId(null), 2000)
     })
