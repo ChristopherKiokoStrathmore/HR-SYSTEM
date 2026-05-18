@@ -30,7 +30,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://*.supabase.co https://sheerlogicltd.com",
-              "connect-src 'self' https://*.supabase.co https://api.anthropic.com https://maps.googleapis.com",
+              "connect-src 'self' https://*.supabase.co https://api.anthropic.com https://api.groq.com https://maps.googleapis.com",
               "frame-src 'none'",
             ].join('; '),
           },

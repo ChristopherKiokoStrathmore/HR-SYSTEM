@@ -1,25 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@hr/shared'
-import type { AiCvResult } from '@hr/shared'
 import { checkRateLimit } from '@/lib/rate-limit'
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
-const CV_SYSTEM_PROMPT = `You are an expert HR recruiter. Analyze this CV against the job description. Return ONLY valid JSON with no markdown fences:
-{
-  "name": "string",
-  "email": "string",
-  "phone": "string",
-  "skills": ["string"],
-  "experience_years": 0,
-  "education": "string",
-  "match_score": 0,
-  "summary": "string (2 sentences max)",
-  "strengths": ["string"],
-  "gaps": ["string"]
-}
-Score based on: keyword match 40%, experience relevance 35%, education fit 15%, overall quality 10%.`
+import { screenCv } from '@/lib/ai/screen-cv'
 
 interface JobPostingRow {
   title: string
@@ -27,10 +9,6 @@ interface JobPostingRow {
   required_keywords: string[]
   nice_to_have_keywords: string[]
   auto_reject_threshold: number
-}
-
-function stripCodeFences(text: string): string {
-  return text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
 }
 
 export async function POST(req: NextRequest) {
@@ -44,7 +22,7 @@ export async function POST(req: NextRequest) {
       cvText?: string
       candidateId?: string
       fileBase64?: string
-      mimeType?: 'application/pdf' | 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      mimeType?: string
     }
 
     if (!jobPostingId || (!cvText && !fileBase64)) {
@@ -63,31 +41,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Job posting not found' }, { status: 404 })
     }
 
-    const jobContext = `JOB TITLE: ${posting.title}
-JOB DESCRIPTION: ${posting.description}
-REQUIRED KEYWORDS: ${posting.required_keywords.join(', ')}
-NICE TO HAVE: ${posting.nice_to_have_keywords.join(', ')}`
-
-    const messageContent: Anthropic.MessageParam['content'] = fileBase64 && mimeType
-      ? [
-          {
-            type: 'document',
-            source: { type: 'base64', media_type: mimeType, data: fileBase64 },
-          } as Anthropic.DocumentBlockParam,
-          { type: 'text', text: jobContext },
-        ]
-      : [{ type: 'text', text: `${jobContext}\n\nCV CONTENT:\n${(cvText ?? '').slice(0, 6000)}` }]
-
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      system: CV_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: messageContent }],
+    const screening = await screenCv({
+      jobTitle: posting.title,
+      jobDescription: posting.description,
+      requiredKeywords: posting.required_keywords,
+      niceToHaveKeywords: posting.nice_to_have_keywords,
+      cvText,
+      fileBase64,
+      mimeType,
     })
 
-    const rawText = message.content[0].type === 'text' ? message.content[0].text : ''
-    const aiResult = JSON.parse(stripCodeFences(rawText)) as AiCvResult
+    if (!screening) {
+      return NextResponse.json(
+        { error: 'AI screening unavailable — set GROQ_API_KEY or ANTHROPIC_API_KEY' },
+        { status: 503 },
+      )
+    }
 
+    const { result: aiResult, provider } = screening
     const autoRejected = aiResult.match_score < posting.auto_reject_threshold
 
     if (candidateId) {
@@ -112,6 +83,7 @@ NICE TO HAVE: ${posting.nice_to_have_keywords.join(', ')}`
       result: aiResult,
       autoRejected,
       threshold: posting.auto_reject_threshold,
+      provider,
     })
   } catch (err) {
     console.error('CV screening error:', err)

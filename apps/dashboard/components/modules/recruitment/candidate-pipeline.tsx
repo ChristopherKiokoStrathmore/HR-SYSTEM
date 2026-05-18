@@ -44,7 +44,7 @@ function CardContent({ candidate, compact }: { candidate: CandidateWithPosting; 
           <div className="flex items-center gap-1.5">
             <p className="text-sm font-medium text-text-primary truncate">{candidate.full_name}</p>
             {candidate.source === 'portal' && (
-              <Globe className="w-3 h-3 text-accent flex-shrink-0" title="Applied via Job Portal" />
+              <Globe className="w-3 h-3 text-accent flex-shrink-0" aria-label="Applied via Job Portal" />
             )}
           </div>
           <p className="text-xs text-text-muted truncate">{candidate.email}</p>

@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import {
   X, User, Mail, Phone, Calendar, Sparkles, CheckCircle2,
-  AlertTriangle, Globe, BookOpen, ExternalLink, ChevronRight, Loader2,
+  AlertTriangle, Globe, BookOpen, ExternalLink, ChevronRight,
+  Loader2, Send, FileText,
 } from 'lucide-react'
 import type { CandidateWithPosting, CandidateStage } from '@hr/shared'
 import { useUpdateCandidateStage } from '@/lib/hooks/use-candidates'
@@ -20,6 +21,64 @@ const STAGES: { key: CandidateStage; label: string; color: string }[] = [
   { key: 'rejected',     label: 'Rejected',      color: 'bg-red-50 text-red-600 border-red-200 ring-red-200' },
 ]
 
+// Maps each stage to the next one in the pipeline
+const NEXT_STAGE: Partial<Record<CandidateStage, CandidateStage>> = {
+  screened:     'interview_l1',
+  interview_l1: 'interview_l2',
+  interview_l2: 'offer_sent',
+  offer_sent:   'hired',
+}
+
+const NEXT_STAGE_LABEL: Partial<Record<CandidateStage, string>> = {
+  screened:     'Advance to L1 Interview',
+  interview_l1: 'Advance to L2 Interview',
+  interview_l2: 'Send Offer',
+  offer_sent:   'Mark as Hired',
+}
+
+// Pre-written email templates for each stage transition
+function buildStageEmail(
+  candidateName: string,
+  jobTitle: string,
+  targetStage: CandidateStage,
+): { subject: string; body: string } | null {
+  const first = candidateName.split(' ')[0]
+
+  switch (targetStage) {
+    case 'interview_l1':
+      return {
+        subject: `Interview Invitation — ${jobTitle}`,
+        body: `Dear ${first},\n\nThank you for applying for the ${jobTitle} position at Sheer Logic.\n\nWe have reviewed your application and are pleased to invite you for a first-round interview. We were impressed with your background and believe you could be a strong fit for our team.\n\nKindly reply to this email with your availability over the next few days so we can schedule a convenient time.\n\nWe look forward to speaking with you.\n\nWarm regards,\nHR Team\nSheer Logic`,
+      }
+    case 'interview_l2':
+      return {
+        subject: `Second Round Interview Invitation — ${jobTitle}`,
+        body: `Dear ${first},\n\nCongratulations! Following your first-round interview for the ${jobTitle} position, we are delighted to inform you that you have been selected to proceed to the second and final round of interviews.\n\nThis is a great achievement and reflects the strong impression you made. Please reply with your availability so we can arrange the second interview at your earliest convenience.\n\nWe look forward to continuing our conversation.\n\nWarm regards,\nHR Team\nSheer Logic`,
+      }
+    case 'offer_sent':
+      return {
+        subject: `Job Offer — ${jobTitle} | Sheer Logic`,
+        body: `Dear ${first},\n\nWe are thrilled to offer you the position of ${jobTitle} at Sheer Logic!\n\nAfter a thorough and competitive selection process, you stood out as our top candidate. Please find below the key details of our offer:\n\n• Position: ${jobTitle}\n• Start Date: [To be confirmed]\n• Compensation: [As discussed]\n• Contract Type: [Permanent / Contract]\n\nA formal offer letter with full terms and conditions is attached. Please review it carefully and confirm your acceptance by responding to this email within 5 business days.\n\nDo not hesitate to reach out if you have any questions.\n\nWith excitement,\nHR Team\nSheer Logic`,
+      }
+    case 'hired':
+      return {
+        subject: `Welcome to Sheer Logic! — Official Acceptance Letter`,
+        body: `Dear ${first},\n\n═══════════════════════════════════\n   LETTER OF ACCEPTANCE\n   Sheer Logic Limited\n═══════════════════════════════════\n\nDate: ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}\n\nDear ${candidateName},\n\nRe: Appointment to the Position of ${jobTitle}\n\nOn behalf of Sheer Logic Limited, it is with great pleasure that we confirm your acceptance and appointment to the position of ${jobTitle}.\n\nYour start date, reporting instructions, and onboarding schedule will be communicated to you separately by our HR team. Please bring the following on your first day:\n  • National ID / Passport\n  • KRA PIN certificate\n  • NSSF & NHIF membership details\n  • Academic and professional certificates\n  • Bank account details for payroll\n\nWe are confident you will be an invaluable addition to our team and look forward to a long and successful working relationship.\n\nOnce again, congratulations and welcome to Sheer Logic!\n\nYours sincerely,\n\n_________________________\nHR Manager\nSheer Logic Limited`,
+      }
+    case 'rejected':
+      return {
+        subject: `Your Application for ${jobTitle} — Sheer Logic`,
+        body: `Dear ${first},\n\nThank you sincerely for the time you invested in applying for the ${jobTitle} position at Sheer Logic, and for your interest in joining our team.\n\nAfter careful review of all applications, we regret to inform you that we will not be moving forward with your candidacy at this stage. This was a very competitive process and the decision was not easy.\n\nWe were genuinely impressed by your profile and encourage you to keep an eye on future openings at Sheer Logic that may be a match for your skills and experience.\n\nWe wish you the very best in your career journey ahead.\n\nKind regards,\nHR Team\nSheer Logic Limited`,
+      }
+    default:
+      return null
+  }
+}
+
+function openMailTo(email: string, subject: string, body: string) {
+  window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+}
+
 interface Props {
   candidate: CandidateWithPosting | null
   onClose: () => void
@@ -34,13 +93,22 @@ export function CandidateDrawer({ candidate, onClose }: Props) {
   const isPortal   = candidate.source === 'portal'
   const careersUrl = process.env.NEXT_PUBLIC_CAREERS_URL ?? 'http://localhost:3002'
   const currentStageDef = STAGES.find((s) => s.key === candidate.current_stage)
+  const nextStage = NEXT_STAGE[candidate.current_stage]
+  const nextStageLabel = NEXT_STAGE_LABEL[candidate.current_stage]
+  const jobTitle = (candidate as any).job_posting?.title ?? 'the position'
 
-  async function handleMove(stage: CandidateStage) {
+  async function handleMove(stage: CandidateStage, sendEmail = false) {
     if (candidate!.current_stage === stage || movingTo) return
     setMovingTo(stage)
     try {
       await moveStage.mutateAsync({ id: candidate!.id, stage })
-      toast.success(`Moved to ${STAGES.find((s) => s.key === stage)?.label}`)
+      const stageName = STAGES.find((s) => s.key === stage)?.label ?? stage
+      toast.success(`Moved to ${stageName}`)
+
+      if (sendEmail) {
+        const tpl = buildStageEmail(candidate!.full_name, jobTitle, stage)
+        if (tpl) openMailTo(candidate!.email, tpl.subject, tpl.body)
+      }
     } catch {
       toast.error('Failed to update stage')
     } finally {
@@ -48,13 +116,17 @@ export function CandidateDrawer({ candidate, onClose }: Props) {
     }
   }
 
+  function handleStageEmail(stage: CandidateStage) {
+    const tpl = buildStageEmail(candidate!.full_name, jobTitle, stage)
+    if (tpl) openMailTo(candidate!.email, tpl.subject, tpl.body)
+  }
+
+  const isTerminal = candidate.current_stage === 'hired' || candidate.current_stage === 'rejected'
+
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-40 bg-black/25 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 z-40 bg-black/25 backdrop-blur-sm" onClick={onClose} />
 
       {/* Drawer panel */}
       <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-[480px] bg-surface border-l border-border shadow-2xl flex flex-col">
@@ -123,7 +195,7 @@ export function CandidateDrawer({ candidate, onClose }: Props) {
               )}
             </div>
 
-            {/* Stage mover */}
+            {/* ── Stage mover ── */}
             <div className="space-y-2">
               <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Move to Stage</p>
               <div className="grid grid-cols-3 gap-2">
@@ -153,6 +225,30 @@ export function CandidateDrawer({ candidate, onClose }: Props) {
               </div>
             </div>
 
+            {/* ── Quick email templates ── */}
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Email Templates</p>
+              <div className="space-y-1.5">
+                {([
+                  { stage: 'interview_l1' as CandidateStage, label: 'L1 Interview Invite' },
+                  { stage: 'interview_l2' as CandidateStage, label: 'L2 Interview Invite' },
+                  { stage: 'offer_sent'   as CandidateStage, label: 'Job Offer Letter' },
+                  { stage: 'hired'        as CandidateStage, label: 'Acceptance Letter' },
+                  { stage: 'rejected'     as CandidateStage, label: 'Rejection Notice' },
+                ] as const).map(({ stage, label }) => (
+                  <button
+                    key={stage}
+                    onClick={() => handleStageEmail(stage)}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border hover:border-accent hover:text-accent text-text-muted transition-colors text-left"
+                  >
+                    <FileText className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="text-xs font-medium">{label}</span>
+                    <span className="ml-auto text-[10px] opacity-50">Open in email →</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* AI Screening results */}
             {candidate.ai_score !== null && (
               <div className="space-y-3">
@@ -160,7 +256,6 @@ export function CandidateDrawer({ candidate, onClose }: Props) {
                   <Sparkles className="w-3.5 h-3.5 text-accent" /> AI Screening
                 </p>
                 <div className="card p-5 space-y-4">
-                  {/* Score ring + bar */}
                   <div className="flex items-center gap-4">
                     <div className={cn(
                       'w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0 font-extrabold text-lg border-4',
@@ -254,24 +349,40 @@ export function CandidateDrawer({ candidate, onClose }: Props) {
           </div>
         </div>
 
-        {/* ── Footer: quick action buttons ── */}
-        <div className="border-t border-border px-6 py-4 flex gap-3 flex-shrink-0">
+        {/* ── Footer ── */}
+        <div className="border-t border-border px-6 py-4 flex-shrink-0 space-y-2">
+          {/* Advance + Send email combined action */}
+          {!isTerminal && nextStage && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleMove(nextStage)}
+                disabled={!!movingTo}
+                className="flex-1 flex items-center justify-center gap-2 btn-primary py-2.5 text-sm disabled:opacity-50"
+              >
+                {movingTo === nextStage
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <ChevronRight className="w-4 h-4" />}
+                {nextStageLabel}
+              </button>
+              <button
+                onClick={() => handleMove(nextStage, true)}
+                disabled={!!movingTo}
+                title="Advance & send notification email"
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg border border-border hover:border-accent hover:text-accent text-text-muted text-xs font-semibold transition-colors disabled:opacity-50"
+              >
+                <Send className="w-3.5 h-3.5" />
+                + Email
+              </button>
+            </div>
+          )}
+
+          {/* General email candidate */}
           <a
-            href={`mailto:${candidate.email}?subject=Re: Your application for ${(candidate as any).job_posting?.title ?? 'the position'}`}
-            className="flex-1 flex items-center justify-center gap-2 text-sm font-semibold border border-border rounded-lg py-2.5 hover:border-accent hover:text-accent transition-colors"
+            href={`mailto:${candidate.email}?subject=Re:%20Your%20application%20for%20${encodeURIComponent(jobTitle)}`}
+            className="w-full flex items-center justify-center gap-2 text-sm font-semibold border border-border rounded-lg py-2.5 hover:border-accent hover:text-accent transition-colors"
           >
             <Mail className="w-4 h-4" /> Email candidate
           </a>
-          {candidate.current_stage !== 'hired' && candidate.current_stage !== 'rejected' && (
-            <button
-              onClick={() => handleMove('interview_l1')}
-              disabled={candidate.current_stage === 'interview_l1' || !!movingTo}
-              className="flex-1 flex items-center justify-center gap-2 btn-primary py-2.5 text-sm disabled:opacity-50"
-            >
-              <ChevronRight className="w-4 h-4" />
-              {candidate.current_stage === 'screened' ? 'Advance to L1' : 'Next stage'}
-            </button>
-          )}
         </div>
       </aside>
     </>
