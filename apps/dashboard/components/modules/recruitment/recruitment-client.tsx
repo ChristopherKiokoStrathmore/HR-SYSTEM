@@ -9,7 +9,7 @@ import { CandidatePipeline } from './candidate-pipeline'
 import { CvUploadModal } from './cv-upload-modal'
 import { toast } from '@/lib/toast'
 import type { JobPosting } from '@hr/shared'
-import { Plus, Edit2, Trash2, Users, Briefcase, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, Edit2, Trash2, Users, Briefcase, ChevronDown, ChevronUp, Link2, Check } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import { formatDate } from '@hr/shared'
 import { cn } from '@/lib/utils'
@@ -20,6 +20,15 @@ export function RecruitmentClient() {
   const [editPosting, setEditPosting] = useState<JobPosting | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [cvModal, setCvModal] = useState<{ postingId: string; title: string } | null>(null)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  function copyJobLink(id: string) {
+    const url = `${window.location.origin}/jobs/${id}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 2000)
+    })
+  }
 
   const { data, isLoading } = useJobPostings({ companyId: activeCompanyId ?? undefined })
   const deletePosting = useDeleteJobPosting()
@@ -131,6 +140,16 @@ export function RecruitmentClient() {
                     >
                       <Plus className="w-3.5 h-3.5" />
                       Add CV
+                    </button>
+                    <button
+                      onClick={() => copyJobLink(posting.id)}
+                      title="Copy public job link"
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-surface border border-border hover:border-accent hover:text-accent transition-colors"
+                    >
+                      {copiedId === posting.id
+                        ? <Check className="w-3.5 h-3.5 text-green-500" />
+                        : <Link2 className="w-3.5 h-3.5" />}
+                      {copiedId === posting.id ? 'Copied!' : 'Share link'}
                     </button>
                     <button
                       onClick={() => { setEditPosting(posting); setPostingModal(true) }}
