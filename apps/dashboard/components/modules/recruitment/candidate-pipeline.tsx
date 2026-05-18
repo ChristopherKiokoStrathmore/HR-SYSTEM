@@ -5,7 +5,7 @@ import { useCandidates, useUpdateCandidateStage } from '@/lib/hooks/use-candidat
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/lib/toast'
 import type { CandidateWithPosting, CandidateStage } from '@hr/shared'
-import { User, Sparkles } from 'lucide-react'
+import { User, Sparkles, Globe } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   DndContext,
@@ -33,7 +33,7 @@ const STAGES: { key: CandidateStage; label: string; color: string; accent: strin
 ]
 
 // Card content shared between live cards and the drag overlay ghost
-function CardContent({ candidate }: { candidate: CandidateWithPosting }) {
+function CardContent({ candidate, compact }: { candidate: CandidateWithPosting; compact?: boolean }) {
   return (
     <>
       <div className="flex items-start gap-2">
@@ -41,7 +41,12 @@ function CardContent({ candidate }: { candidate: CandidateWithPosting }) {
           <User className="w-4 h-4 text-primary" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-text-primary truncate">{candidate.full_name}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium text-text-primary truncate">{candidate.full_name}</p>
+            {candidate.source === 'portal' && (
+              <Globe className="w-3 h-3 text-accent flex-shrink-0" title="Applied via Job Portal" />
+            )}
+          </div>
           <p className="text-xs text-text-muted truncate">{candidate.email}</p>
         </div>
       </div>
@@ -70,16 +75,17 @@ function CardContent({ candidate }: { candidate: CandidateWithPosting }) {
   )
 }
 
-function DraggableCard({ candidate }: { candidate: CandidateWithPosting }) {
+function DraggableCard({ candidate, onCardClick }: { candidate: CandidateWithPosting; onCardClick: (c: CandidateWithPosting) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: candidate.id })
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      onClick={() => onCardClick(candidate)}
       className={cn(
-        'bg-card border border-border rounded-lg p-3 cursor-grab active:cursor-grabbing select-none transition-all mb-2',
-        isDragging ? 'opacity-30 shadow-none scale-95' : 'shadow-sm hover:shadow-card'
+        'bg-card border border-border rounded-lg p-3 cursor-pointer select-none transition-all mb-2 group',
+        isDragging ? 'opacity-30 shadow-none scale-95 cursor-grabbing' : 'shadow-sm hover:shadow-card hover:border-accent/40'
       )}
       style={transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined}
     >
@@ -88,7 +94,7 @@ function DraggableCard({ candidate }: { candidate: CandidateWithPosting }) {
   )
 }
 
-function VirtualCardList({ candidates }: { candidates: CandidateWithPosting[] }) {
+function VirtualCardList({ candidates, onCardClick }: { candidates: CandidateWithPosting[]; onCardClick: (c: CandidateWithPosting) => void }) {
   const parentRef = useRef<HTMLDivElement>(null)
 
   const virtualizer = useVirtualizer({
@@ -108,7 +114,7 @@ function VirtualCardList({ candidates }: { candidates: CandidateWithPosting[] })
             ref={virtualizer.measureElement}
             style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vItem.start}px)` }}
           >
-            <DraggableCard candidate={candidates[vItem.index]} />
+            <DraggableCard candidate={candidates[vItem.index]} onCardClick={onCardClick} />
           </div>
         ))}
       </div>
@@ -117,11 +123,11 @@ function VirtualCardList({ candidates }: { candidates: CandidateWithPosting[] })
 }
 
 function DroppableColumn({
-  stage,
-  candidates,
+  stage, candidates, onCardClick,
 }: {
   stage: typeof STAGES[number]
   candidates: CandidateWithPosting[]
+  onCardClick: (c: CandidateWithPosting) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage.key })
 
@@ -152,7 +158,7 @@ function DroppableColumn({
           <p className="text-xs">Drop here</p>
         </div>
       ) : (
-        <VirtualCardList candidates={candidates} />
+        <VirtualCardList candidates={candidates} onCardClick={onCardClick} />
       )}
     </motion.div>
   )
@@ -160,9 +166,10 @@ function DroppableColumn({
 
 interface Props {
   jobPostingId: string
+  onCandidateClick: (candidate: CandidateWithPosting) => void
 }
 
-export function CandidatePipeline({ jobPostingId }: Props) {
+export function CandidatePipeline({ jobPostingId, onCandidateClick }: Props) {
   const { data, isLoading } = useCandidates({ jobPostingId })
   const moveStage = useUpdateCandidateStage()
   const [activeCandidate, setActiveCandidate] = useState<CandidateWithPosting | null>(null)
@@ -225,6 +232,7 @@ export function CandidatePipeline({ jobPostingId }: Props) {
             key={stage.key}
             stage={stage}
             candidates={candidates.filter((c) => c.current_stage === stage.key)}
+            onCardClick={onCandidateClick}
           />
         ))}
       </div>

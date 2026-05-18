@@ -5,7 +5,7 @@ import { useDropzone } from 'react-dropzone'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Loader2, Upload, FileText, X, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Loader2, Upload, FileText, X, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react'
 
 const schema = z.object({
   full_name: z.string().min(2, 'Full name is required'),
@@ -21,15 +21,19 @@ type CvPayload =
 
 type SubmitState = 'idle' | 'submitting' | 'success' | 'error'
 
+const MINI_STAGES = ['Applied', 'Under Review', 'Interview I', 'Interview II', 'Offer', 'Hired']
+
 interface Props {
   jobId: string
   jobTitle: string
 }
 
 export function ApplyForm({ jobId, jobTitle }: Props) {
-  const [cvPayload, setCvPayload] = useState<CvPayload | null>(null)
-  const [submitState, setSubmitState] = useState<SubmitState>('idle')
-  const [errorMsg, setErrorMsg] = useState('')
+  const [cvPayload, setCvPayload]       = useState<CvPayload | null>(null)
+  const [submitState, setSubmitState]   = useState<SubmitState>('idle')
+  const [errorMsg, setErrorMsg]         = useState('')
+  const [trackingToken, setTracking]    = useState<string | null>(null)
+  const [submittedEmail, setSubEmail]   = useState('')
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -87,6 +91,8 @@ export function ApplyForm({ jobId, jobTitle }: Props) {
         setSubmitState('error')
         return
       }
+      if (data.tracking_token) setTracking(data.tracking_token)
+      setSubEmail(values.email)
       setSubmitState('success')
     } catch {
       setErrorMsg('Network error. Check your connection and try again.')
@@ -95,21 +101,74 @@ export function ApplyForm({ jobId, jobTitle }: Props) {
   }
 
   if (submitState === 'success') {
+    const trackUrl = trackingToken ? `/track/${trackingToken}` : null
     return (
-      <div className="card p-12 text-center space-y-5">
-        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-          <CheckCircle2 className="w-10 h-10 text-green-600" />
-        </div>
-        <div className="space-y-2">
+      <div className="card p-10 space-y-7" id="apply">
+        {/* Header */}
+        <div className="text-center space-y-3">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-8 h-8 text-green-600" />
+          </div>
           <h3 className="text-2xl font-bold text-text-primary">Application received!</h3>
-          <p className="text-text-muted max-w-sm mx-auto">
+          <p className="text-text-muted max-w-sm mx-auto text-sm">
             Thank you for applying for <strong className="text-text-body">{jobTitle}</strong>.
-            Our team will review your application and be in touch soon.
           </p>
         </div>
-        <a href="/jobs" className="inline-block text-sm text-accent hover:underline">
-          ← Browse other positions
-        </a>
+
+        {/* Mini pipeline tracker */}
+        <div className="space-y-3">
+          <p className="text-xs font-bold text-text-muted uppercase tracking-widest text-center">Your application status</p>
+          <div className="flex items-center gap-0">
+            {MINI_STAGES.map((stage, i) => {
+              const isDone    = i === 0
+              const isCurrent = i === 1
+              return (
+                <div key={stage} className="flex items-center flex-1 min-w-0">
+                  <div className="flex flex-col items-center flex-1 min-w-0 gap-1">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold transition-colors ${isDone ? 'bg-green-500 text-white' : isCurrent ? 'bg-accent text-white ring-2 ring-accent/30' : 'bg-surface-alt text-text-muted border border-border'}`}>
+                      {isDone ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
+                    </div>
+                    <span className={`text-[9px] font-semibold text-center leading-none px-0.5 ${isDone ? 'text-green-600' : isCurrent ? 'text-accent' : 'text-text-muted'}`}>
+                      {stage}
+                    </span>
+                  </div>
+                  {i < MINI_STAGES.length - 1 && (
+                    <div className={`h-px flex-1 mx-0.5 mb-4 ${isDone ? 'bg-green-300' : 'bg-border'}`} />
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <p className="text-xs text-text-muted text-center">
+            Our team is reviewing your application. If shortlisted, we'll contact you within 5–7 business days.
+          </p>
+        </div>
+
+        {/* Tracking link */}
+        {trackUrl && (
+          <div className="bg-accent/5 border border-accent/20 rounded-xl p-5 space-y-3 text-center">
+            <p className="text-sm font-semibold text-text-primary">Track your application</p>
+            <p className="text-xs text-text-muted">Bookmark this link to check your status at any time.</p>
+            <a
+              href={trackUrl}
+              className="inline-flex items-center gap-2 btn-primary px-6 py-2.5 text-sm"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Open application tracker
+            </a>
+            {submittedEmail && (
+              <p className="text-[11px] text-text-muted">
+                We've also sent this link to <strong>{submittedEmail}</strong>
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="text-center">
+          <a href="/jobs" className="text-sm text-accent hover:underline">
+            ← Browse other positions
+          </a>
+        </div>
       </div>
     )
   }

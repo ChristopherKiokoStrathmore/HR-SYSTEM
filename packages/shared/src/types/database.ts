@@ -118,6 +118,8 @@ export interface Candidate extends BaseRecord {
   current_stage: CandidateStage
   rejection_reason: string | null
   notes: string | null
+  tracking_token: string | null
+  source: 'portal' | 'manual'
 }
 
 export interface Attendance extends BaseRecord {

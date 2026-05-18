@@ -7,19 +7,13 @@ import { ShareButton } from './share-button'
 import { ApplyForm } from './apply-form'
 
 const TYPE_LABELS: Record<string, string> = {
-  full_time: 'Full-time',
-  part_time: 'Part-time',
-  contract: 'Contract',
-  internship: 'Internship',
-  temporary: 'Temporary',
+  white_collar: 'Professional',
+  casual: 'Casual',
 }
 
 const TYPE_COLORS: Record<string, string> = {
-  full_time:  'bg-blue-50 text-blue-700 border-blue-200',
-  part_time:  'bg-purple-50 text-purple-700 border-purple-200',
-  contract:   'bg-amber-50 text-amber-700 border-amber-200',
-  internship: 'bg-green-50 text-green-700 border-green-200',
-  temporary:  'bg-orange-50 text-orange-700 border-orange-200',
+  white_collar: 'bg-blue-50 text-blue-700 border-blue-200',
+  casual:       'bg-amber-50 text-amber-700 border-amber-200',
 }
 
 function formatDate(iso: string | null) {

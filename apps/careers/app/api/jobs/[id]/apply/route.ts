@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@hr/shared'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { sendApplicationConfirmation } from '@/lib/notifications/application-email'
 import type { AiCvResult } from '@hr/shared'
 
 const CV_SYSTEM_PROMPT = `You are an expert HR recruiter. Analyze this CV against the job description. Return ONLY valid JSON with no markdown fences:
@@ -82,6 +83,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
 
     // Create candidate
+    const trackingToken = crypto.randomUUID()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: candidate, error: insertError } = await (supabase.from('candidates') as any)
       .insert({
@@ -95,8 +97,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         notes: cover_note?.trim() ?? null,
         current_stage: 'screened',
         ai_extracted_skills: [],
+        tracking_token: trackingToken,
+        source: 'portal',
       })
-      .select('id')
+      .select('id, tracking_token')
       .single()
 
     if (insertError) {
@@ -151,7 +155,16 @@ NICE TO HAVE: ${posting.nice_to_have_keywords.join(', ')}`
       }
     }
 
-    return NextResponse.json({ success: true })
+    // Send confirmation email with tracking link (non-blocking)
+    sendApplicationConfirmation({
+      candidateName:  full_name.trim(),
+      candidateEmail: email.toLowerCase().trim(),
+      jobTitle:       posting.title,
+      jobId:          params.id,
+      trackingToken:  candidate.tracking_token,
+    })
+
+    return NextResponse.json({ success: true, tracking_token: candidate.tracking_token })
   } catch (err) {
     console.error('Apply error:', err)
     return NextResponse.json({ error: 'Failed to submit application' }, { status: 500 })
