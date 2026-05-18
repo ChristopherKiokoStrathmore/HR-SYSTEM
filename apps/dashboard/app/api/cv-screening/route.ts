@@ -6,7 +6,7 @@ import { checkRateLimit } from '@/lib/rate-limit'
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-const CV_SYSTEM_PROMPT = `You are an expert HR recruiter. Analyze this CV against the job description. Return ONLY valid JSON:
+const CV_SYSTEM_PROMPT = `You are an expert HR recruiter. Analyze this CV against the job description. Return ONLY valid JSON with no markdown fences:
 {
   "name": "string",
   "email": "string",
@@ -29,20 +29,26 @@ interface JobPostingRow {
   auto_reject_threshold: number
 }
 
+function stripCodeFences(text: string): string {
+  return text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim()
+}
+
 export async function POST(req: NextRequest) {
   const limited = await checkRateLimit(req, 'strict')
   if (limited) return limited
 
   try {
     const body = await req.json()
-    const { jobPostingId, cvText, candidateId } = body as {
+    const { jobPostingId, cvText, candidateId, fileBase64, mimeType } = body as {
       jobPostingId: string
-      cvText: string
+      cvText?: string
       candidateId?: string
+      fileBase64?: string
+      mimeType?: 'application/pdf' | 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     }
 
-    if (!jobPostingId || !cvText) {
-      return NextResponse.json({ error: 'jobPostingId and cvText required' }, { status: 400 })
+    if (!jobPostingId || (!cvText && !fileBase64)) {
+      return NextResponse.json({ error: 'jobPostingId and either cvText or fileBase64 required' }, { status: 400 })
     }
 
     const supabase = createServerClient(true)
@@ -57,24 +63,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Job posting not found' }, { status: 404 })
     }
 
-    const userPrompt = `
-JOB TITLE: ${posting.title}
+    const jobContext = `JOB TITLE: ${posting.title}
 JOB DESCRIPTION: ${posting.description}
 REQUIRED KEYWORDS: ${posting.required_keywords.join(', ')}
-NICE TO HAVE: ${posting.nice_to_have_keywords.join(', ')}
+NICE TO HAVE: ${posting.nice_to_have_keywords.join(', ')}`
 
-CV CONTENT:
-${cvText.slice(0, 6000)}`
+    const messageContent: Anthropic.MessageParam['content'] = fileBase64 && mimeType
+      ? [
+          {
+            type: 'document',
+            source: { type: 'base64', media_type: mimeType, data: fileBase64 },
+          } as Anthropic.DocumentBlockParam,
+          { type: 'text', text: jobContext },
+        ]
+      : [{ type: 'text', text: `${jobContext}\n\nCV CONTENT:\n${(cvText ?? '').slice(0, 6000)}` }]
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: CV_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: userPrompt }],
+      messages: [{ role: 'user', content: messageContent }],
     })
 
-    const responseText = message.content[0].type === 'text' ? message.content[0].text : ''
-    const aiResult = JSON.parse(responseText) as AiCvResult
+    const rawText = message.content[0].type === 'text' ? message.content[0].text : ''
+    const aiResult = JSON.parse(stripCodeFences(rawText)) as AiCvResult
 
     const autoRejected = aiResult.match_score < posting.auto_reject_threshold
 

@@ -47,15 +47,19 @@ export function useScreenCV() {
       jobPostingId,
       cvText,
       candidateId,
+      fileBase64,
+      mimeType,
     }: {
       jobPostingId: string
-      cvText: string
+      cvText?: string
       candidateId?: string
+      fileBase64?: string
+      mimeType?: 'application/pdf' | 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     }) => {
       const res = await fetch('/api/cv-screening', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobPostingId, cvText, candidateId }),
+        body: JSON.stringify({ jobPostingId, cvText, candidateId, fileBase64, mimeType }),
       })
       if (!res.ok) throw new Error((await res.json()).error)
       return res.json() as Promise<{

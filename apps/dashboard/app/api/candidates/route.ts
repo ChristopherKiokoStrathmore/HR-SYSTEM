@@ -30,9 +30,8 @@ export async function POST(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('candidates') as any)
     .insert({
-      ...body,
-      current_stage: 'screened',
       ai_extracted_skills: [],
+      ...body,
       tenant_id: body.tenant_id,
     })
     .select()
