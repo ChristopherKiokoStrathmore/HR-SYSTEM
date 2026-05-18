@@ -1,0 +1,52 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build outputs
+.next
+.turbo
+dist
+build
+out
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode
+.idea
+*.swp
+
+# Turbo cache
+.turbo
+
+# Supabase local
+supabase/.branches
+supabase/.temp
+
+# Playwright / UAT
+playwright-report/
+tests/.auth/
+UAT_FAILURES.md
+test-results/
+*.log
+uat-results.txt
+*-results.json
+*-latest.json
+*-full.json
+
+# TypeScript build cache
+tsconfig.tsbuildinfo

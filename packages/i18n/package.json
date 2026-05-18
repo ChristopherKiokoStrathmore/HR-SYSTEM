@@ -1,0 +1,15 @@
+{
+  "name": "@hr/i18n",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./en": "./en.json",
+    "./sw": "./sw.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
