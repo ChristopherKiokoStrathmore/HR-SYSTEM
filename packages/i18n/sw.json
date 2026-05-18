@@ -1,0 +1,133 @@
+{
+  "nav": {
+    "home": "Nyumbani",
+    "leave": "Likizo",
+    "attendance": "Mahudhurio",
+    "payslip": "Malipo",
+    "profile": "Wasifu"
+  },
+  "actions": {
+    "request_leave": "Omba Likizo",
+    "check_in": "Ingia Kazini",
+    "check_out": "Toka Kazini",
+    "download": "Pakua",
+    "submit": "Wasilisha",
+    "submitting": "Inawasilisha...",
+    "approve": "Thibitisha",
+    "reject": "Kataa",
+    "save": "Hifadhi",
+    "cancel": "Ghairi",
+    "edit": "Hariri",
+    "delete": "Futa",
+    "view": "Angalia",
+    "upload": "Pakia",
+    "export": "Hamisha"
+  },
+  "status": {
+    "pending": "Inasubiri",
+    "approved": "Imeidhinishwa",
+    "rejected": "Imekataliwa",
+    "completed": "Imekamilika",
+    "processing": "Inaendelea",
+    "active": "Hai",
+    "inactive": "Haifanyi Kazi",
+    "verified": "Imethibitishwa",
+    "uploaded": "Imepakiwa"
+  },
+  "leave_types": {
+    "annual": "Likizo ya Kawaida",
+    "sick": "Likizo ya Ugonjwa",
+    "maternity": "Likizo ya Uzazi (Mama)",
+    "paternity": "Likizo ya Uzazi (Baba)",
+    "study": "Likizo ya Masomo",
+    "compassionate": "Likizo ya Msiba",
+    "unpaid": "Likizo Bila Malipo",
+    "adoption": "Likizo ya Kupitishwa",
+    "family": "Likizo ya Familia"
+  },
+  "attendance": {
+    "check_in_time": "Muda wa Kuingia",
+    "check_out_time": "Muda wa Kutoka",
+    "distance_covered": "Umbali Uliofunikwa",
+    "hours_worked": "Masaa Yaliyofanywa Kazi",
+    "weekly_summary": "Muhtasari wa Wiki",
+    "checked_in_success": "Umeingia kazini",
+    "checked_out_success": "Umetoka kazini",
+    "hours_worked_label": "masaa ya kazi",
+    "gps_recorded": "GPS imerekodiwa",
+    "location_error": "Hitilafu ya eneo"
+  },
+  "errors": {
+    "network": "Hitilafu ya mtandao. Jaribu tena.",
+    "required_fields": "Tafadhali jaza sehemu zote zinazohitajika.",
+    "request_submitted": "Ombi lako limewasilishwa.",
+    "session_expired": "Kikao chako kimeisha. Tafadhali ingia tena.",
+    "unauthorized": "Huna ruhusa ya kufanya hatua hii."
+  },
+  "greeting": {
+    "hello": "Habari",
+    "welcome_back": "Karibu tena"
+  },
+  "home": {
+    "todays_date": "Leo",
+    "leave_balance": "Salio la Likizo",
+    "next_payday": "Siku Ijayo ya Malipo",
+    "kpi_score": "Alama za KPI",
+    "attendance_streak": "Mfululizo wa Mahudhurio",
+    "days": "siku",
+    "announcements": "Matangazo",
+    "quick_actions": "Vitendo vya Haraka",
+    "no_announcements": "Hakuna matangazo"
+  },
+  "leave": {
+    "my_requests": "Maombi Yangu",
+    "no_requests": "Hakuna maombi ya likizo bado",
+    "days_left": "siku zilizobaki",
+    "leave_type": "Aina ya Likizo",
+    "start_date": "Tarehe ya Kuanza",
+    "end_date": "Tarehe ya Mwisho",
+    "working_day": "siku ya kazi",
+    "working_days": "siku za kazi",
+    "reason": "Sababu",
+    "reason_placeholder": "Sababu ya likizo..."
+  },
+  "payslip": {
+    "gross_salary": "Mshahara Jumla",
+    "paye": "Kodi ya PAYE",
+    "nssf": "NSSF",
+    "nhif": "NHIF / SHA",
+    "helb": "HELB",
+    "other_deductions": "Makato Mengine",
+    "net_salary": "Mshahara Halisi",
+    "total_deductions": "Jumla ya Makato",
+    "period": "Kipindi",
+    "no_payslips": "Hakuna malipo bado",
+    "net": "halisi"
+  },
+  "login": {
+    "title": "Ingia",
+    "email": "Barua pepe",
+    "password": "Nenosiri",
+    "placeholder_email": "barua@pepe.co.ke",
+    "placeholder_password": "Weka nenosiri lako",
+    "submit": "Ingia",
+    "loading": "Ingiwa...",
+    "language": "Lugha"
+  },
+  "profile": {
+    "personal_details": "Maelezo Binafsi",
+    "email": "Barua pepe",
+    "phone": "Simu",
+    "department": "Idara",
+    "company": "Kampuni",
+    "start_date": "Tarehe ya Kuanza",
+    "documents": "Nyaraka Zangu",
+    "contract": "Mkataba",
+    "settings": "Mipangilio",
+    "language": "Lugha",
+    "notifications": "Arifa",
+    "change_password": "Badilisha Nenosiri",
+    "logout": "Ondoka",
+    "days_remaining": "siku zimebaki"
+  }
+}

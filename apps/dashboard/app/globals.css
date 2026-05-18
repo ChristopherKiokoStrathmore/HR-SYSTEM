@@ -1,0 +1,151 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #F5F7FA;
+    --surface: #FFFFFF;
+    --surface-alt: #F0F4F8;
+    --border: #E2E8F0;
+    --text-primary: #1A2E5A;
+    --text-body: #374151;
+    --text-muted: #6B7280;
+    --primary: #1A2E5A;
+    --primary-light: #2A4A8A;
+    --accent: #F47920;
+    --accent-light: #F9A05C;
+    --success: #22C55E;
+    --warning: #EAB308;
+    --danger: #EF4444;
+  }
+
+  .dark {
+    --background: #0D1B2A;
+    --surface: #1A2E5A;
+    --surface-alt: #243B55;
+    --border: #2E4A6B;
+    --text-primary: #F1F5F9;
+    --text-body: #CBD5E1;
+    --text-muted: #94A3B8;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-background text-text-body font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply text-text-primary font-semibold;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply text-white font-semibold px-4 py-2 rounded-xl
+           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent/50
+           disabled:opacity-50 disabled:cursor-not-allowed active:scale-95;
+    background: linear-gradient(135deg, #F47920 0%, #E8650A 100%);
+    box-shadow: 0 4px 12px rgba(244, 121, 32, 0.3);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 6px 16px rgba(244, 121, 32, 0.4);
+  }
+
+  .btn-secondary {
+    @apply bg-primary hover:bg-primary-light text-white font-medium px-4 py-2 rounded-xl
+           transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent hover:bg-surface-alt text-text-body font-medium px-4 py-2 rounded-xl
+           transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-border;
+  }
+
+  .card {
+    @apply bg-surface rounded-2xl p-6;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  .card-interactive {
+    @apply card cursor-pointer transition-all duration-200;
+  }
+
+  .card-interactive:hover {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text-body
+           placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50
+           focus:border-accent transition-colors duration-200
+           disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Status badges */
+  .badge-success {
+    @apply inline-flex items-center rounded-full bg-success/10 text-success
+           px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide;
+  }
+
+  .badge-warning {
+    @apply inline-flex items-center rounded-full bg-warning/10 text-warning
+           px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide;
+  }
+
+  .badge-danger {
+    @apply inline-flex items-center rounded-full bg-danger/10 text-danger
+           px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide;
+  }
+
+  .badge-primary {
+    @apply inline-flex items-center rounded-full bg-primary/10 text-primary
+           px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide;
+  }
+
+  .badge-accent {
+    @apply inline-flex items-center rounded-full bg-accent/10 text-accent
+           px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide;
+  }
+
+  .skeleton {
+    @apply animate-pulse bg-surface-alt rounded-xl;
+  }
+
+  /* Noise texture overlay for dark gradient surfaces */
+  .noise-overlay {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .noise-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    @apply w-1.5 h-1.5;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-surface-alt;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-text-muted/30;
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "nav": {
+    "home": "Home",
+    "leave": "Leave",
+    "attendance": "Attendance",
+    "payslip": "Payslip",
+    "profile": "Profile"
+  },
+  "actions": {
+    "request_leave": "Request Leave",
+    "check_in": "Check In",
+    "check_out": "Check Out",
+    "download": "Download",
+    "submit": "Submit",
+    "submitting": "Submitting...",
+    "approve": "Approve",
+    "reject": "Reject",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "view": "View",
+    "upload": "Upload",
+    "export": "Export"
+  },
+  "status": {
+    "pending": "Pending",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "completed": "Completed",
+    "processing": "Processing",
+    "active": "Active",
+    "inactive": "Inactive",
+    "verified": "Verified",
+    "uploaded": "Uploaded"
+  },
+  "leave_types": {
+    "annual": "Annual Leave",
+    "sick": "Sick Leave",
+    "maternity": "Maternity Leave",
+    "paternity": "Paternity Leave",
+    "study": "Study Leave",
+    "compassionate": "Compassionate Leave",
+    "unpaid": "Unpaid Leave",
+    "adoption": "Adoption Leave",
+    "family": "Family Leave"
+  },
+  "attendance": {
+    "check_in_time": "Check-In Time",
+    "check_out_time": "Check-Out Time",
+    "distance_covered": "Distance Covered",
+    "hours_worked": "Hours Worked",
+    "weekly_summary": "Weekly Summary",
+    "checked_in_success": "Checked in successfully",
+    "checked_out_success": "Checked out",
+    "hours_worked_label": "h worked",
+    "gps_recorded": "GPS recorded",
+    "location_error": "Location error"
+  },
+  "errors": {
+    "network": "Network error. Please try again.",
+    "required_fields": "Please fill in all required fields.",
+    "request_submitted": "Your request has been submitted.",
+    "session_expired": "Your session has expired. Please log in again.",
+    "unauthorized": "You are not authorized to perform this action."
+  },
+  "greeting": {
+    "hello": "Hello",
+    "welcome_back": "Welcome back"
+  },
+  "home": {
+    "todays_date": "Today",
+    "leave_balance": "Leave Balance",
+    "next_payday": "Next Payday",
+    "kpi_score": "KPI Score",
+    "attendance_streak": "Attendance Streak",
+    "days": "days",
+    "announcements": "Announcements",
+    "quick_actions": "Quick Actions",
+    "no_announcements": "No announcements"
+  },
+  "leave": {
+    "my_requests": "My Requests",
+    "no_requests": "No leave requests yet",
+    "days_left": "days left",
+    "leave_type": "Leave Type",
+    "start_date": "Start Date",
+    "end_date": "End Date",
+    "working_day": "working day",
+    "working_days": "working days",
+    "reason": "Reason",
+    "reason_placeholder": "Reason for leave..."
+  },
+  "payslip": {
+    "gross_salary": "Gross Salary",
+    "paye": "PAYE Tax",
+    "nssf": "NSSF",
+    "nhif": "NHIF / SHA",
+    "helb": "HELB",
+    "other_deductions": "Other Deductions",
+    "net_salary": "Net Salary",
+    "total_deductions": "Total Deductions",
+    "period": "Period",
+    "no_payslips": "No payslips available yet",
+    "net": "net"
+  },
+  "login": {
+    "title": "Sign In",
+    "email": "Email address",
+    "password": "Password",
+    "placeholder_email": "your@email.com",
+    "placeholder_password": "Enter your password",
+    "submit": "Sign In",
+    "loading": "Signing in...",
+    "language": "Language"
+  },
+  "profile": {
+    "personal_details": "Personal Details",
+    "email": "Email",
+    "phone": "Phone",
+    "department": "Department",
+    "company": "Company",
+    "start_date": "Start Date",
+    "documents": "My Documents",
+    "contract": "Contract",
+    "settings": "Settings",
+    "language": "Language",
+    "notifications": "Notifications",
+    "change_password": "Change Password",
+    "logout": "Logout",
+    "days_remaining": "days remaining"
+  }
+}
