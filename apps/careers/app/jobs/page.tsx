@@ -13,7 +13,7 @@ export default async function JobsPage() {
 
   const { data } = await supabase
     .from('job_postings')
-    .select('id, title, department, description, required_keywords, employment_type, closing_date, created_at')
+    .select('id, title, department, description, required_keywords, employment_type, closing_date, created_at, location_name, location_lat, location_lng, experience_level')
     .eq('is_deleted', false)
     .eq('status', 'open')
     .order('created_at', { ascending: false })

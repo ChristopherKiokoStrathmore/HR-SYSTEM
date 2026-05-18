@@ -2,14 +2,16 @@
 
 import { useState } from 'react'
 import { useJobPostings, useDeleteJobPosting } from '@/lib/hooks/use-job-postings'
+import { useCandidates } from '@/lib/hooks/use-candidates'
 import { StatusBadge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { JobPostingModal } from './job-posting-modal'
 import { CandidatePipeline } from './candidate-pipeline'
 import { CvUploadModal } from './cv-upload-modal'
+import { CandidateDrawer } from './candidate-drawer'
 import { toast } from '@/lib/toast'
-import type { JobPosting } from '@hr/shared'
-import { Plus, Edit2, Trash2, Users, Briefcase, ChevronDown, ChevronUp, Link2, Check } from 'lucide-react'
+import type { JobPosting, CandidateWithPosting } from '@hr/shared'
+import { Plus, Edit2, Trash2, Users, Briefcase, ChevronDown, ChevronUp, Link2, Check, Globe, Clock } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import { formatDate } from '@hr/shared'
 import { cn } from '@/lib/utils'
@@ -21,6 +23,11 @@ export function RecruitmentClient() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [cvModal, setCvModal] = useState<{ postingId: string; title: string } | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [drawerCandidate, setDrawerCandidate] = useState<CandidateWithPosting | null>(null)
+  const [feedOpen, setFeedOpen] = useState(true)
+
+  // Live applications feed — last 12 candidates across all postings
+  const { data: feedData } = useCandidates({})
 
   function copyJobLink(id: string) {
     const base = process.env.NEXT_PUBLIC_CAREERS_URL ?? 'http://localhost:3002'
@@ -64,6 +71,77 @@ export function RecruitmentClient() {
           New Posting
         </button>
       </div>
+
+      {/* ── Live Applications Feed ── */}
+      {(() => {
+        const allCandidates = feedData?.data ?? []
+        const portalCount = allCandidates.filter((c) => c.source === 'portal').length
+        const recentFeed = allCandidates.slice(0, 12)
+        return (
+          <div className="card p-0 overflow-hidden">
+            <button
+              onClick={() => setFeedOpen((o) => !o)}
+              className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-surface-alt transition-colors"
+            >
+              <div className="flex items-center gap-2.5">
+                <Globe className="w-4 h-4 text-accent" />
+                <span className="text-sm font-semibold text-text-primary">Live Applications</span>
+                {portalCount > 0 && (
+                  <span className="text-xs bg-accent text-white font-bold px-2 py-0.5 rounded-full">{portalCount} from portal</span>
+                )}
+              </div>
+              {feedOpen ? <ChevronUp className="w-4 h-4 text-text-muted" /> : <ChevronDown className="w-4 h-4 text-text-muted" />}
+            </button>
+
+            {feedOpen && (
+              <div className="border-t border-border divide-y divide-border max-h-72 overflow-y-auto">
+                {recentFeed.length === 0 ? (
+                  <p className="text-sm text-text-muted text-center py-8">No applications yet.</p>
+                ) : (
+                  recentFeed.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setDrawerCandidate(c)}
+                      className="w-full flex items-center gap-3 px-5 py-3 hover:bg-surface-alt transition-colors text-left group"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Users className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-text-primary truncate">{c.full_name}</p>
+                          {c.source === 'portal' && (
+                            <span className="flex-shrink-0 flex items-center gap-0.5 text-[10px] font-bold text-accent bg-accent/10 border border-accent/20 px-1.5 py-0.5 rounded-full">
+                              <Globe className="w-2.5 h-2.5" /> Portal
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-text-muted truncate">
+                          {(c as any).job_posting?.title ?? ''} · {c.current_stage.replace(/_/g, ' ')}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {c.ai_score !== null && (
+                          <span className={cn('text-xs font-bold px-2 py-0.5 rounded-full',
+                            c.ai_score >= 75 ? 'bg-green-100 text-green-700' :
+                            c.ai_score >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'
+                          )}>
+                            {c.ai_score}%
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1 text-xs text-text-muted">
+                          <Clock className="w-3 h-3" />
+                          {formatDate(c.created_at)}
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-4">
@@ -176,7 +254,10 @@ export function RecruitmentClient() {
                 {isExpanded && (
                   <div className="border-t border-border px-5 py-4 bg-surface">
                     <h4 className="text-sm font-semibold text-text-primary mb-4">Candidate Pipeline</h4>
-                    <CandidatePipeline jobPostingId={posting.id} />
+                    <CandidatePipeline
+                      jobPostingId={posting.id}
+                      onCandidateClick={setDrawerCandidate}
+                    />
                   </div>
                 )}
               </div>
@@ -184,6 +265,12 @@ export function RecruitmentClient() {
           })
         )}
       </div>
+
+      {/* Candidate detail drawer */}
+      <CandidateDrawer
+        candidate={drawerCandidate}
+        onClose={() => setDrawerCandidate(null)}
+      />
 
       {/* Modals */}
       <JobPostingModal
