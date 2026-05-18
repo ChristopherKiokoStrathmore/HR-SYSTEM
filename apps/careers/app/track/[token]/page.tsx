@@ -126,9 +126,9 @@ export default async function TrackPage({ params }: { params: { token: string } 
           {/* Horizontal on md+, vertical on mobile */}
           <div className="hidden md:flex items-start">
             {STAGES.map((stage, i) => {
-              const isDone    = i < activeIdx
-              const isCurrent = i === activeIdx
-              const isFuture  = i > activeIdx
+              const isDone    = i < activeIdx || (currentStage === 'hired' && i === activeIdx)
+              const isCurrent = i === activeIdx && currentStage !== 'hired'
+              const isFuture  = i > activeIdx && currentStage !== 'hired'
               return (
                 <div key={stage.key} className="flex items-start flex-1 min-w-0">
                   <div className="flex flex-col items-center gap-1.5 flex-1">
@@ -149,7 +149,7 @@ export default async function TrackPage({ params }: { params: { token: string } 
                   </div>
                   {/* Connector */}
                   {i < STAGES.length - 1 && (
-                    <div className={`h-0.5 flex-1 mt-4 mx-1 transition-colors ${isDone ? 'bg-green-300' : 'bg-border'}`} />
+                    <div className={`h-0.5 flex-1 mt-4 mx-1 transition-colors ${(isDone || currentStage === 'hired') ? 'bg-green-300' : 'bg-border'}`} />
                   )}
                 </div>
               )
@@ -159,8 +159,8 @@ export default async function TrackPage({ params }: { params: { token: string } 
           {/* Vertical (mobile) */}
           <div className="md:hidden space-y-0">
             {STAGES.map((stage, i) => {
-              const isDone    = i < activeIdx
-              const isCurrent = i === activeIdx
+              const isDone    = i < activeIdx || (currentStage === 'hired' && i === activeIdx)
+              const isCurrent = i === activeIdx && currentStage !== 'hired'
               return (
                 <div key={stage.key} className="flex gap-4">
                   <div className="flex flex-col items-center">

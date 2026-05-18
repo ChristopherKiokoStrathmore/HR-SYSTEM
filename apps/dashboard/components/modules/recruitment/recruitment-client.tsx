@@ -15,6 +15,7 @@ import { Plus, Edit2, Trash2, Users, Briefcase, ChevronDown, ChevronUp, Link2, C
 import { useStore } from '@/lib/store'
 import { formatDate } from '@hr/shared'
 import { cn } from '@/lib/utils'
+import { useRealtimeCandidates } from '@/lib/hooks/use-realtime-candidates'
 
 export function RecruitmentClient() {
   const activeCompanyId = useStore(s => s.activeCompanyId)
@@ -28,6 +29,9 @@ export function RecruitmentClient() {
 
   // Live applications feed — last 12 candidates across all postings
   const { data: feedData } = useCandidates({})
+
+  // Real-time: toast + cache invalidation when new applications arrive
+  useRealtimeCandidates(activeCompanyId)
 
   function copyJobLink(id: string) {
     const base = process.env.NEXT_PUBLIC_CAREERS_URL ?? 'http://localhost:3002'
