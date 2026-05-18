@@ -33,7 +33,7 @@ interface JobRow {
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const limited = await checkRateLimit(req, 'strict')
+  const limited = await checkRateLimit(req)
   if (limited) return limited
 
   try {
@@ -63,10 +63,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       .single<JobRow>()
 
     if (!posting) {
-      return NextResponse.json({ error: 'Job posting not found or no longer accepting applications' }, { status: 404 })
+      return NextResponse.json({ error: 'This position is no longer accepting applications' }, { status: 404 })
     }
 
-    // Check for duplicate application
+    // Duplicate check
     const { data: existing } = await supabase
       .from('candidates')
       .select('id')
@@ -75,10 +75,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       .maybeSingle()
 
     if (existing) {
-      return NextResponse.json({ error: 'An application with this email already exists for this position' }, { status: 409 })
+      return NextResponse.json(
+        { error: 'You have already applied for this position with this email address' },
+        { status: 409 },
+      )
     }
 
-    // Create candidate record first
+    // Create candidate
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: candidate, error: insertError } = await (supabase.from('candidates') as any)
       .insert({
@@ -97,10 +100,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       .single()
 
     if (insertError) {
-      return NextResponse.json({ error: 'Failed to submit application' }, { status: 500 })
+      console.error('Candidate insert error:', insertError)
+      return NextResponse.json({ error: 'Failed to submit application. Please try again.' }, { status: 500 })
     }
 
-    // Run AI screening in the background if API key + CV are available
+    // AI screening — best-effort, won't fail the request
     if (process.env.ANTHROPIC_API_KEY && (cvText || fileBase64)) {
       try {
         const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
@@ -142,14 +146,14 @@ NICE TO HAVE: ${posting.nice_to_have_keywords.join(', ')}`
               : null,
           })
           .eq('id', candidate.id)
-      } catch {
-        // AI screening is best-effort — the application is already saved
+      } catch (err) {
+        console.error('AI screening failed (non-fatal):', err)
       }
     }
 
     return NextResponse.json({ success: true })
   } catch (err) {
-    console.error('Public apply error:', err)
+    console.error('Apply error:', err)
     return NextResponse.json({ error: 'Failed to submit application' }, { status: 500 })
   }
 }

@@ -6,7 +6,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   const { data, error } = await supabase
     .from('job_postings')
-    .select('id, title, department, description, required_keywords, nice_to_have_keywords, employment_type, closing_date, created_at, company_id')
+    .select('id, title, department, description, required_keywords, nice_to_have_keywords, employment_type, closing_date, created_at')
     .eq('id', params.id)
     .eq('is_deleted', false)
     .eq('status', 'open')

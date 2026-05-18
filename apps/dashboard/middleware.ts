@@ -1,9 +1,6 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const publicRoutes = ['/jobs', '/api/public']
-const authRoutes = ['/login']
-
 function getSupabaseKey() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!key) throw new Error('Missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY')
@@ -36,15 +33,11 @@ export async function middleware(request: NextRequest) {
   const { data: { session } } = await supabase.auth.getSession()
   const { pathname } = request.nextUrl
 
-  const isPublic = publicRoutes.some((r) => pathname.startsWith(r))
-  const isAuthPage = authRoutes.some((r) => pathname.startsWith(r))
-
-  if (!session && !isPublic && !isAuthPage) {
+  if (!session && !pathname.startsWith('/login')) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Only redirect away from /login, not from public pages like /jobs
-  if (session && isAuthPage) {
+  if (session && pathname.startsWith('/login')) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
