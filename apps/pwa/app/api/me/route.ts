@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { createCookieClient } from '@/lib/supabase-server'
 import { createServiceClient } from '@/lib/supabase-server'
@@ -15,18 +16,22 @@ export async function GET() {
   // Use the same cookie client for data queries so auth.uid() is set
   // and RLS policies evaluate correctly. The sb_secret_ key is not a JWT
   // so a service-role client cannot bypass RLS with the new key format.
-  const [{ data: profile }, { data: employee }] = await Promise.all([
-    service.from('users').select('*').eq('id', resolvedUser.id).single(),
-    resolveEmployeeContext(service, resolvedUser),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const authUser = resolvedUser as any as { id: string; email?: string | null }
+  const [{ data: profile }, { employee }] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any).from('users').select('*').eq('id', authUser.id).single() as Promise<{ data: Record<string, any> | null }>,
+    resolveEmployeeContext(service, authUser),
   ])
 
   const employeeWithCompany = employee
-    ? await service
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ? await (service as any)
       .from('employee_profiles')
       .select('*, company:companies(name, logo_url)')
       .eq('id', employee.id)
       .maybeSingle()
-      .then(({ data }) => data)
+      .then(({ data }: { data: unknown }) => data)
     : null
 
   return NextResponse.json({ data: { user: profile, employee: employeeWithCompany } })
