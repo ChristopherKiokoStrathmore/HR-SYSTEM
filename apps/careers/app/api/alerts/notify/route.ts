@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@hr/shared'
 import { alertMatchesJob, type JobPosting, type JobAlert } from '@/lib/notifications/match-alerts'

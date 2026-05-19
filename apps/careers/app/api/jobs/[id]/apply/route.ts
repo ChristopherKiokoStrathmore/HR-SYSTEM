@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@hr/shared'
 import { checkRateLimit } from '@/lib/rate-limit'
