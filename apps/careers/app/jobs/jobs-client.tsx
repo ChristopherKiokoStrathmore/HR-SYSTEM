@@ -106,10 +106,10 @@ export function JobsClient({ jobs }: Props) {
   const locationRef                 = useRef<HTMLInputElement>(null)
 
   const departments = useMemo(
-    () => [...new Set(jobs.map((j) => j.department).filter(Boolean))] as string[],
+    () => Array.from(new Set(jobs.map((j) => j.department).filter(Boolean))) as string[],
     [jobs],
   )
-  const types = useMemo(() => [...new Set(jobs.map((j) => j.employment_type))], [jobs])
+  const types = useMemo(() => Array.from(new Set(jobs.map((j) => j.employment_type))), [jobs])
 
   // ── Geocode location input via Nominatim ─────────────────────────────────
   const geocodeLocation = useCallback(async () => {
@@ -484,7 +484,7 @@ export function JobsClient({ jobs }: Props) {
         </div>
       ) : grouped ? (
         <div className="space-y-10">
-          {[...grouped.entries()].map(([dept, deptJobs]) => (
+          {Array.from(grouped.entries()).map(([dept, deptJobs]) => (
             <section key={dept} className="space-y-3">
               <div className="flex items-center gap-3">
                 <h2 className="text-xs font-bold text-text-muted uppercase tracking-widest whitespace-nowrap">{dept}</h2>
@@ -492,7 +492,7 @@ export function JobsClient({ jobs }: Props) {
                 <span className="text-xs text-text-muted">{deptJobs.length} position{deptJobs.length !== 1 ? 's' : ''}</span>
               </div>
               <div className="space-y-3">
-                {deptJobs.map((job) => <JobCard key={job.id} job={job} />)}
+                {deptJobs.map((job: JobItem) => <JobCard key={job.id} job={job} />)}
               </div>
             </section>
           ))}

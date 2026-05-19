@@ -62,7 +62,15 @@ export default async function TrackPage({ params }: { params: { token: string } 
       job_postings ( id, title, department, location_name, employment_type, closing_date )
     `)
     .eq('tracking_token', params.token)
-    .single()
+    .single<{
+      id: string
+      full_name: string
+      email: string
+      phone: string | null
+      current_stage: string
+      created_at: string
+      job_postings: { id: string; title: string; department: string | null; location_name: string | null; employment_type: string; closing_date: string | null } | null
+    }>()
 
   if (!data) notFound()
 

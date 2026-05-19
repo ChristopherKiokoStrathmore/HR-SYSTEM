@@ -6,6 +6,17 @@ import { ArrowLeft, Briefcase, Clock, CheckCircle2, Star, Building2 } from 'luci
 import { ShareButton } from './share-button'
 import { ApplyForm } from './apply-form'
 
+interface JobRow {
+  id: string
+  title: string
+  department: string | null
+  description: string
+  required_keywords: string[]
+  nice_to_have_keywords: string[]
+  employment_type: string
+  closing_date: string | null
+}
+
 const TYPE_LABELS: Record<string, string> = {
   white_collar: 'Professional',
   casual: 'Casual',
@@ -34,7 +45,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
     .eq('id', params.id)
     .eq('is_deleted', false)
     .eq('status', 'open')
-    .single()
+    .single<Pick<JobRow, 'title' | 'department' | 'description'>>()
   if (!data) return { title: 'Position not found' }
   const dept = data.department ? ` · ${data.department}` : ''
   return {
@@ -52,7 +63,7 @@ export default async function JobDetailPage({ params }: { params: { id: string }
     .eq('id', params.id)
     .eq('is_deleted', false)
     .eq('status', 'open')
-    .single()
+    .single<JobRow>()
 
   if (!job) notFound()
 
