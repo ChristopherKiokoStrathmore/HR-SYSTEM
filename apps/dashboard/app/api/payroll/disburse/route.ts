@@ -1,8 +1,9 @@
+﻿export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@hr/shared'
 import { checkRateLimit } from '@/lib/rate-limit'
 
-// Demo-mode disbursement — marks all pending records as paid with a generated reference.
+// Demo-mode disbursement â€” marks all pending records as paid with a generated reference.
 // Wire real Daraja / banking API credentials before going to production.
 export async function POST(req: NextRequest) {
   const limited = await checkRateLimit(req, 'moderate')

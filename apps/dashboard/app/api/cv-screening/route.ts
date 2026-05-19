@@ -1,3 +1,4 @@
+﻿export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@hr/shared'
 import { checkRateLimit } from '@/lib/rate-limit'
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
 
     if (!screening) {
       return NextResponse.json(
-        { error: 'AI screening unavailable — set GROQ_API_KEY or ANTHROPIC_API_KEY' },
+        { error: 'AI screening unavailable â€” set GROQ_API_KEY or ANTHROPIC_API_KEY' },
         { status: 503 },
       )
     }
