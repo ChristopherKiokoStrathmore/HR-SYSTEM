@@ -7,8 +7,8 @@ export async function GET(req: NextRequest) {
   if (!token) return new Response('Invalid unsubscribe link.', { status: 400 })
 
   const supabase = createServerClient(true)
-  const { error } = await supabase
-    .from('job_alerts')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from('job_alerts') as any)
     .update({ is_active: false })
     .eq('unsubscribe_token', token)
 

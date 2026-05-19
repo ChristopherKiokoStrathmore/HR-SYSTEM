@@ -23,7 +23,8 @@ export async function POST(req: NextRequest) {
     const body = schema.parse(await req.json())
     const supabase = createServerClient(true)
 
-    const { error } = await supabase.from('job_alerts').insert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from('job_alerts') as any).insert({
       name:              body.name ?? null,
       email:             body.email,
       phone:             body.phone ?? null,
