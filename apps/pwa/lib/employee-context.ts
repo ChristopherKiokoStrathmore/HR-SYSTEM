@@ -6,7 +6,8 @@ type AuthUser = {
   email?: string | null
 }
 
-export async function resolvePwaUserRecord(service: SupabaseClient<Database>, authUser: AuthUser | null | undefined) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function resolvePwaUserRecord(service: SupabaseClient<Database>, authUser: AuthUser | null | undefined): Promise<Record<string, any> | null> {
   const fallbackEmail = process.env.PWA_EMAIL ?? 'david@demo.co.ke'
   const candidateEmails = new Set<string>()
 
@@ -37,10 +38,11 @@ export async function resolvePwaUserRecord(service: SupabaseClient<Database>, au
   return null
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function resolveEmployeeContext(
   service: SupabaseClient<Database>,
   authUser: AuthUser | null | undefined,
-) {
+): Promise<{ employee: Record<string, any> | null; userId: string | null }> {
   const candidateIds = new Set<string>()
 
   if (authUser?.id) candidateIds.add(authUser.id)
@@ -49,23 +51,25 @@ export async function resolveEmployeeContext(
     .filter(Boolean) as string[]
 
   for (const email of candidateEmails) {
-    const { data: matchedUser } = await service
-      .from('users' as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: matchedUser } = await (service as any)
+      .from('users')
       .select('id, email')
       .eq('email', email)
       .eq('is_deleted', false)
-      .maybeSingle()
+      .maybeSingle() as { data: { id: string; email: string } | null }
 
     if (matchedUser?.id) candidateIds.add(matchedUser.id)
   }
 
   for (const userId of candidateIds) {
-    const { data: employee } = await service
-      .from('employee_profiles' as any)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: employee } = await (service as any)
+      .from('employee_profiles')
       .select('*')
       .eq('user_id', userId)
       .eq('is_deleted', false)
-      .maybeSingle()
+      .maybeSingle() as { data: Record<string, any> | null }
 
     if (employee) {
       return { employee, userId }

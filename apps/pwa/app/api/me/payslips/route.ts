@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { createCookieClient, createServiceClient } from '@/lib/supabase-server'
 import { resolveEmployeeContext } from '@/lib/employee-context'

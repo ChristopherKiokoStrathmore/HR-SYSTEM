@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createCookieClient, createServiceClient } from '@/lib/supabase-server'
 import { resolveEmployeeContext } from '@/lib/employee-context'
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
         if (!hrEmails.length) return
 
         const employeeName: string = (emp.user as any)?.full_name ?? 'Employee'
-        const employeeEmail: string = (emp.user as any)?.email ?? user.email ?? ''
+        const employeeEmail: string = (emp.user as any)?.email ?? user?.email ?? ''
 
         await resend.emails.send({
           from: FROM,
