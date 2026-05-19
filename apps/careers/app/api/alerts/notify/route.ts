@@ -86,10 +86,11 @@ export async function POST(req: NextRequest) {
     ])
 
     // Log what was sent
-    const logs = []
+    const logs: { alert_id: string; job_posting_id: string; channel: string; status: string }[] = []
     if (emailOk) logs.push({ alert_id: alert.id, job_posting_id: jobId, channel: 'email', status: 'sent' })
     if (smsOk)   logs.push({ alert_id: alert.id, job_posting_id: jobId, channel: 'sms',   status: 'sent' })
-    if (logs.length) await supabase.from('job_alert_logs').insert(logs)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (logs.length) await (supabase.from('job_alert_logs') as any).insert(logs)
 
     if (emailOk) emailsSent++
     if (smsOk)   smsSent++
