@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const supabase = createServerClient(true)
     const { searchParams } = new URL(req.url)
     const companyId = searchParams.get('companyId')
-    const date = searchParams.get('date') ?? new Date().toISOString().slice(0, 10)
+    const date = searchParams.get('date') ?? new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' })
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (supabase.from('attendance') as any)

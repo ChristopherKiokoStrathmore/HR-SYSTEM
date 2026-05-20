@@ -19,7 +19,7 @@ const CheckInMap = dynamic(
 
 export function AttendanceClient() {
   const activeCompanyId = useStore(s => s.activeCompanyId)
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' }))
 
   const { data, isLoading } = useAttendanceSummary(activeCompanyId, date)
 
