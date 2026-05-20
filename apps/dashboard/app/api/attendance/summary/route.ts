@@ -33,15 +33,15 @@ export async function GET(req: NextRequest) {
         id, status, is_late, shift_date,
         check_in_time, check_out_time,
         check_in_lat, check_in_lng, distance_covered_km,
-        employee:employee_profiles(
+        employee:employee_profiles!inner(
           employee_number, job_title, department,
-          user:users(full_name, avatar_url)
+          user:users!user_id(full_name, avatar_url)
         )
       `)
       .eq('shift_date', date)
       .order('created_at', { ascending: false })
 
-    if (companyId) query = query.eq('employee.company_id', companyId)
+    if (companyId) query = query.eq('employee_profiles.company_id', companyId)
 
     const { data, error } = await query as { data: AttendanceRow[] | null; error: unknown }
     if (error) {

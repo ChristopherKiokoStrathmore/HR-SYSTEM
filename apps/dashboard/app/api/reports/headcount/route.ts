@@ -13,13 +13,13 @@ interface EmployeeRow {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const companyId = searchParams.get('companyId')
-  if (!companyId) return NextResponse.json({ error: 'companyId required' }, { status: 400 })
-
   const supabase = createServerClient(true)
-  const { data, error } = await (supabase.from('employee_profiles') as any)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let hcQuery = (supabase.from('employee_profiles') as any)
     .select('department, employment_type, employment_status, start_date, gender')
-    .eq('company_id', companyId)
-    .eq('is_deleted', false) as { data: EmployeeRow[] | null; error: unknown }
+    .eq('is_deleted', false)
+  if (companyId) hcQuery = hcQuery.eq('company_id', companyId)
+  const { data, error } = await hcQuery as { data: EmployeeRow[] | null; error: unknown }
 
   if (error) return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 })
 
@@ -36,7 +36,8 @@ export async function GET(req: NextRequest) {
     byDepartment[dept] = (byDepartment[dept] ?? 0) + 1
     byType[e.employment_type] = (byType[e.employment_type] ?? 0) + 1
     byStatus[e.employment_status] = (byStatus[e.employment_status] ?? 0) + 1
-    const g = e.gender ?? 'Unspecified'
+    const rawGender = e.gender ?? 'Unspecified'
+    const g = rawGender.charAt(0).toUpperCase() + rawGender.slice(1).toLowerCase()
     byGender[g] = (byGender[g] ?? 0) + 1
   }
 

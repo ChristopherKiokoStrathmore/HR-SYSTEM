@@ -28,6 +28,6 @@ export function useAttendanceSummary(companyId: string | null, date?: string) {
       if (!res.ok) throw new Error('Failed to fetch attendance summary')
       return res.json() as Promise<AttendanceSummary>
     },
-    enabled: !!companyId,
+    staleTime: 60 * 1000,
   })
 }
