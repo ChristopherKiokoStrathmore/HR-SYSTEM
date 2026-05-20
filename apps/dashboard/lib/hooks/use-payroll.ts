@@ -16,7 +16,7 @@ export function usePayrollRuns(companyId: string | null) {
       if (!res.ok) throw new Error('Failed to fetch payroll runs')
       return res.json() as Promise<{ data: PayrollRun[] }>
     },
-    enabled: !!companyId,
+    staleTime: 60 * 1000,
   })
 }
 

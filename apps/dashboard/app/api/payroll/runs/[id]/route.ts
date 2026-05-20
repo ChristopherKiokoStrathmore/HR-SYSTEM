@@ -24,6 +24,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     .from('payroll_runs')
     .select('*, records:payroll_records(*)')
     .eq('id', params.id)
+    .eq('is_deleted', false)
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 404 })
   return NextResponse.json({ data })

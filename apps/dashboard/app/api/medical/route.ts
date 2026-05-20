@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       .select('*')
       .eq('employee_id', employeeId)
       .eq('is_deleted', false)
-      .order('examination_date', { ascending: false })
+      .order('issued_date', { ascending: false })
 
     if (error) {
       console.error('Medical API error:', error)

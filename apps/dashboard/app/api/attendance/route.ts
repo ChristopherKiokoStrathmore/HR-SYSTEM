@@ -17,11 +17,12 @@ export async function GET(req: NextRequest) {
       .from('attendance')
       .select('*')
       .eq('employee_id', employeeId)
-      .order('date', { ascending: false })
+      .eq('is_deleted', false)
+      .order('shift_date', { ascending: false })
       .limit(60)
 
-    if (from) query = query.gte('date', from)
-    if (to) query = query.lte('date', to)
+    if (from) query = query.gte('shift_date', from)
+    if (to) query = query.lte('shift_date', to)
 
     const { data, error } = await query
 
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await supabase
       .from('attendance')
-      .upsert(body, { onConflict: 'employee_id,date' })
+      .upsert(body, { onConflict: 'employee_id,shift_date' })
       .select()
       .single()
 

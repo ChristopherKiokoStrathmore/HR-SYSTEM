@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     .from('performance_reviews')
     .select('*, reviewer:users!reviewer_id(full_name)')
     .eq('employee_id', employeeId)
-    .order('review_date', { ascending: false })
+    .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ data })

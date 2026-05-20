@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
     .from('payroll_records')
     .select('*, payroll_run:payroll_runs(period_month, period_year)')
     .eq('employee_id', employeeId)
+    .eq('is_deleted', false)
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
