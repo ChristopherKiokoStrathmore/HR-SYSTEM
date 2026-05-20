@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
       .eq('shift_date', date)
       .order('created_at', { ascending: false })
 
-    if (companyId) query = query.eq('company_id', companyId)
+    if (companyId) query = query.eq('employee.company_id', companyId)
 
     const { data, error } = await query as { data: AttendanceRow[] | null; error: unknown }
     if (error) {
