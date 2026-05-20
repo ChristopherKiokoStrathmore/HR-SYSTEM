@@ -89,35 +89,40 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Failed to submit application. Please try again.' }, { status: 500 })
     }
 
-    // AI screening — best-effort, won't fail the request
+    // AI screening is awaited here so the score is persisted before the request ends.
     if (cvText || fileBase64) {
-      screenCv({
-        jobTitle: posting.title,
-        jobDescription: posting.description,
-        requiredKeywords: posting.required_keywords,
-        niceToHaveKeywords: posting.nice_to_have_keywords,
-        cvText,
-        fileBase64,
-        mimeType,
-      }).then(async (screening) => {
-        if (!screening) return
-        const { result: aiResult } = screening
-        const autoRejected = aiResult.match_score < posting.auto_reject_threshold
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase.from('candidates') as any)
-          .update({
-            ai_score: aiResult.match_score,
-            ai_summary: aiResult.summary,
-            ai_extracted_skills: aiResult.skills,
-            ai_experience_years: aiResult.experience_years,
-            ai_education: aiResult.education,
-            current_stage: autoRejected ? 'rejected' : 'screened',
-            rejection_reason: autoRejected
-              ? `Auto-rejected: score ${aiResult.match_score} below threshold ${posting.auto_reject_threshold}`
-              : null,
-          })
-          .eq('id', candidate.id)
-      }).catch((err) => console.error('AI screening failed (non-fatal):', err))
+      try {
+        const screening = await screenCv({
+          jobTitle: posting.title,
+          jobDescription: posting.description,
+          requiredKeywords: posting.required_keywords,
+          niceToHaveKeywords: posting.nice_to_have_keywords,
+          cvText,
+          fileBase64,
+          mimeType,
+        })
+
+        if (screening) {
+          const { result: aiResult } = screening
+          const autoRejected = aiResult.match_score < posting.auto_reject_threshold
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase.from('candidates') as any)
+            .update({
+              ai_score: aiResult.match_score,
+              ai_summary: aiResult.summary,
+              ai_extracted_skills: aiResult.skills,
+              ai_experience_years: aiResult.experience_years,
+              ai_education: aiResult.education,
+              current_stage: autoRejected ? 'rejected' : 'screened',
+              rejection_reason: autoRejected
+                ? `Auto-rejected: score ${aiResult.match_score} below threshold ${posting.auto_reject_threshold}`
+                : null,
+            })
+            .eq('id', candidate.id)
+        }
+      } catch (err) {
+        console.error('AI screening failed (non-fatal):', err)
+      }
     }
 
     // Send confirmation email with tracking link (non-blocking)
