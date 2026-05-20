@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
         *,
         employee:employee_profiles(
           employee_number, job_title,
-          user:users(full_name, email)
+          user:users!user_id(full_name, email)
         )
       `)
       .eq('is_deleted', false)
