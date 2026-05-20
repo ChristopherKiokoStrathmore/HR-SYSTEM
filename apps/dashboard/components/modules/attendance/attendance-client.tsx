@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useAttendanceSummary } from '@/lib/hooks/use-attendance'
 import { Avatar } from '@/components/ui/avatar'
 import { StatusBadge } from '@/components/ui/badge'
@@ -9,6 +10,12 @@ import { useStore } from '@/lib/store'
 import { formatDate } from '@hr/shared'
 import { Calendar, MapPin, Users, Clock, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { CheckInLocation } from './check-in-map'
+
+const CheckInMap = dynamic(
+  () => import('./check-in-map').then(m => ({ default: m.CheckInMap })),
+  { ssr: false, loading: () => <div className="rounded-xl bg-surface-alt border border-border" style={{ height: 280 }} /> }
+)
 
 export function AttendanceClient() {
   const activeCompanyId = useStore(s => s.activeCompanyId)
@@ -88,25 +95,43 @@ export function AttendanceClient() {
         </div>
       </div>
 
-      {/* Map placeholder */}
+      {/* Check-in Map */}
       <div className="card">
         <div className="flex items-center gap-2 mb-3">
           <MapPin className="w-4 h-4 text-accent" />
           <h3 className="text-sm font-semibold text-text-primary">Check-in Locations</h3>
-          <span className="ml-auto text-xs text-text-muted">GPS tracking active</span>
+          <span className="ml-auto text-xs text-text-muted">
+            {(() => {
+              const n = records.filter(r => r.check_in_lat).length
+              return n > 0 ? `${n} location${n !== 1 ? 's' : ''} today` : 'OpenStreetMap · no API key needed'
+            })()}
+          </span>
         </div>
-        <div className="rounded-xl bg-surface-alt border border-border flex items-center justify-center" style={{ height: 280 }}>
-          <div className="text-center">
-            <MapPin className="w-12 h-12 text-border mx-auto mb-3" />
-            <p className="text-sm font-medium text-text-muted">Live GPS Map</p>
-            <p className="text-xs text-text-muted mt-1">Connect Google Maps API to enable real-time location tracking</p>
-            {records.filter(r => r.check_in_lat).length > 0 && (
-              <p className="text-xs text-accent mt-2">
-                {records.filter(r => r.check_in_lat).length} location{records.filter(r => r.check_in_lat).length !== 1 ? 's' : ''} recorded today
-              </p>
-            )}
-          </div>
-        </div>
+        {(() => {
+          const locs: CheckInLocation[] = records
+            .filter(r => r.check_in_lat && r.check_in_lng)
+            .map(r => ({
+              lat: r.check_in_lat as number,
+              lng: r.check_in_lng as number,
+              name: r.employee?.user?.full_name ?? '—',
+              time: r.check_in_time
+                ? new Date(r.check_in_time).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
+                : null,
+              status: r.status,
+            }))
+          if (locs.length === 0) {
+            return (
+              <div className="rounded-xl bg-surface-alt border border-border flex items-center justify-center" style={{ height: 280 }}>
+                <div className="text-center">
+                  <MapPin className="w-10 h-10 text-border mx-auto mb-2" />
+                  <p className="text-sm text-text-muted">No GPS check-ins recorded for {formatDate(date)}</p>
+                  <p className="text-xs text-text-muted mt-1">Employees check in via the PWA mobile app</p>
+                </div>
+              </div>
+            )
+          }
+          return <CheckInMap locations={locs} />
+        })()}
       </div>
 
       {/* Records table */}
