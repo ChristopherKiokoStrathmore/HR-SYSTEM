@@ -21,14 +21,15 @@ function useAuditLog(companyId: string | null, search: string) {
   return useQuery<AuditEntry[]>({
     queryKey: ['audit-log', companyId, search],
     queryFn: async () => {
-      const params = new URLSearchParams({ companyId: companyId! })
+      const params = new URLSearchParams()
+      if (companyId) params.set('companyId', companyId)
       if (search) params.set('search', search)
       const res = await fetch(`/api/audit-log?${params}`)
       if (!res.ok) throw new Error('Failed to fetch audit log')
       const { data } = await res.json()
       return data ?? []
     },
-    enabled: !!companyId,
+    staleTime: 30 * 1000,
   })
 }
 
@@ -57,8 +58,6 @@ export function AuditLogClient() {
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
   const { data: entries, isLoading } = useAuditLog(companyId, search)
-
-  if (!companyId) return null
 
   return (
     <div className="space-y-4">

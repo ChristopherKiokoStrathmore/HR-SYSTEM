@@ -25,12 +25,13 @@ function useSummary(companyId: string | null) {
   return useQuery<Summary>({
     queryKey: ['dashboard-summary', companyId],
     queryFn: async () => {
-      const res = await fetch(`/api/dashboard/summary?companyId=${companyId}`)
+      const params = companyId ? `?companyId=${companyId}` : ''
+      const res = await fetch(`/api/dashboard/summary${params}`)
       if (!res.ok) throw new Error('Failed')
       const { data } = await res.json()
       return data
     },
-    enabled: !!companyId,
+    staleTime: 60 * 1000,
   })
 }
 

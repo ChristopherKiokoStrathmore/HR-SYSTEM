@@ -11,13 +11,13 @@ interface LeaveRow {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const companyId = searchParams.get('companyId')
-  if (!companyId) return NextResponse.json({ error: 'companyId required' }, { status: 400 })
-
   const supabase = createServerClient(true)
-  const { data, error } = await (supabase.from('leaves') as any)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let lsQuery = (supabase.from('leaves') as any)
     .select('leave_type, status, days_requested')
-    .eq('company_id', companyId)
-    .eq('is_deleted', false) as { data: LeaveRow[] | null; error: unknown }
+    .eq('is_deleted', false)
+  if (companyId) lsQuery = lsQuery.eq('company_id', companyId)
+  const { data, error } = await lsQuery as { data: LeaveRow[] | null; error: unknown }
 
   if (error) return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 })
 

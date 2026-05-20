@@ -140,7 +140,7 @@ export function MedicalClient() {
       if (!res.ok) return { data: [] }
       return res.json() as Promise<{ data: MedicalWithEmployee[] }>
     },
-    enabled: !!activeCompanyId,
+    staleTime: 60 * 1000,
   })
 
   const records = data?.data ?? []

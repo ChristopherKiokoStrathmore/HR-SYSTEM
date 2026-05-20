@@ -11,11 +11,6 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status')
     const leaveType = searchParams.get('leaveType')
 
-    // Must filter by either employee or company
-    if (!employeeId && !companyId) {
-      return NextResponse.json({ error: 'employeeId or companyId required', data: [] }, { status: 200 })
-    }
-
     let query = supabase
       .from('leaves')
       .select(`

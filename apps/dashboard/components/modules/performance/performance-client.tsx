@@ -173,7 +173,7 @@ export function PerformanceClient() {
       if (!res.ok) return { data: [] }
       return res.json() as Promise<{ data: ReviewWithEmployee[] }>
     },
-    enabled: !!activeCompanyId,
+    staleTime: 60 * 1000,
   })
 
   const reviews = data?.data ?? []

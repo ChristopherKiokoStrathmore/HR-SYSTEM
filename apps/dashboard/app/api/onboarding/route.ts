@@ -21,13 +21,13 @@ export async function GET(req: NextRequest) {
     const companyId = searchParams.get('companyId')
 
     const cutoff = new Date()
-    cutoff.setDate(cutoff.getDate() - 90)
+    cutoff.setFullYear(cutoff.getFullYear() - 4)
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (supabase.from('employee_profiles') as any)
       .select(`
         id, employee_number, job_title, department, start_date, employment_status,
-        user:users(full_name, email, avatar_url),
+        user:users!user_id(full_name, email, avatar_url),
         company:companies(name),
         documents(type, status)
       `)
