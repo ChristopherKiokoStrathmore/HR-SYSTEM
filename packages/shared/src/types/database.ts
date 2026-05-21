@@ -11,10 +11,13 @@ import type {
   AttendanceStatus,
   PayrollRunStatus,
   PaymentStatus,
+  PaymentBatchStatus,
   CandidateStage,
   JobPostingStatus,
   FitnessStatus,
   AnnouncementPriority,
+  BackgroundCheckType,
+  BackgroundCheckStatus,
 } from './common'
 
 export interface BaseRecord {
@@ -34,6 +37,9 @@ export interface Company extends BaseRecord {
   primary_color: string | null
   contact_email: string
   is_active: boolean
+  // Background check settings
+  background_check_required?: boolean
+  background_check_blocks_hiring?: boolean
 }
 
 export interface User extends BaseRecord {
@@ -195,6 +201,29 @@ export interface PayrollRecord extends BaseRecord {
   payment_status: PaymentStatus
   payment_reference: string | null
   paid_at: string | null
+  // Disbursement tracking
+  payment_batch_id: UUID | null
+  pesapal_transaction_id: string | null
+  payment_error: string | null
+  retry_count: number
+}
+
+export interface PaymentBatch extends BaseRecord {
+  payroll_run_id: UUID
+  payment_method: PaymentMethod
+  status: PaymentBatchStatus
+  total_amount: number
+  total_records: number
+  successful_count: number
+  failed_count: number
+  pesapal_order_id: string | null
+  pesapal_reference: string | null
+  pesapal_response: Record<string, unknown> | null
+  initiated_by: UUID
+  initiated_at: string
+  completed_at: string | null
+  error_message: string | null
+  retry_count: number
 }
 
 export interface KpiTarget {
@@ -280,6 +309,28 @@ export interface Announcement extends BaseRecord {
   expires_at: string | null
 }
 
+export interface BackgroundCheck extends BaseRecord {
+  employee_id: UUID | null
+  candidate_id: UUID | null
+  company_id: UUID
+  check_type: BackgroundCheckType
+  status: BackgroundCheckStatus
+  requested_by: UUID
+  requested_at: string
+  document_url: string | null
+  document_uploaded_at: string | null
+  provider_name: string | null
+  provider_reference: string | null
+  provider_response: Record<string, unknown> | null
+  completed_at: string | null
+  reviewed_by: UUID | null
+  result_summary: string | null
+  clearance_date: string | null
+  expiry_date: string | null
+  flags: string[]
+  notes: string | null
+}
+
 // ── Joined / enriched types ──────────────────────────────────────────────────
 
 export interface EmployeeWithUser extends EmployeeProfile {
@@ -296,4 +347,13 @@ export interface PayrollRecordWithEmployee extends PayrollRecord {
   employee: Pick<EmployeeProfile, 'employee_number'> & {
     user: Pick<User, 'full_name'>
   }
+}
+
+export interface BackgroundCheckWithSubject extends BackgroundCheck {
+  employee?: Pick<EmployeeProfile, 'employee_number'> & {
+    user: Pick<User, 'full_name' | 'email'>
+  } | null
+  candidate?: Pick<Candidate, 'full_name' | 'email'> | null
+  requested_by_user?: Pick<User, 'full_name'> | null
+  reviewed_by_user?: Pick<User, 'full_name'> | null
 }
