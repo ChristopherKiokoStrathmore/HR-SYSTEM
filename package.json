@@ -11,6 +11,7 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
+    "test:uat": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 npx playwright test --project=uat",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "clean": "turbo clean && rm -rf node_modules",
     "test:e2e": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 npx playwright test",
