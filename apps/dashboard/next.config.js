@@ -29,7 +29,7 @@ const nextConfig = {
               "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https://*.supabase.co https://sheerlogicltd.com https://*.tile.openstreetmap.org",
+              "img-src 'self' data: blob: https://*.supabase.co https://sheerlogicltd.com https://*.tile.openstreetmap.org https://server.arcgisonline.com https://*.basemaps.cartocdn.com",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://api.groq.com",
               "frame-src 'none'",
             ].join('; '),
