@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   const rows = employeeIds.map((eid) => ({
     training_session_id: sessionId,
     employee_id: eid,
-    attendance_status: 'enrolled',
+    attended: false,
   }))
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
