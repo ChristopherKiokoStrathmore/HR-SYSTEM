@@ -153,7 +153,7 @@ export function AttendanceClient() {
               <div className="rounded-xl bg-surface-alt border border-border flex items-center justify-center" style={{ height: 280 }}>
                 <div className="text-center">
                   <MapPin className="w-10 h-10 text-border mx-auto mb-2" />
-                  <p className="text-sm text-text-muted">No GPS check-ins recorded for {formatDate(date)}</p>
+                  <p className="text-sm text-text-muted">No GPS check-ins recorded for {formatDisplayDate(date)}</p>
                   <p className="text-xs text-text-muted mt-1">Employees check in via the PWA mobile app</p>
                 </div>
               </div>
