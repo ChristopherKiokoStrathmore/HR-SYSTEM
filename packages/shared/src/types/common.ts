@@ -48,6 +48,8 @@ export type PayrollRunStatus = 'draft' | 'processing' | 'completed' | 'failed'
 
 export type PaymentStatus = 'pending' | 'processing' | 'paid' | 'failed'
 
+export type PaymentBatchStatus = 'pending' | 'processing' | 'partial' | 'completed' | 'failed'
+
 export type CandidateStage =
   | 'screened'
   | 'interview_l1'
@@ -61,6 +63,21 @@ export type JobPostingStatus = 'open' | 'closed' | 'on_hold'
 export type FitnessStatus = 'fit' | 'fit_with_conditions' | 'unfit'
 
 export type AnnouncementPriority = 'normal' | 'urgent'
+
+export type BackgroundCheckType =
+  | 'criminal'       // Police Clearance Certificate
+  | 'credit'         // Credit history check
+  | 'employment'     // Previous employment verification
+  | 'education'      // Education/degree verification
+  | 'professional'   // Professional license verification
+
+export type BackgroundCheckStatus =
+  | 'pending'        // Check requested, not started
+  | 'in_progress'    // Check is being processed
+  | 'completed'      // Check done, awaiting review
+  | 'passed'         // Cleared - no issues found
+  | 'failed'         // Did not pass - disqualifying issues
+  | 'flagged'        // Passed with concerns (requires HR review)
 
 export type TerminationReason =
   | 'resigned'
