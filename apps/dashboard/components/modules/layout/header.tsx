@@ -2,6 +2,7 @@
 
 import { Bell, Search, Moon, Sun, LogOut, Building2 } from 'lucide-react'
 import { useStore } from '@/lib/store'
+import { useCurrentUser } from '@/lib/hooks/use-current-user'
 import { createBrowserClient } from '@hr/shared'
 import { useRouter, usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
@@ -58,9 +59,15 @@ function Breadcrumbs() {
   )
 }
 
+function getInitials(name: string) {
+  return name.split(' ').filter(Boolean).slice(0, 2).map(p => p[0]?.toUpperCase() ?? '').join('') || '?'
+}
+
 export function Header() {
   const { darkMode, toggleDarkMode } = useStore()
   const router = useRouter()
+  const { data: currentUser } = useCurrentUser()
+  const initials = currentUser?.full_name ? getInitials(currentUser.full_name) : '?'
 
   async function handleSignOut() {
     const supabase = createBrowserClient()
@@ -113,9 +120,9 @@ export function Header() {
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ring-2 ring-transparent hover:ring-accent/40 transition-all cursor-pointer"
             style={{ background: 'linear-gradient(135deg, #1A2E5A, #2A4A8A)' }}
-            title="HR Admin"
+            title={currentUser?.full_name ?? ''}
           >
-            <span className="text-white text-xs font-bold select-none">HR</span>
+            <span className="text-white text-xs font-bold select-none">{initials}</span>
           </div>
 
           <button

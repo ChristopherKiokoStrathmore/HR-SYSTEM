@@ -104,6 +104,18 @@ function PasswordForm({ onSwitch }: { onSwitch: () => void }) {
         password: data.password,
       })
       if (authError) { setError(authError.message); return }
+
+      // Check role — employees belong on the PWA, not the dashboard
+      const meRes = await fetch('/api/auth/me')
+      if (meRes.ok) {
+        const { data: me } = await meRes.json()
+        if (me?.role === 'employee') {
+          const pwaUrl = process.env.NEXT_PUBLIC_PWA_URL ?? 'https://hr-system-pwa-sheerlogic.vercel.app'
+          window.location.href = pwaUrl
+          return
+        }
+      }
+
       router.push('/')
       router.refresh()
     } catch {
@@ -237,6 +249,17 @@ function OtpCodeStep({ email, onBack }: { email: string; onBack: () => void }) {
         type: 'email',
       })
       if (authError) { setError('Invalid or expired code. Please try again.'); return }
+
+      const meRes = await fetch('/api/auth/me')
+      if (meRes.ok) {
+        const { data: me } = await meRes.json()
+        if (me?.role === 'employee') {
+          const pwaUrl = process.env.NEXT_PUBLIC_PWA_URL ?? 'https://hr-system-pwa-sheerlogic.vercel.app'
+          window.location.href = pwaUrl
+          return
+        }
+      }
+
       router.push('/')
       router.refresh()
     } catch {

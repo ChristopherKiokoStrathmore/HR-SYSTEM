@@ -3,9 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@hr/shared'
 
 interface AttendeeRow {
-  attendance_status: string
-  score: number | null
-  certificate_url: string | null
+  attended: boolean
   training_session: {
     id: string
     title: string
@@ -24,13 +22,10 @@ export async function GET(req: NextRequest) {
 
   if (!employeeId) return NextResponse.json({ error: 'employeeId required' }, { status: 400 })
 
-  // training_attendees is not in the generated Database type yet â€” cast to any
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('training_attendees') as any)
     .select(`
-      attendance_status,
-      score,
-      certificate_url,
+      attended,
       training_session:training_sessions(
         id, title, trainer_name, start_date, end_date,
         is_mandatory, department
@@ -42,9 +37,9 @@ export async function GET(req: NextRequest) {
 
   const flat = (data ?? []).map((row) => ({
     ...(row.training_session ?? {}),
-    attendance_status: row.attendance_status,
-    score: row.score,
-    certificate_url: row.certificate_url,
+    attendance_status: row.attended ? 'attended' : 'enrolled',
+    score: null,
+    certificate_url: null,
   }))
 
   return NextResponse.json({ data: flat })

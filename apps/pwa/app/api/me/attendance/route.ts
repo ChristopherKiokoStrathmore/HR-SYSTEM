@@ -62,13 +62,17 @@ export async function POST(req: NextRequest) {
     ? (new Date(now).getTime() - new Date(existing.check_in_time).getTime()) / (1000 * 60 * 60)
     : null
 
+  // EAT = UTC+3; late if checked in at or after 09:00 EAT
+  const eatHour = (new Date(now).getUTCHours() + 3) % 24
+  const isLate = isCheckIn ? eatHour >= 9 : false
+
   const record: Record<string, unknown> = {
     employee_id: emp.id,
     company_id: emp.company_id,
     tenant_id: emp.tenant_id,
     shift_date: today,
     status: 'present',
-    is_late: false,
+    is_late: isLate,
     is_early_departure: false,
   }
 
