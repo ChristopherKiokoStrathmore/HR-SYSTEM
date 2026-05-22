@@ -6,6 +6,7 @@ import {
   usePayrollRuns, useCreatePayrollRun,
   useProcessPayrollRun, useDisbursePayroll,
 } from '@/lib/hooks/use-payroll'
+import { useCompany } from '@/lib/hooks/use-companies'
 import { StatusBadge } from '@/components/ui/badge'
 import { SkeletonTable } from '@/components/ui/skeleton'
 import { Modal } from '@/components/ui/modal'
@@ -16,6 +17,8 @@ import { useStore } from '@/lib/store'
 import {
   Plus, Play, CreditCard, CheckCircle,
   DollarSign, Users, TrendingUp, Loader2, ChevronRight,
+  Settings, AlertCircle, ArrowRight, Banknote, Smartphone,
+  HelpCircle, FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -234,16 +237,166 @@ function DisburseModal({
   )
 }
 
+// ─── Payment Configuration Banner ─────────────────────────────────────────────
+
+function PaymentConfigBanner({ companyId }: { companyId: string | null }) {
+  const { data } = useCompany(companyId)
+  const company = data?.data
+
+  if (!company) return null
+
+  const hasBank = !!(company.company_bank_name && company.company_bank_account)
+  const hasMpesa = !!(company.mpesa_paybill_number || company.mpesa_till_number)
+  const hasAirtel = !!company.airtel_business_number
+  const hasPesapal = !!(company.pesapal_consumer_key && company.pesapal_consumer_secret)
+  const isConfigured = company.payment_accounts_configured
+
+  if (isConfigured && hasPesapal) {
+    return (
+      <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-green-600" />
+          <div>
+            <p className="text-sm font-medium text-green-800">Payment accounts configured</p>
+            <p className="text-xs text-green-700 mt-0.5">
+              {[
+                hasBank && 'Bank EFT',
+                hasMpesa && 'M-Pesa',
+                hasAirtel && 'Airtel Money',
+              ].filter(Boolean).join(' • ')}
+            </p>
+          </div>
+        </div>
+        <Link href="/settings" className="text-xs text-green-700 hover:text-green-900 flex items-center gap-1">
+          <Settings className="w-3.5 h-3.5" />
+          Manage
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <AlertCircle className="w-5 h-5 text-amber-600" />
+        <div>
+          <p className="text-sm font-medium text-amber-800">Configure payment accounts to disburse salaries</p>
+          <p className="text-xs text-amber-700 mt-0.5">
+            Set up your company bank account, M-Pesa, or Airtel Money in Settings
+          </p>
+        </div>
+      </div>
+      <Link
+        href="/settings"
+        className="btn-primary text-xs flex items-center gap-1.5 py-1.5 px-3"
+      >
+        <Settings className="w-3.5 h-3.5" />
+        Configure Now
+      </Link>
+    </div>
+  )
+}
+
+// ─── Payroll Workflow Guide ───────────────────────────────────────────────────
+
+function PayrollWorkflowGuide({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="card border-2 border-accent/20 bg-gradient-to-br from-accent/5 to-transparent">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <HelpCircle className="w-5 h-5 text-accent" />
+          <h3 className="font-semibold text-text-primary">How Payroll Works</h3>
+        </div>
+        <button onClick={onClose} className="text-text-muted hover:text-text-primary text-sm">
+          Dismiss
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[
+          {
+            step: 1,
+            icon: Plus,
+            title: 'Create Run',
+            desc: 'Start a new payroll run for a specific month',
+          },
+          {
+            step: 2,
+            icon: Play,
+            title: 'Calculate',
+            desc: 'Auto-calculate salaries, taxes & deductions',
+          },
+          {
+            step: 3,
+            icon: FileText,
+            title: 'Review',
+            desc: 'Click the run to review individual payslips',
+          },
+          {
+            step: 4,
+            icon: CreditCard,
+            title: 'Disburse',
+            desc: 'Pay all or select specific employees',
+          },
+        ].map(({ step, icon: Icon, title, desc }, i) => (
+          <div key={step} className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center">
+              <span className="text-sm font-bold text-accent">{step}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <Icon className="w-4 h-4 text-accent" />
+                <p className="text-sm font-medium text-text-primary">{title}</p>
+              </div>
+              <p className="text-xs text-text-muted mt-0.5">{desc}</p>
+            </div>
+            {i < 3 && (
+              <ArrowRight className="w-4 h-4 text-border hidden md:block mt-1" />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-border flex items-center gap-4 text-xs text-text-muted">
+        <div className="flex items-center gap-1.5">
+          <Banknote className="w-4 h-4" />
+          <span>Bank EFT</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Smartphone className="w-4 h-4 text-green-600" />
+          <span>M-Pesa</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Smartphone className="w-4 h-4 text-red-600" />
+          <span>Airtel Money</span>
+        </div>
+        <span className="ml-auto">Payments via PesaPal</span>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main Payroll Client ──────────────────────────────────────────────────────
+
 export function PayrollClient() {
   const activeCompanyId = useStore(s => s.activeCompanyId)
   const [newRunModal, setNewRunModal] = useState(false)
   const [disburseRun, setDisburseRun] = useState<PayrollRun | null>(null)
+  const [showGuide, setShowGuide] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return localStorage.getItem('payroll-guide-dismissed') !== 'true'
+  })
 
   const { data, isLoading } = usePayrollRuns(activeCompanyId)
   const processRun = useProcessPayrollRun()
 
   const runs = data?.data ?? []
   const totalPaid = runs.filter(r => r.status === 'completed').reduce((s, r) => s + r.total_net, 0)
+
+  function dismissGuide() {
+    setShowGuide(false)
+    localStorage.setItem('payroll-guide-dismissed', 'true')
+  }
 
   async function handleProcess(runId: string) {
     try {
@@ -256,13 +409,11 @@ export function PayrollClient() {
 
   return (
     <div className="space-y-6">
-      {/* Demo mode notice */}
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 flex items-center gap-3">
-        <span className="inline-flex items-center rounded-full bg-amber-400 px-2 py-0.5 text-xs font-semibold text-white uppercase tracking-wide">Demo</span>
-        <p className="text-sm text-amber-800">
-          Payment disbursements are <strong>simulated</strong> — no real money moves. Connect Daraja / banking credentials for production.
-        </p>
-      </div>
+      {/* Payment Configuration Status */}
+      <PaymentConfigBanner companyId={activeCompanyId} />
+
+      {/* Workflow Guide (dismissible) */}
+      {showGuide && <PayrollWorkflowGuide onClose={dismissGuide} />}
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -270,13 +421,24 @@ export function PayrollClient() {
           <h1 className="text-2xl font-bold text-text-primary">Payroll</h1>
           <p className="text-sm text-text-muted mt-0.5">{runs.length} run{runs.length !== 1 ? 's' : ''} total</p>
         </div>
-        <button
-          onClick={() => setNewRunModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          New Run
-        </button>
+        <div className="flex items-center gap-3">
+          {!showGuide && (
+            <button
+              onClick={() => setShowGuide(true)}
+              className="btn-ghost text-sm flex items-center gap-2"
+            >
+              <HelpCircle className="w-4 h-4" />
+              How it works
+            </button>
+          )}
+          <button
+            onClick={() => setNewRunModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            New Run
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
