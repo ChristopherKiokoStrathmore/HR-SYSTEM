@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import {
   usePayrollRuns, useCreatePayrollRun,
   useProcessPayrollRun, useDisbursePayroll,
@@ -14,7 +15,7 @@ import type { PayrollRun } from '@hr/shared'
 import { useStore } from '@/lib/store'
 import {
   Plus, Play, CreditCard, CheckCircle,
-  DollarSign, Users, TrendingUp, Loader2,
+  DollarSign, Users, TrendingUp, Loader2, ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -350,22 +351,25 @@ function PayrollRunRow({
   processing: boolean
 }) {
   return (
-    <div className="flex items-center gap-4 px-4 py-3">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-text-primary">
-          {monthYearLabel(run.period_month, run.period_year)}
-        </p>
-        {run.total_gross > 0 && (
-          <p className="text-xs text-text-muted mt-0.5">
-            Gross {formatKES(run.total_gross)} · Net {formatKES(run.total_net)} · Deductions {formatKES(run.total_deductions)}
+    <div className="flex items-center gap-4 px-4 py-3 hover:bg-surface-alt/50 transition-colors group">
+      <Link href={`/payroll/${run.id}`} className="flex-1 min-w-0 flex items-center gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition-colors">
+            {monthYearLabel(run.period_month, run.period_year)}
           </p>
-        )}
-      </div>
+          {run.total_gross > 0 && (
+            <p className="text-xs text-text-muted mt-0.5">
+              Gross {formatKES(run.total_gross)} · Net {formatKES(run.total_net)} · Deductions {formatKES(run.total_deductions)}
+            </p>
+          )}
+        </div>
+        <ChevronRight className="w-4 h-4 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+      </Link>
       <StatusBadge status={run.status} />
       <div className="flex gap-2 flex-shrink-0">
         {run.status === 'draft' && (
           <button
-            onClick={onProcess}
+            onClick={(e) => { e.stopPropagation(); onProcess() }}
             disabled={processing}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
@@ -375,7 +379,7 @@ function PayrollRunRow({
         )}
         {run.status === 'processing' && (
           <button
-            onClick={onDisburse}
+            onClick={(e) => { e.stopPropagation(); onDisburse() }}
             className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors"
           >
             <CreditCard className="w-3.5 h-3.5" />

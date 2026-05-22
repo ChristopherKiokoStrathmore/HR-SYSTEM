@@ -22,7 +22,22 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const supabase = createServerClient(true)
   const { data, error } = await supabase
     .from('payroll_runs')
-    .select('*, records:payroll_records(*)')
+    .select(`
+      *,
+      records:payroll_records(
+        *,
+        employee:employee_profiles(
+          id,
+          employee_number,
+          payment_method,
+          mpesa_number,
+          airtel_number,
+          bank_name,
+          bank_account,
+          user:users(full_name, email)
+        )
+      )
+    `)
     .eq('id', params.id)
     .eq('is_deleted', false)
     .single()
