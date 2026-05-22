@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePayrollRun, useDisbursePayroll } from '@/lib/hooks/use-payroll'
+import { usePayrollRun, useDisbursePayroll, type PayrollRecordWithEmployee } from '@/lib/hooks/use-payroll'
 import { Modal } from '@/components/ui/modal'
 import { StatusBadge } from '@/components/ui/badge'
 import { SkeletonTable } from '@/components/ui/skeleton'
@@ -21,35 +21,6 @@ import {
   Banknote,
   Smartphone,
 } from 'lucide-react'
-
-interface PayrollRecordWithEmployee {
-  id: string
-  employee_id: string
-  gross_salary: number
-  paye: number
-  nssf: number
-  nhif: number
-  helb: number
-  other_deductions: number
-  net_salary: number
-  payment_method: 'bank' | 'mpesa' | 'airtel'
-  payment_status: 'pending' | 'processing' | 'paid' | 'failed'
-  payment_reference: string | null
-  paid_at: string | null
-  employee: {
-    id: string
-    employee_number: string
-    payment_method: string
-    mpesa_number: string | null
-    airtel_number: string | null
-    bank_name: string | null
-    bank_account: string | null
-    user: {
-      full_name: string
-      email: string
-    }
-  }
-}
 
 function DisburseSelectedModal({
   open,
@@ -146,7 +117,7 @@ export function PayrollRunDetailClient({ runId }: { runId: string }) {
   const [disburseModal, setDisburseModal] = useState(false)
 
   const run = data?.data
-  const records = (run?.records ?? []) as PayrollRecordWithEmployee[]
+  const records = run?.records ?? []
   const pendingRecords = records.filter(r => r.payment_status === 'pending')
 
   // Calculate totals for selected
@@ -369,7 +340,7 @@ export function PayrollRunDetailClient({ runId }: { runId: string }) {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <StatusBadge status={record.payment_status} size="sm" />
+                      <StatusBadge status={record.payment_status} />
                     </td>
                   </tr>
                 )

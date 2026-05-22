@@ -3,8 +3,24 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import type { PayrollRun, PayrollRecord } from '@hr/shared'
 
+export interface PayrollRecordWithEmployee extends PayrollRecord {
+  employee: {
+    id: string
+    employee_number: string
+    payment_method: string
+    mpesa_number: string | null
+    airtel_number: string | null
+    bank_name: string | null
+    bank_account: string | null
+    user: {
+      full_name: string
+      email: string
+    }
+  }
+}
+
 interface PayrollRunWithRecords extends PayrollRun {
-  records?: PayrollRecord[]
+  records?: PayrollRecordWithEmployee[]
 }
 
 export function usePayrollRuns(companyId: string | null) {
