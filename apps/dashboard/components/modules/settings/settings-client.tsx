@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Building2, Users, Clock, ChevronRight, Loader2, Shield, Mail, Globe, MapPin, Palette, CheckCircle2, XCircle, Search } from 'lucide-react'
+import { Building2, Users, Clock, ChevronRight, Loader2, Shield, Mail, Globe, MapPin, Palette, CheckCircle2, XCircle, Search, CreditCard, Banknote, Smartphone, Key } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import { useCompany, useUpdateCompany } from '@/lib/hooks/use-companies'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -325,10 +325,219 @@ function UsersTab({ companyId }: { companyId: string | null }) {
   )
 }
 
+// ─── Payroll Settings Tab ─────────────────────────────────────────────────────
+
+function PayrollSettingsTab({ companyId }: { companyId: string | null }) {
+  const { data, isLoading } = useCompany(companyId)
+  const update = useUpdateCompany()
+  const [form, setForm] = useState<Record<string, string | boolean | null> | null>(null)
+  const [showCredentials, setShowCredentials] = useState(false)
+  const company = data?.data
+
+  const values = form ?? (company ? {
+    company_bank_name: company.company_bank_name ?? '',
+    company_bank_account: company.company_bank_account ?? '',
+    company_bank_branch: company.company_bank_branch ?? '',
+    mpesa_paybill_number: company.mpesa_paybill_number ?? '',
+    mpesa_till_number: company.mpesa_till_number ?? '',
+    mpesa_shortcode_type: company.mpesa_shortcode_type ?? 'paybill',
+    airtel_business_number: company.airtel_business_number ?? '',
+    airtel_business_name: company.airtel_business_name ?? '',
+    pesapal_consumer_key: company.pesapal_consumer_key ?? '',
+    pesapal_consumer_secret: company.pesapal_consumer_secret ?? '',
+    pesapal_ipn_id: company.pesapal_ipn_id ?? '',
+    payment_accounts_configured: company.payment_accounts_configured ?? false,
+  } : null)
+
+  async function handleSave() {
+    if (!companyId || !values) return
+    try {
+      await update.mutateAsync({
+        id: companyId,
+        ...values,
+        payment_accounts_configured: true,
+      })
+      toast.success('Payment settings saved')
+      setForm(null)
+    } catch (e) {
+      toast.error('Failed to save', String(e))
+    }
+  }
+
+  if (!companyId) {
+    return (
+      <div className="card text-center py-12 text-text-muted text-sm">
+        Select a company from the header to configure payment settings.
+      </div>
+    )
+  }
+
+  if (isLoading || !values) {
+    return <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton h-12 rounded-xl" />)}</div>
+  }
+
+  const set = (key: string, val: string | boolean | null) => setForm(prev => ({ ...(prev ?? values), [key]: val }))
+  const isDirty = form !== null
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3 mb-1">
+        <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+          <CreditCard className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <p className="font-semibold text-text-primary">Payment Account Settings</p>
+          <p className="text-xs text-text-muted">Configure company payment accounts for payroll disbursement</p>
+        </div>
+        {isDirty && (
+          <span className="ml-auto text-xs bg-amber-50 text-amber-600 px-2 py-0.5 rounded-full border border-amber-200">Unsaved changes</span>
+        )}
+      </div>
+
+      {/* Bank Account Section */}
+      <div className="card p-4 space-y-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+          <Banknote className="w-4 h-4 text-primary" />
+          Bank Account (EFT)
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-text-muted mb-1.5 uppercase tracking-wide">Bank Name</label>
+            <input className="input" placeholder="e.g. Equity Bank" value={values.company_bank_name as string} onChange={e => set('company_bank_name', e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-text-muted mb-1.5 uppercase tracking-wide">Account Number</label>
+            <input className="input font-mono" placeholder="0123456789" value={values.company_bank_account as string} onChange={e => set('company_bank_account', e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-text-muted mb-1.5 uppercase tracking-wide">Branch</label>
+            <input className="input" placeholder="e.g. Westlands" value={values.company_bank_branch as string} onChange={e => set('company_bank_branch', e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {/* M-Pesa Section */}
+      <div className="card p-4 space-y-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+          <Smartphone className="w-4 h-4 text-green-600" />
+          M-Pesa Business Account
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-text-muted mb-1.5 uppercase tracking-wide">Shortcode Type</label>
+            <select
+              className="input"
+              value={values.mpesa_shortcode_type as string}
+              onChange={e => set('mpesa_shortcode_type', e.target.value)}
+            >
+              <option value="paybill">Paybill</option>
+              <option value="till">Till Number</option>
+            </select>
+          </div>
+          {values.mpesa_shortcode_type === 'paybill' ? (
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1.5 uppercase tracking-wide">Paybill Number</label>
+              <input className="input font-mono" placeholder="888880" value={values.mpesa_paybill_number as string} onChange={e => set('mpesa_paybill_number', e.target.value)} />
+            </div>
+          ) : (
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1.5 uppercase tracking-wide">Till Number</label>
+              <input className="input font-mono" placeholder="5050505" value={values.mpesa_till_number as string} onChange={e => set('mpesa_till_number', e.target.value)} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Airtel Money Section */}
+      <div className="card p-4 space-y-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+          <Smartphone className="w-4 h-4 text-red-600" />
+          Airtel Money Business Account
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-text-muted mb-1.5 uppercase tracking-wide">Business Number</label>
+            <input className="input font-mono" placeholder="0734000000" value={values.airtel_business_number as string} onChange={e => set('airtel_business_number', e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-text-muted mb-1.5 uppercase tracking-wide">Business Name</label>
+            <input className="input" placeholder="Company Name" value={values.airtel_business_name as string} onChange={e => set('airtel_business_name', e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      {/* PesaPal API Credentials */}
+      <div className="card p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+            <Key className="w-4 h-4 text-amber-600" />
+            PesaPal API Credentials
+          </div>
+          <button
+            onClick={() => setShowCredentials(!showCredentials)}
+            className="text-xs text-accent hover:underline"
+          >
+            {showCredentials ? 'Hide' : 'Show'} Credentials
+          </button>
+        </div>
+        <p className="text-xs text-text-muted">Configure PesaPal credentials for production payments. Leave blank to use demo mode.</p>
+        {showCredentials && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1.5 uppercase tracking-wide">Consumer Key</label>
+              <input
+                className="input font-mono text-xs"
+                type="password"
+                placeholder="••••••••"
+                value={values.pesapal_consumer_key as string}
+                onChange={e => set('pesapal_consumer_key', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1.5 uppercase tracking-wide">Consumer Secret</label>
+              <input
+                className="input font-mono text-xs"
+                type="password"
+                placeholder="••••••••"
+                value={values.pesapal_consumer_secret as string}
+                onChange={e => set('pesapal_consumer_secret', e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-text-muted mb-1.5 uppercase tracking-wide">IPN ID</label>
+              <input
+                className="input font-mono text-xs"
+                placeholder="Pre-registered IPN ID"
+                value={values.pesapal_ipn_id as string}
+                onChange={e => set('pesapal_ipn_id', e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-3 pt-2 border-t border-border">
+        {isDirty && (
+          <button onClick={() => setForm(null)} className="btn-ghost px-5 text-sm">Discard</button>
+        )}
+        <button
+          onClick={handleSave}
+          disabled={!isDirty || update.isPending}
+          className="btn-primary px-6 text-sm flex items-center gap-2 ml-auto disabled:opacity-50"
+        >
+          {update.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+          Save Payment Settings
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Settings Client ─────────────────────────────────────────────────────
 
 const TABS = [
   { id: 'company', label: 'Company Profile', icon: Building2 },
+  { id: 'payroll', label: 'Payroll Settings', icon: CreditCard },
   { id: 'users', label: 'Users & Roles', icon: Users },
   { id: 'audit', label: 'Audit Log', icon: Clock },
 ] as const
@@ -374,6 +583,7 @@ export function SettingsClient() {
 
       {/* Tab content */}
       {activeTab === 'company' && <CompanyTab companyId={companyId} />}
+      {activeTab === 'payroll' && <PayrollSettingsTab companyId={companyId} />}
       {activeTab === 'users' && <UsersTab companyId={companyId} />}
       {activeTab === 'audit' && <AuditLogClient />}
     </div>

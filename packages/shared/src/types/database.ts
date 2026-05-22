@@ -40,6 +40,19 @@ export interface Company extends BaseRecord {
   // Background check settings
   background_check_required?: boolean
   background_check_blocks_hiring?: boolean
+  // Payment account settings
+  company_bank_name: string | null
+  company_bank_account: string | null
+  company_bank_branch: string | null
+  mpesa_paybill_number: string | null
+  mpesa_till_number: string | null
+  mpesa_shortcode_type: 'paybill' | 'till' | null
+  airtel_business_number: string | null
+  airtel_business_name: string | null
+  pesapal_consumer_key: string | null
+  pesapal_consumer_secret: string | null
+  pesapal_ipn_id: string | null
+  payment_accounts_configured: boolean
 }
 
 export interface User extends BaseRecord {

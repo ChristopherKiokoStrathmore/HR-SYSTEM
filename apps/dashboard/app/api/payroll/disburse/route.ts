@@ -10,9 +10,14 @@ import { getSessionUserId } from '@/lib/get-session-user'
  * Initiates payroll disbursement via PesaPal.
  * Creates payment batches and submits to the PesaPal edge function.
  *
- * Body: { runId: string, method?: 'bank' | 'mpesa' | 'airtel' | 'all' }
+ * Body: {
+ *   runId: string,
+ *   method?: 'bank' | 'mpesa' | 'airtel' | 'all',
+ *   recordIds?: string[]  // optional: disburse specific records only
+ * }
  *
  * If method is 'all' or not specified, creates separate batches for each payment method.
+ * If recordIds is provided, only those records will be disbursed.
  */
 export async function POST(req: NextRequest) {
   const limited = await checkRateLimit(req, 'moderate')
@@ -21,9 +26,10 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = createServerClient(true)
     const body = await req.json()
-    const { runId, method = 'all' } = body as {
+    const { runId, method = 'all', recordIds } = body as {
       runId: string
       method?: 'bank' | 'mpesa' | 'airtel' | 'all'
+      recordIds?: string[]
     }
 
     if (!runId) {
@@ -53,7 +59,7 @@ export async function POST(req: NextRequest) {
 
     // Get all pending payroll records with employee details
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: records, error: recordsError } = await (supabase.from('payroll_records') as any)
+    let recordsQuery = (supabase.from('payroll_records') as any)
       .select(`
         id,
         employee_id,
@@ -72,6 +78,13 @@ export async function POST(req: NextRequest) {
       .eq('payroll_run_id', runId)
       .eq('payment_status', 'pending')
       .eq('is_deleted', false)
+
+    // Filter by specific record IDs if provided (for selective disbursement)
+    if (recordIds && recordIds.length > 0) {
+      recordsQuery = recordsQuery.in('id', recordIds)
+    }
+
+    const { data: records, error: recordsError } = await recordsQuery
 
     if (recordsError) {
       return NextResponse.json({ error: recordsError.message }, { status: 500 })

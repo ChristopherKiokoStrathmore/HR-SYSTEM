@@ -82,15 +82,26 @@ interface DisburseResult {
 export function useDisbursePayroll() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ runId, method }: { runId: string; method: 'mpesa' | 'bank' | 'airtel' | 'all' }) => {
+    mutationFn: async ({
+      runId,
+      method,
+      recordIds,
+    }: {
+      runId: string
+      method: 'mpesa' | 'bank' | 'airtel' | 'all'
+      recordIds?: string[]  // optional: disburse specific records only
+    }) => {
       const res = await fetch('/api/payroll/disburse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ runId, method }),
+        body: JSON.stringify({ runId, method, recordIds }),
       })
       if (!res.ok) throw new Error((await res.json()).error)
       return res.json() as Promise<DisburseResult>
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll-runs'] }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: ['payroll-runs'] })
+      qc.invalidateQueries({ queryKey: ['payroll-run', vars.runId] })
+    },
   })
 }
