@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -15,9 +15,18 @@ import { formatDate, isExpiringSoon, isExpired } from '@hr/shared'
 import type { BackgroundCheckWithSubject, BackgroundCheckType, BackgroundCheckStatus } from '@hr/shared'
 import {
   ShieldCheck, Plus, AlertTriangle, CheckCircle, XCircle,
-  Clock, FileSearch, Loader2, Flag, Eye,
+  Clock, FileSearch, Loader2, Flag, Eye, HelpCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  BackgroundCheckTutorial,
+  useTutorialState,
+  useDemoMode,
+  MOCK_BACKGROUND_CHECKS,
+  MOCK_CANDIDATES,
+  MOCK_EMPLOYEES,
+  type TutorialRefs,
+} from './tutorial'
 
 // Form schema for creating a background check
 const createCheckSchema = z.object({
@@ -64,11 +73,12 @@ const STATUS_CONFIG: Record<BackgroundCheckStatus, { icon: typeof CheckCircle; c
 }
 
 function AddCheckModal({
-  open, companyId, onClose,
+  open, companyId, onClose, demoMode = false,
 }: {
   open: boolean
   companyId: string
   onClose: () => void
+  demoMode?: boolean
 }) {
   const qc = useQueryClient()
   const [subjectType, setSubjectType] = useState<'employee' | 'candidate'>('candidate')
@@ -77,28 +87,38 @@ function AddCheckModal({
     defaultValues: { check_type: 'criminal' },
   })
 
-  // Fetch employees
+  // Fetch employees (skip in demo mode)
   const { data: empData } = useQuery({
     queryKey: ['employees-list', companyId],
     queryFn: async () => {
       const res = await fetch(`/api/employees?companyId=${companyId}&pageSize=200`)
       return res.json()
     },
-    enabled: !!companyId && subjectType === 'employee',
+    enabled: !!companyId && subjectType === 'employee' && !demoMode,
   })
 
-  // Fetch candidates
+  // Fetch candidates (skip in demo mode)
   const { data: candData } = useQuery({
     queryKey: ['candidates-list', companyId],
     queryFn: async () => {
       const res = await fetch(`/api/candidates?companyId=${companyId}&pageSize=200`)
       return res.json()
     },
-    enabled: !!companyId && subjectType === 'candidate',
+    enabled: !!companyId && subjectType === 'candidate' && !demoMode,
   })
+
+  // Use mock data in demo mode
+  const employees = demoMode ? MOCK_EMPLOYEES : (empData?.data ?? [])
+  const candidates = demoMode ? MOCK_CANDIDATES : (candData?.data ?? [])
 
   const create = useMutation({
     mutationFn: async (body: CreateCheckForm) => {
+      // In demo mode, simulate API call
+      if (demoMode) {
+        await new Promise(resolve => setTimeout(resolve, 800))
+        return { data: { ...body, id: 'demo-new-check', status: 'pending' } }
+      }
+
       const res = await fetch('/api/background-checks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -114,8 +134,10 @@ function AddCheckModal({
       return res.json()
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['background-checks'] })
-      toast.success('Background check requested')
+      if (!demoMode) {
+        qc.invalidateQueries({ queryKey: ['background-checks'] })
+      }
+      toast.success(demoMode ? 'Demo: Background check requested!' : 'Background check requested')
       reset()
       onClose()
     },
@@ -170,7 +192,7 @@ function AddCheckModal({
             <label className="block text-sm font-medium text-text-body mb-1.5">Candidate *</label>
             <select className="input" {...register('candidate_id')}>
               <option value="">Select candidate...</option>
-              {(candData?.data ?? []).map((c: { id: string; full_name: string; email: string }) => (
+              {candidates.map((c: { id: string; full_name: string; email: string }) => (
                 <option key={c.id} value={c.id}>{c.full_name} ({c.email})</option>
               ))}
             </select>
@@ -181,7 +203,7 @@ function AddCheckModal({
             <label className="block text-sm font-medium text-text-body mb-1.5">Employee *</label>
             <select className="input" {...register('employee_id')}>
               <option value="">Select employee...</option>
-              {(empData?.data ?? []).map((e: { id: string; user?: { full_name: string }; employee_number: string }) => (
+              {employees.map((e: { id: string; user?: { full_name: string }; employee_number: string }) => (
                 <option key={e.id} value={e.id}>{e.user?.full_name} ({e.employee_number})</option>
               ))}
             </select>
@@ -398,6 +420,25 @@ export function BackgroundChecksClient() {
   const [reviewCheck, setReviewCheck] = useState<BackgroundCheckWithSubject | null>(null)
   const [statusFilter, setStatusFilter] = useState<BackgroundCheckStatus | ''>('')
 
+  // Tutorial state
+  const { isActive: tutorialActive, startTutorial } = useTutorialState()
+  const isDemoMode = useDemoMode()
+
+  // Refs for tutorial targeting
+  const statsRef = useRef<HTMLDivElement>(null)
+  const alertsRef = useRef<HTMLDivElement>(null)
+  const tableRef = useRef<HTMLDivElement>(null)
+  const addButtonRef = useRef<HTMLButtonElement>(null)
+  const filterRef = useRef<HTMLDivElement>(null)
+
+  const tutorialRefs: TutorialRefs = {
+    stats: statsRef,
+    alerts: alertsRef,
+    table: tableRef,
+    addButton: addButtonRef,
+    filter: filterRef,
+  }
+
   const { data, isLoading } = useQuery({
     queryKey: ['background-checks', activeCompanyId, statusFilter],
     queryFn: async () => {
@@ -410,9 +451,11 @@ export function BackgroundChecksClient() {
       return res.json() as Promise<{ data: BackgroundCheckWithSubject[] }>
     },
     staleTime: 60 * 1000,
+    enabled: !isDemoMode, // Skip real fetch in demo mode
   })
 
-  const checks = data?.data ?? []
+  // Use mock data in demo mode
+  const checks = isDemoMode ? MOCK_BACKGROUND_CHECKS : (data?.data ?? [])
   const pending = checks.filter(c => c.status === 'pending').length
   const inProgress = checks.filter(c => c.status === 'in_progress').length
   const passed = checks.filter(c => c.status === 'passed').length
@@ -427,15 +470,30 @@ export function BackgroundChecksClient() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Background Checks</h1>
-          <p className="text-sm text-text-muted mt-0.5">{checks.length} check{checks.length !== 1 ? 's' : ''} total</p>
+          <p className="text-sm text-text-muted mt-0.5">
+            {isDemoMode ? 'Demo Mode' : `${checks.length} check${checks.length !== 1 ? 's' : ''} total`}
+          </p>
         </div>
-        <button onClick={() => setAddModal(true)} className="btn-primary flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Request Check
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={startTutorial}
+            className="btn-ghost flex items-center gap-2 text-sm"
+          >
+            <HelpCircle className="w-4 h-4" />
+            Learn How
+          </button>
+          <button
+            ref={addButtonRef}
+            onClick={() => setAddModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Request Check
+          </button>
+        </div>
       </div>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      <div ref={statsRef} className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         {[
           { label: 'Pending', value: pending, icon: Clock, color: 'text-gray-600', bg: 'bg-gray-50' },
           { label: 'In Progress', value: inProgress, icon: FileSearch, color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -456,8 +514,8 @@ export function BackgroundChecksClient() {
       </div>
 
       {/* Alerts */}
-      {(expired > 0 || flagged > 0) && (
-        <div className="space-y-2">
+      {(expired > 0 || flagged > 0 || isDemoMode) && (
+        <div ref={alertsRef} className="space-y-2">
           {expired > 0 && (
             <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
               <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
@@ -478,7 +536,7 @@ export function BackgroundChecksClient() {
       )}
 
       {/* Filter */}
-      <div className="flex items-center gap-3">
+      <div ref={filterRef} className="flex items-center gap-3">
         <label className="text-sm text-text-muted">Filter by status:</label>
         <select
           className="input w-48"
@@ -496,9 +554,11 @@ export function BackgroundChecksClient() {
       </div>
 
       {/* Checks table */}
-      <div className="card p-0 overflow-hidden">
+      <div ref={tableRef} className="card p-0 overflow-hidden">
         <div className="px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold text-text-primary">All Background Checks</h3>
+          <h3 className="text-sm font-semibold text-text-primary">
+            {isDemoMode ? 'Demo Background Checks' : 'All Background Checks'}
+          </h3>
         </div>
         {isLoading ? (
           <SkeletonTable rows={6} />
@@ -528,12 +588,16 @@ export function BackgroundChecksClient() {
         open={addModal}
         companyId={activeCompanyId ?? ''}
         onClose={() => setAddModal(false)}
+        demoMode={isDemoMode}
       />
       <ReviewCheckModal
         open={!!reviewCheck}
         check={reviewCheck}
         onClose={() => setReviewCheck(null)}
       />
+
+      {/* Tutorial */}
+      <BackgroundCheckTutorial refs={tutorialRefs} />
     </div>
   )
 }
