@@ -54,5 +54,15 @@ export default defineConfig({
         storageState: 'tests/.auth/pwa.json',
       },
     },
+
+    // ── UAT end-to-end tests across all apps ─────────────────────────────────
+    {
+      name: 'uat',
+      testMatch: '**/uat/**/*.spec.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:3002',
+      },
+    },
   ],
 })

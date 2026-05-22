@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
     .from('kpi_assignments')
     .select('*')
     .eq('employee_id', employeeId)
-    .order('period_start', { ascending: false })
+    .order('period_year', { ascending: false })
+    .order('period_quarter', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ data })

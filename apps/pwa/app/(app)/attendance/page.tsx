@@ -118,8 +118,13 @@ export default function AttendancePage() {
       } else {
         toast.success(`${t(lang, 'attendance.checked_out_success')} · ${result?.workHours?.toFixed(1)}h`, { description: 'Great work today!' })
       }
-    } catch {
-      toast.error('Something went wrong. Please try again.')
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong'
+      if (msg.toLowerCase().includes('already completed')) {
+        toast.info('Your attendance for today is already recorded.', { description: 'Refreshing…' })
+      } else {
+        toast.error(msg)
+      }
     }
   }
 

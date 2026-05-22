@@ -36,8 +36,7 @@ export async function GET(req: NextRequest) {
         is_mandatory, department
       )
     `)
-    .eq('employee_id', employeeId)
-    .order('created_at', { ascending: false }) as { data: AttendeeRow[] | null; error: unknown }
+    .eq('employee_id', employeeId) as { data: AttendeeRow[] | null; error: unknown }
 
   if (error) return NextResponse.json({ error: String(error) }, { status: 500 })
 

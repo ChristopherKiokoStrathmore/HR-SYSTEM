@@ -12,7 +12,7 @@ export function useTrainingSessions(companyId: string | null) {
       if (!res.ok) throw new Error('Failed to fetch sessions')
       return res.json() as Promise<{ data: TrainingSession[] }>
     },
-    enabled: !!companyId,
+    staleTime: 60 * 1000,
   })
 }
 
@@ -44,6 +44,6 @@ export function useEnrolEmployees() {
       if (!res.ok) throw new Error((await res.json()).error)
       return res.json()
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['training-sessions'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['training-sessions-all'] }),
   })
 }

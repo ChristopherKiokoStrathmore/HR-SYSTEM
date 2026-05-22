@@ -84,7 +84,14 @@ function DisburseModal({
 }: {
   open: boolean; run: PayrollRun | null; onClose: () => void
 }) {
-  const [method, setMethod] = useState<'mpesa' | 'bank' | 'airtel'>('bank')
+  const [method, setMethod] = useState<'mpesa' | 'bank' | 'airtel' | 'all'>('all')
+  const [result, setResult] = useState<{
+    success: boolean
+    batches: Array<{ method: string; success: boolean; processed?: number; error?: string }>
+    totalProcessed: number
+    demo: boolean
+    reference: string
+  } | null>(null)
   const disburse = useDisbursePayroll()
 
   if (!run) return null
@@ -92,15 +99,74 @@ function DisburseModal({
   async function handleDisburse() {
     try {
       const res = await disburse.mutateAsync({ runId: run!.id, method })
-      toast.success(`Disbursed via ${method.toUpperCase()} — Ref: ${res.reference}`)
-      onClose()
+      setResult(res)
+      if (res.success) {
+        toast.success(`Disbursed ${res.totalProcessed} payments — Ref: ${res.reference}`)
+      } else {
+        toast.error('Some payments failed')
+      }
     } catch (e) {
       toast.error('Disbursement failed', String(e))
     }
   }
 
+  function handleClose() {
+    setResult(null)
+    onClose()
+  }
+
+  // Show results if we have them
+  if (result) {
+    return (
+      <Modal open={open} onClose={handleClose} title="Disbursement Results" size="sm">
+        <div className="space-y-4">
+          <div className={cn(
+            'rounded-lg px-4 py-3 text-sm',
+            result.success ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800'
+          )}>
+            {result.success
+              ? `Successfully processed ${result.totalProcessed} payment${result.totalProcessed !== 1 ? 's' : ''}`
+              : 'Some payments encountered errors'
+            }
+          </div>
+
+          {result.demo && (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800">
+              Demo mode - no real payments were processed.
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-text-body">Batch Results:</p>
+            {result.batches.map((batch, i) => (
+              <div key={i} className="flex items-center justify-between text-sm p-2 rounded bg-surface-alt">
+                <span className="capitalize">{batch.method === 'mpesa' ? 'M-Pesa' : batch.method === 'airtel' ? 'Airtel' : 'Bank EFT'}</span>
+                {batch.success ? (
+                  <span className="text-green-600 flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4" />
+                    {batch.processed} processed
+                  </span>
+                ) : (
+                  <span className="text-red-600 text-xs">{batch.error || 'Failed'}</span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="text-xs text-text-muted">
+            Reference: {result.reference}
+          </div>
+
+          <button onClick={handleClose} className="btn-primary w-full">
+            Close
+          </button>
+        </div>
+      </Modal>
+    )
+  }
+
   return (
-    <Modal open={open} onClose={onClose} title="Disburse Payroll" size="sm">
+    <Modal open={open} onClose={handleClose} title="Disburse Payroll" size="sm">
       <div className="space-y-4">
         <div className="card bg-surface p-4 space-y-2 text-sm">
           <div className="flex justify-between">
@@ -123,8 +189,8 @@ function DisburseModal({
 
         <div>
           <label className="block text-sm font-medium text-text-body mb-1.5">Payment Method</label>
-          <div className="grid grid-cols-3 gap-2">
-            {(['bank', 'mpesa', 'airtel'] as const).map((m) => (
+          <div className="grid grid-cols-2 gap-2">
+            {(['all', 'bank', 'mpesa', 'airtel'] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setMethod(m)}
@@ -135,25 +201,31 @@ function DisburseModal({
                     : 'border-border text-text-muted hover:border-accent/50'
                 )}
               >
-                {m === 'mpesa' ? 'M-Pesa' : m === 'airtel' ? 'Airtel' : 'Bank EFT'}
+                {m === 'all' ? 'All Methods' : m === 'mpesa' ? 'M-Pesa' : m === 'airtel' ? 'Airtel' : 'Bank EFT'}
               </button>
             ))}
           </div>
+          <p className="text-xs text-text-muted mt-1">
+            {method === 'all'
+              ? 'Process all payments using each employee\'s preferred method'
+              : `Only process ${method.toUpperCase()} payments`
+            }
+          </p>
         </div>
 
-        <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800">
-          This is a mock disbursement. In production, connect to the live payment gateway.
+        <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-xs text-blue-800">
+          Payments will be processed via PesaPal (M-Pesa, Airtel Money, Bank EFT).
         </div>
 
         <div className="flex gap-3 pt-1">
-          <button onClick={onClose} className="btn-ghost flex-1">Cancel</button>
+          <button onClick={handleClose} className="btn-ghost flex-1">Cancel</button>
           <button
             onClick={handleDisburse}
             disabled={disburse.isPending}
             className="btn-primary flex-1 flex items-center justify-center gap-2"
           >
             {disburse.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-            Disburse
+            {disburse.isPending ? 'Processing...' : 'Disburse'}
           </button>
         </div>
       </div>

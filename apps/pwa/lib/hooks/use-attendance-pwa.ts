@@ -18,10 +18,11 @@ export function useAttendance() {
   return useQuery<{ data: AttendanceRecord[]; today: string }>({
     queryKey: ['me', 'attendance'],
     queryFn: async () => {
-      const res = await fetch('/api/me/attendance')
+      const res = await fetch('/api/me/attendance', { cache: 'no-store' })
       if (!res.ok) throw new Error('Failed to load attendance')
       return res.json()
     },
+    staleTime: 0,
     refetchInterval: 60 * 1000,
   })
 }
@@ -35,11 +36,15 @@ export function useCheckInOut() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
+      const json = await res.json()
       if (!res.ok) {
-        const { error } = await res.json()
-        throw new Error(error)
+        // 409 already_done means the client had stale data — refetch so UI syncs
+        if (json.action === 'already_done') {
+          qc.invalidateQueries({ queryKey: ['me', 'attendance'] })
+        }
+        throw new Error(json.error)
       }
-      return res.json() as Promise<{ action: 'checked_in' | 'checked_out'; workHours: number | null }>
+      return json as { action: 'checked_in' | 'checked_out'; workHours: number | null }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['me', 'attendance'] }),
   })

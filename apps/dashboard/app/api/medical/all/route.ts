@@ -11,17 +11,16 @@ export async function GET(req: NextRequest) {
   let query = (supabase.from('medical_records') as any)
     .select(`
       *,
-      employee:employee_profiles(
+      employee:employee_profiles!inner(
         employee_number,
-        user:users(full_name, avatar_url)
+        user:users!user_id(full_name, avatar_url)
       )
     `)
     .eq('is_deleted', false)
     .order('issued_date', { ascending: false })
 
   if (companyId) {
-    // filter via employee's company_id
-    query = query.eq('employee.company_id', companyId)
+    query = query.eq('employee_profiles.company_id', companyId)
   }
 
   const { data, error } = await query

@@ -16,7 +16,7 @@ export function usePayrollRuns(companyId: string | null) {
       if (!res.ok) throw new Error('Failed to fetch payroll runs')
       return res.json() as Promise<{ data: PayrollRun[] }>
     },
-    enabled: !!companyId,
+    staleTime: 60 * 1000,
   })
 }
 
@@ -63,17 +63,33 @@ export function useProcessPayrollRun() {
   })
 }
 
+interface DisburseResult {
+  success: boolean
+  data: PayrollRun
+  batches: Array<{
+    batch_id: string
+    method: string
+    success: boolean
+    processed?: number
+    demo?: boolean
+    error?: string
+  }>
+  totalProcessed: number
+  demo: boolean
+  reference: string
+}
+
 export function useDisbursePayroll() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ runId, method }: { runId: string; method: 'mpesa' | 'bank' | 'airtel' }) => {
+    mutationFn: async ({ runId, method }: { runId: string; method: 'mpesa' | 'bank' | 'airtel' | 'all' }) => {
       const res = await fetch('/api/payroll/disburse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ runId, method }),
       })
       if (!res.ok) throw new Error((await res.json()).error)
-      return res.json() as Promise<{ data: PayrollRun; reference: string; mock: boolean }>
+      return res.json() as Promise<DisburseResult>
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['payroll-runs'] }),
   })
