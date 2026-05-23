@@ -113,6 +113,11 @@ function AddCheckModal({
 
   const create = useMutation({
     mutationFn: async (body: CreateCheckForm) => {
+      // Validate company ID
+      if (!companyId) {
+        throw new Error('No company selected. Please select a company first.')
+      }
+
       // In demo mode, simulate API call
       if (demoMode) {
         await new Promise(resolve => setTimeout(resolve, 800))
@@ -484,7 +489,13 @@ export function BackgroundChecksClient() {
           </button>
           <button
             ref={addButtonRef}
-            onClick={() => setAddModal(true)}
+            onClick={() => {
+              if (!activeCompanyId) {
+                toast.error('Please select a company first', 'Use the company switcher in the header to select a company')
+                return
+              }
+              setAddModal(true)
+            }}
             className="btn-primary flex items-center gap-2"
           >
             <Plus className="w-4 h-4" /> Request Check
@@ -566,7 +577,16 @@ export function BackgroundChecksClient() {
           <div className="flex flex-col items-center gap-3 py-16">
             <ShieldCheck className="w-12 h-12 text-border" />
             <p className="text-text-muted text-sm">No background checks yet.</p>
-            <button onClick={() => setAddModal(true)} className="btn-primary">
+            <button
+              onClick={() => {
+                if (!activeCompanyId) {
+                  toast.error('Please select a company first', 'Use the company switcher in the header to select a company')
+                  return
+                }
+                setAddModal(true)
+              }}
+              className="btn-primary"
+            >
               Request first check
             </button>
           </div>

@@ -38,6 +38,11 @@ function NewRunModal({
   const create = useCreatePayrollRun()
 
   async function handleCreate() {
+    if (!companyId) {
+      toast.error('No company selected', 'Please select a company first')
+      onClose()
+      return
+    }
     try {
       await create.mutateAsync({ company_id: companyId, period_month: month, period_year: year })
       toast.success('Payroll run created')
@@ -432,7 +437,13 @@ export function PayrollClient() {
             </button>
           )}
           <button
-            onClick={() => setNewRunModal(true)}
+            onClick={() => {
+              if (!activeCompanyId) {
+                toast.error('Please select a company first', 'Use the company switcher in the header to select a company')
+                return
+              }
+              setNewRunModal(true)
+            }}
             className="btn-primary flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -471,7 +482,16 @@ export function PayrollClient() {
           <div className="flex flex-col items-center gap-3 py-16">
             <CreditCard className="w-12 h-12 text-border" />
             <p className="text-text-muted text-sm">No payroll runs yet.</p>
-            <button onClick={() => setNewRunModal(true)} className="btn-primary">
+            <button
+              onClick={() => {
+                if (!activeCompanyId) {
+                  toast.error('Please select a company first', 'Use the company switcher in the header to select a company')
+                  return
+                }
+                setNewRunModal(true)
+              }}
+              className="btn-primary"
+            >
               Create first run
             </button>
           </div>
