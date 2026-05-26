@@ -3,19 +3,19 @@ import { createBrowserClient as createSSRBrowserClient } from '@supabase/ssr'
 import type { Database } from './database.types'
 
 function getSupabaseUrl() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
   if (!url) throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL')
   return url
 }
 
 function getPublicSupabaseKey() {
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const key = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)?.trim()
   if (!key) throw new Error('Missing NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY or NEXT_PUBLIC_SUPABASE_ANON_KEY')
   return key
 }
 
 function getServiceRoleKey() {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
   if (!key) throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY')
   return key
 }

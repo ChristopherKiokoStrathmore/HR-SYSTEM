@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         *,
         employee:employee_profiles(
           employee_number,
-          user:users(full_name, email)
+          user:users!employee_profiles_user_id_fkey(full_name, email)
         ),
         candidate:candidates(full_name, email),
         requested_by_user:users!background_checks_requested_by_fkey(full_name),
@@ -113,7 +113,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
         *,
         employee:employee_profiles(
           employee_number,
-          user:users(full_name, email)
+          user:users!employee_profiles_user_id_fkey(full_name, email)
         ),
         candidate:candidates(full_name, email),
         requested_by_user:users!background_checks_requested_by_fkey(full_name),
