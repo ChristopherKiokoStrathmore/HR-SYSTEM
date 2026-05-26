@@ -1,18 +1,54 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useAttendanceSummary } from '@/lib/hooks/use-attendance'
-import { Avatar } from '@/components/ui/avatar'
-import { StatusBadge } from '@/components/ui/badge'
 import { SkeletonTable } from '@/components/ui/skeleton'
 import { useStore } from '@/lib/store'
-import { formatDate } from '@hr/shared'
 import { Calendar, MapPin, Users, Clock, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { CheckInLocation } from './check-in-map'
+
+const CheckInMap = dynamic(
+  () => import('./check-in-map').then(m => ({ default: m.CheckInMap })),
+  { ssr: false, loading: () => <div className="rounded-xl bg-surface-alt border border-border" style={{ height: 280 }} /> }
+)
+
+function formatDisplayDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+function getInitials(name: string) {
+  return (
+    name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase() ?? '')
+      .join('') || '?'
+  )
+}
+
+function getStatusMeta(status: string) {
+  switch (status) {
+    case 'present':
+      return { label: 'Present', className: 'bg-green-50 text-green-700 border-green-200' }
+    case 'absent':
+      return { label: 'Absent', className: 'bg-red-50 text-red-700 border-red-200' }
+    case 'half_day':
+      return { label: 'Half Day', className: 'bg-amber-50 text-amber-700 border-amber-200' }
+    default:
+      return { label: status, className: 'bg-surface-alt text-text-muted border-border' }
+  }
+}
 
 export function AttendanceClient() {
   const activeCompanyId = useStore(s => s.activeCompanyId)
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
+  const [date, setDate] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' }))
 
   const { data, isLoading } = useAttendanceSummary(activeCompanyId, date)
 
@@ -26,7 +62,7 @@ export function AttendanceClient() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-text-primary">Attendance</h1>
-          <p className="text-sm text-text-muted mt-0.5">{formatDate(date)}</p>
+          <p className="text-sm text-text-muted mt-0.5">{formatDisplayDate(date)}</p>
         </div>
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-text-muted" />
@@ -88,25 +124,43 @@ export function AttendanceClient() {
         </div>
       </div>
 
-      {/* Map placeholder */}
+      {/* Check-in Map */}
       <div className="card">
         <div className="flex items-center gap-2 mb-3">
           <MapPin className="w-4 h-4 text-accent" />
           <h3 className="text-sm font-semibold text-text-primary">Check-in Locations</h3>
-          <span className="ml-auto text-xs text-text-muted">GPS tracking active</span>
+          <span className="ml-auto text-xs text-text-muted">
+            {(() => {
+              const n = records.filter(r => r.check_in_lat).length
+              return n > 0 ? `${n} location${n !== 1 ? 's' : ''} today` : 'OpenStreetMap · no API key needed'
+            })()}
+          </span>
         </div>
-        <div className="rounded-xl bg-surface-alt border border-border flex items-center justify-center" style={{ height: 280 }}>
-          <div className="text-center">
-            <MapPin className="w-12 h-12 text-border mx-auto mb-3" />
-            <p className="text-sm font-medium text-text-muted">Live GPS Map</p>
-            <p className="text-xs text-text-muted mt-1">Connect Google Maps API to enable real-time location tracking</p>
-            {records.filter(r => r.check_in_lat).length > 0 && (
-              <p className="text-xs text-accent mt-2">
-                {records.filter(r => r.check_in_lat).length} location{records.filter(r => r.check_in_lat).length !== 1 ? 's' : ''} recorded today
-              </p>
-            )}
-          </div>
-        </div>
+        {(() => {
+          const locs: CheckInLocation[] = records
+            .filter(r => r.check_in_lat && r.check_in_lng)
+            .map(r => ({
+              lat: r.check_in_lat as number,
+              lng: r.check_in_lng as number,
+              name: r.employee?.user?.full_name ?? '—',
+              time: r.check_in_time
+                ? new Date(r.check_in_time).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
+                : null,
+              status: r.status,
+            }))
+          if (locs.length === 0) {
+            return (
+              <div className="rounded-xl bg-surface-alt border border-border flex items-center justify-center" style={{ height: 280 }}>
+                <div className="text-center">
+                  <MapPin className="w-10 h-10 text-border mx-auto mb-2" />
+                  <p className="text-sm text-text-muted">No GPS check-ins recorded for {formatDisplayDate(date)}</p>
+                  <p className="text-xs text-text-muted mt-1">Employees check in via the PWA mobile app</p>
+                </div>
+              </div>
+            )
+          }
+          return <CheckInMap locations={locs} />
+        })()}
       </div>
 
       {/* Records table */}
@@ -120,7 +174,7 @@ export function AttendanceClient() {
         ) : records.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-16">
             <Users className="w-12 h-12 text-border" />
-            <p className="text-text-muted text-sm">No attendance records for {formatDate(date)}.</p>
+            <p className="text-text-muted text-sm">No attendance records for {formatDisplayDate(date)}.</p>
           </div>
         ) : (
           <div className="divide-y divide-border">
@@ -135,7 +189,9 @@ export function AttendanceClient() {
 
               return (
                 <div key={rec.id} className="flex items-center gap-4 px-4 py-3">
-                  <Avatar name={name} src={rec.employee?.user?.avatar_url ?? undefined} size="sm" />
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">
+                    {getInitials(name)}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-text-primary">{name}</p>
                     <p className="text-xs text-text-muted">
@@ -160,7 +216,9 @@ export function AttendanceClient() {
                       )}
                     </div>
                   </div>
-                  <StatusBadge status={rec.status} />
+                  <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium', getStatusMeta(rec.status).className)}>
+                    {getStatusMeta(rec.status).label}
+                  </span>
                 </div>
               )
             })}

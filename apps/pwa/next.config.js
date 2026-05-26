@@ -82,7 +82,7 @@ const nextConfig = withPWA({
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://*.supabase.co",
-              "connect-src 'self' https://*.supabase.co https://fonts.googleapis.com",
+              "connect-src 'self' https://*.supabase.co https://fonts.googleapis.com https://fonts.gstatic.com",
               // Service worker and workbox caching require worker-src blob:
               "worker-src 'self' blob:",
               "frame-src 'none'",

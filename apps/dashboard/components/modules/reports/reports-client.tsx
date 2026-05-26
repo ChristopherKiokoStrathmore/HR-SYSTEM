@@ -33,14 +33,15 @@ function formatKES(n: number) {
   return new Intl.NumberFormat('en-KE', { notation: 'compact', maximumFractionDigits: 1 }).format(n)
 }
 
-async function fetchReport(endpoint: string, companyId: string) {
-  const res = await fetch(`/api/reports/${endpoint}?companyId=${companyId}`)
+async function fetchReport(endpoint: string, companyId?: string | null) {
+  const params = companyId ? `?companyId=${companyId}` : ''
+  const res = await fetch(`/api/reports/${endpoint}${params}`)
   if (!res.ok) throw new Error('Failed to fetch report')
   const { data } = await res.json()
   return data
 }
 
-async function exportExcel(companyId: string) {
+async function exportExcel(companyId?: string | null) {
   const XLSX = await import('xlsx')
   const [hc, ps, ls] = await Promise.all([
     fetchReport('headcount', companyId),
@@ -59,29 +60,21 @@ export function ReportsClient() {
 
   const { data: hc } = useQuery({
     queryKey: ['reports', 'headcount', companyId],
-    queryFn: () => fetchReport('headcount', companyId!),
-    enabled: !!companyId,
+    queryFn: () => fetchReport('headcount', companyId),
+    staleTime: 60 * 1000,
   })
 
   const { data: ps } = useQuery({
     queryKey: ['reports', 'payroll-summary', companyId],
-    queryFn: () => fetchReport('payroll-summary', companyId!),
-    enabled: !!companyId,
+    queryFn: () => fetchReport('payroll-summary', companyId),
+    staleTime: 60 * 1000,
   })
 
   const { data: ls } = useQuery({
     queryKey: ['reports', 'leave-summary', companyId],
-    queryFn: () => fetchReport('leave-summary', companyId!),
-    enabled: !!companyId,
+    queryFn: () => fetchReport('leave-summary', companyId),
+    staleTime: 60 * 1000,
   })
-
-  if (!companyId) {
-    return (
-      <div className="card text-center py-16 text-text-muted">
-        Select a company to view reports
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-6">

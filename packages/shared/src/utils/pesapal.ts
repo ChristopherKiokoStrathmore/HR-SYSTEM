@@ -149,7 +149,7 @@ export async function getPesaPalToken(
     throw new Error(`PesaPal auth failed: ${response.status} ${response.statusText}`)
   }
 
-  return response.json() as Promise<PesaPalAuthResponse>
+  return response.json()
 }
 
 /**
@@ -180,7 +180,7 @@ export async function registerPesaPalIPN(
     throw new Error(`PesaPal IPN registration failed: ${response.status} ${response.statusText}`)
   }
 
-  return response.json() as Promise<PesaPalIPNRegistrationResponse>
+  return response.json()
 }
 
 /**
@@ -207,7 +207,7 @@ export async function submitPesaPalOrder(
     throw new Error(`PesaPal order submission failed: ${response.status} ${response.statusText}`)
   }
 
-  return response.json() as Promise<PesaPalOrderResponse>
+  return response.json()
 }
 
 /**
@@ -236,13 +236,14 @@ export async function getPesaPalTransactionStatus(
     throw new Error(`PesaPal status check failed: ${response.status} ${response.statusText}`)
   }
 
-  return response.json() as Promise<PesaPalTransactionStatus>
+  return response.json()
 }
 
 /**
  * Validate IPN callback signature (if using signature validation)
  */
 export function validatePesaPalIPN(payload: PesaPalIPNPayload): boolean {
+  // Basic validation - ensure required fields are present
   return !!(
     payload.OrderTrackingId &&
     payload.OrderMerchantReference &&
@@ -286,6 +287,6 @@ export function getPaymentChannelHint(method: 'bank' | 'mpesa' | 'airtel'): stri
       return 'AIRTEL'
     case 'bank':
     default:
-      return 'PESAPAL'
+      return 'PESAPAL'  // PesaPal default (allows all methods)
   }
 }

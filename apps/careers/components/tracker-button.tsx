@@ -7,16 +7,7 @@ export function TrackerButton() {
   const [token, setToken] = useState<string | null>(null)
 
   useEffect(() => {
-    const read = () => setToken(localStorage.getItem('sl_tracker_token'))
-    read()
-    // same-tab updates (dispatched when the token is saved)
-    window.addEventListener('sl-tracker-saved', read)
-    // cross-tab updates
-    window.addEventListener('storage', read)
-    return () => {
-      window.removeEventListener('sl-tracker-saved', read)
-      window.removeEventListener('storage', read)
-    }
+    setToken(localStorage.getItem('sl_tracker_token'))
   }, [])
 
   if (!token) return null
@@ -27,6 +18,7 @@ export function TrackerButton() {
       title="View my application status"
       className="relative flex items-center gap-1.5 text-xs font-semibold text-accent border border-accent/30 bg-accent/5 hover:bg-accent/10 px-3 py-1.5 rounded-xl transition-all"
     >
+      {/* pulse dot */}
       <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-accent">
         <span className="absolute inset-0 rounded-full bg-accent animate-ping opacity-75" />
       </span>
