@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+export type PaymentSourceType = 'mpesa_wallet' | 'bank_wallet'
+
 interface AppStore {
   sidebarCollapsed: boolean
   toggleSidebar: () => void
@@ -10,6 +12,10 @@ interface AppStore {
 
   activeCompanyId: string | null
   setActiveCompanyId: (id: string | null) => void
+
+  // Payment source for payroll disbursement
+  paymentSource: PaymentSourceType
+  setPaymentSource: (source: PaymentSourceType) => void
 }
 
 export const useStore = create<AppStore>()(
@@ -29,6 +35,9 @@ export const useStore = create<AppStore>()(
 
       activeCompanyId: null,
       setActiveCompanyId: (id) => set({ activeCompanyId: id }),
+
+      paymentSource: 'bank_wallet',
+      setPaymentSource: (source) => set({ paymentSource: source }),
     }),
     {
       name: 'hr-dashboard-store',
@@ -36,6 +45,7 @@ export const useStore = create<AppStore>()(
         sidebarCollapsed: s.sidebarCollapsed,
         darkMode: s.darkMode,
         activeCompanyId: s.activeCompanyId,
+        paymentSource: s.paymentSource,
       }),
     }
   )

@@ -69,6 +69,44 @@ export interface PayrollRecordWithEmployee extends PayrollRecord {
   }
 }
 
+// Types for new employee-centric payroll UI
+export type PaymentSourceType = 'mpesa_wallet' | 'bank_wallet'
+
+export interface EmployeeSalaryRow {
+  id: string
+  employee_id: string
+  employee_name: string
+  employee_number: string
+  department: string | null
+  salary: number
+  payment_status: 'pending' | 'processing' | 'paid' | 'failed'
+  payment_method: 'bank' | 'mpesa' | 'airtel'
+  last_paid_at: string | null
+}
+
+export interface DepartmentPaymentStatus {
+  department: string
+  totalEmployees: number
+  paidCount: number
+  pendingCount: number
+  status: 'all_paid' | 'partial' | 'none_paid'
+}
+
+export interface PaymentHistoryRecord {
+  id: string
+  employee_id: string
+  employee_name: string
+  employee_number: string
+  department: string | null
+  amount: number
+  payment_method: 'bank' | 'mpesa' | 'airtel'
+  payment_date: string
+  reference: string | null
+  status: 'paid' | 'failed'
+  period_month: number
+  period_year: number
+}
+
 export interface PaymentStatusSummary {
   summary: {
     total_records: number
@@ -251,6 +289,81 @@ export function useRetryFailedPayments() {
       qc.invalidateQueries({ queryKey: ['payroll-runs'] })
       qc.invalidateQueries({ queryKey: ['payroll-run', runId] })
       qc.invalidateQueries({ queryKey: ['payment-status', runId] })
+    },
+  })
+}
+
+// ============================================
+// NEW HOOKS FOR EMPLOYEE-CENTRIC PAYROLL UI
+// ============================================
+
+/**
+ * Fetch employees with their current payment status for the payroll table
+ */
+export function useEmployeesWithPaymentStatus(companyId: string | null) {
+  return useQuery({
+    queryKey: ['employees-payment-status', companyId],
+    queryFn: async () => {
+      const params = companyId ? `?companyId=${companyId}` : ''
+      const res = await fetch(`/api/payroll/employee-status${params}`)
+      if (!res.ok) throw new Error('Failed to fetch employee payment status')
+      return res.json() as Promise<{
+        data: EmployeeSalaryRow[]
+        departments: DepartmentPaymentStatus[]
+      }>
+    },
+    staleTime: 30 * 1000,
+  })
+}
+
+/**
+ * Fetch payment history records
+ */
+export function usePaymentHistory(companyId: string | null) {
+  return useQuery({
+    queryKey: ['payment-history', companyId],
+    queryFn: async () => {
+      const params = companyId ? `?companyId=${companyId}` : ''
+      const res = await fetch(`/api/payroll/history${params}`)
+      if (!res.ok) throw new Error('Failed to fetch payment history')
+      return res.json() as Promise<{ data: PaymentHistoryRecord[] }>
+    },
+    staleTime: 60 * 1000,
+  })
+}
+
+/**
+ * Pay selected employees
+ */
+export function usePayEmployees() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      employeeIds,
+      paymentSource,
+      companyId,
+    }: {
+      employeeIds: string[]
+      paymentSource: PaymentSourceType
+      companyId: string
+    }) => {
+      const res = await fetch('/api/payroll/pay-employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeIds, paymentSource, companyId }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error)
+      return res.json() as Promise<{
+        success: boolean
+        paidCount: number
+        failedCount: number
+        reference: string
+      }>
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['employees-payment-status'] })
+      qc.invalidateQueries({ queryKey: ['payment-history'] })
+      qc.invalidateQueries({ queryKey: ['payroll-runs'] })
     },
   })
 }
