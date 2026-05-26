@@ -42,11 +42,33 @@ export async function POST(req: NextRequest) {
     }
 
     // Call Django API to disburse
-    const data = await hrApiPost(`/payroll-runs/${runId}/disburse/`, payload)
+    const data = await hrApiPost<{
+      message?: string
+      batches?: Array<{
+        id: string
+        payment_method: string
+        status: string
+        record_count: number
+        successful_count: number
+        failed_count: number
+      }>
+    }>(`/payroll-runs/${runId}/disburse/`, payload)
+
+    // Transform batches to frontend format
+    const batches = (data.batches || []).map(b => ({
+      method: b.payment_method,
+      success: b.status !== 'failed',
+      processed: b.record_count,
+    }))
+
+    const totalProcessed = batches.reduce((sum, b) => sum + (b.processed || 0), 0)
 
     return NextResponse.json({
       success: true,
       data,
+      batches,
+      totalProcessed,
+      demo: false,
       reference: `SL-${Date.now()}`,
     })
   } catch (err) {

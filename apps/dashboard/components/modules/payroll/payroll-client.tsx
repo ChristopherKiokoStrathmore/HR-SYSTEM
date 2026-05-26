@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
   usePayrollRuns, useCreatePayrollRun,
   useProcessPayrollRun, useDisbursePayroll,
+  type PayrollRun,
 } from '@/lib/hooks/use-payroll'
 import { useCompany } from '@/lib/hooks/use-companies'
 import { StatusBadge } from '@/components/ui/badge'
@@ -12,7 +13,6 @@ import { SkeletonTable } from '@/components/ui/skeleton'
 import { Modal } from '@/components/ui/modal'
 import { toast } from '@/lib/toast'
 import { formatKES, monthYearLabel } from '@hr/shared'
-import type { PayrollRun } from '@hr/shared'
 import { useStore } from '@/lib/store'
 import {
   Plus, Play, CreditCard, CheckCircle,
@@ -406,7 +406,7 @@ export function PayrollClient() {
   async function handleProcess(runId: string) {
     try {
       const res = await processRun.mutateAsync(runId)
-      toast.success(`Calculated ${res.recordCount} payslips`)
+      toast.success(`Calculated ${res.data.employee_count} payslips`)
     } catch (e) {
       toast.error('Processing failed', String(e))
     }

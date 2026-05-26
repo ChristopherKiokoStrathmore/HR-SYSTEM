@@ -12,11 +12,32 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const companyId = searchParams.get('companyId')
 
-    const data = await hrApiGet('/payroll-runs/', {
+    const data = await hrApiGet<Array<Record<string, unknown>>>('/payroll-runs/', {
       company_id: companyId || undefined,
     })
 
-    return NextResponse.json({ data })
+    // Add derived fields for UI compatibility
+    const enrichedData = (Array.isArray(data) ? data : []).map(run => {
+      const periodStart = run.period_start as string
+      const date = periodStart ? new Date(periodStart) : new Date()
+
+      // Calculate total_deductions from individual components
+      const totalDeductions =
+        (Number(run.total_paye) || 0) +
+        (Number(run.total_nssf) || 0) +
+        (Number(run.total_nhif) || 0) +
+        (Number(run.total_housing_levy) || 0) +
+        (Number(run.total_helb) || 0)
+
+      return {
+        ...run,
+        period_month: date.getMonth() + 1,
+        period_year: date.getFullYear(),
+        total_deductions: totalDeductions,
+      }
+    })
+
+    return NextResponse.json({ data: enrichedData })
   } catch (err) {
     if (err instanceof HRApiError) {
       return NextResponse.json({ error: err.message }, { status: err.status })
@@ -38,7 +59,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
 
     // Map frontend format to Django API format
-    const payload = {
+    const payload: Record<string, unknown> = {
       period_start: body.period_start,
       period_end: body.period_end,
       pay_date: body.pay_date,
@@ -50,6 +71,11 @@ export async function POST(req: NextRequest) {
             period_end: new Date(body.period_year, body.period_month, 0).toISOString().split('T')[0],
           }
         : {}),
+    }
+
+    // Include company_id if provided
+    if (body.company_id) {
+      payload.company_id = body.company_id
     }
 
     const data = await hrApiPost('/payroll-runs/', payload)

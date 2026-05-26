@@ -317,12 +317,12 @@ export function PayrollRunDetailClient({ runId }: { runId: string }) {
                     </td>
                     <td className="px-4 py-3">
                       <div>
-                        <p className="font-medium text-text-primary">{record.employee.user.full_name}</p>
-                        <p className="text-xs text-text-muted">{record.employee.user.email}</p>
+                        <p className="font-medium text-text-primary">{record.employee_name}</p>
+                        <p className="text-xs text-text-muted">{record.employee_number}</p>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-text-muted font-mono text-xs">
-                      {record.employee.employee_number}
+                      {record.employee_number}
                     </td>
                     <td className="px-4 py-3 text-right font-mono">
                       {formatKES(record.gross_salary)}
