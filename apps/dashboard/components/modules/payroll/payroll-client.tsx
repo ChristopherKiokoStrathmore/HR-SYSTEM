@@ -114,6 +114,20 @@ export function PayrollClient() {
     setSelectedIds(new Set())
   }
 
+  const handlePayAll = () => {
+    const pendingEmployees = employees.filter((e) => e.payment_status === 'pending')
+    setSelectedIds(new Set(pendingEmployees.map((e) => e.id)))
+    setPayModalOpen(true)
+  }
+
+  const handlePayDepartment = (department: string) => {
+    const pendingEmployees = employees.filter(
+      (e) => e.payment_status === 'pending' && e.department === department
+    )
+    setSelectedIds(new Set(pendingEmployees.map((e) => e.id)))
+    setPayModalOpen(true)
+  }
+
   // Calculate selected totals
   const selectedEmployees = employees.filter((e) => selectedIds.has(e.id))
   const selectedTotal = selectedEmployees.reduce((sum, e) => sum + e.salary, 0)
@@ -242,6 +256,8 @@ export function PayrollClient() {
           onSelectDepartment={selectByDepartment}
           onClearSelection={clearSelection}
           onPaySelected={() => setPayModalOpen(true)}
+          onPayAll={handlePayAll}
+          onPayDepartment={handlePayDepartment}
         />
       ) : (
         <PaymentHistoryTable records={historyRecords} isLoading={historyLoading} />

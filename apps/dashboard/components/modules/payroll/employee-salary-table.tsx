@@ -18,6 +18,8 @@ interface EmployeeSalaryTableProps {
   onSelectDepartment: (department: string) => void
   onClearSelection: () => void
   onPaySelected: () => void
+  onPayAll: () => void
+  onPayDepartment: (department: string) => void
 }
 
 export function EmployeeSalaryTable({
@@ -30,6 +32,8 @@ export function EmployeeSalaryTable({
   onSelectDepartment,
   onClearSelection,
   onPaySelected,
+  onPayAll,
+  onPayDepartment,
 }: EmployeeSalaryTableProps) {
   const [search, setSearch] = useState('')
 
@@ -76,6 +80,9 @@ export function EmployeeSalaryTable({
   const pendingEmployees = filteredEmployees.filter(
     (emp) => emp.payment_status === 'pending'
   )
+  const pendingDepartmentEmployees = departmentFilter
+    ? pendingEmployees.filter((emp) => emp.department === departmentFilter)
+    : []
   const allPendingSelected =
     pendingEmployees.length > 0 &&
     pendingEmployees.every((emp) => selectedIds.has(emp.id))
@@ -87,7 +94,7 @@ export function EmployeeSalaryTable({
   return (
     <div className="space-y-4">
       {/* Search and filter bar */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
           <input
@@ -117,6 +124,51 @@ export function EmployeeSalaryTable({
       </div>
 
       {/* Bulk action bar */}
+      <div className="grid gap-3 rounded-xl border border-border bg-surface-alt p-4 md:grid-cols-3">
+        <div className="space-y-1">
+          <p className="text-xs uppercase tracking-wide text-text-muted">Pending</p>
+          <p className="text-sm font-semibold text-text-primary">
+            {pendingEmployees.length} employee{pendingEmployees.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs uppercase tracking-wide text-text-muted">Department filter</p>
+          <p className="text-sm font-semibold text-text-primary">
+            {departmentFilter ?? 'All departments'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onPayAll}
+            disabled={pendingEmployees.length === 0}
+            className="btn-secondary text-sm"
+          >
+            Pay all pending
+          </button>
+          {departmentFilter && (
+            <button
+              type="button"
+              onClick={() => onPayDepartment(departmentFilter)}
+              disabled={pendingDepartmentEmployees.length === 0}
+              className="btn-secondary text-sm"
+            >
+              Pay {departmentFilter}
+            </button>
+          )}
+          {selectedIds.size > 0 && (
+            <button
+              type="button"
+              onClick={onPaySelected}
+              className="btn-primary text-sm flex items-center gap-2"
+            >
+              <CreditCard className="w-4 h-4" />
+              Pay Selected
+            </button>
+          )}
+        </div>
+      </div>
+
       {selectedIds.size > 0 && (
         <div className="flex items-center gap-4 px-4 py-3 bg-accent/10 border border-accent/20 rounded-xl">
           <span className="text-sm font-medium text-accent">
@@ -129,13 +181,6 @@ export function EmployeeSalaryTable({
             className="text-xs text-text-muted hover:text-text-primary"
           >
             Clear selection
-          </button>
-          <button
-            onClick={onPaySelected}
-            className="btn-primary text-sm flex items-center gap-2"
-          >
-            <CreditCard className="w-4 h-4" />
-            Pay Selected
           </button>
         </div>
       )}
