@@ -14,6 +14,7 @@ function CompanySwitcher() {
     staleTime: 5 * 60 * 1000,
   })
   const companies: { id: string; name: string }[] = data?.data ?? []
+
   if (companies.length <= 1) return null
   return (
     <div className="flex items-center gap-1.5 rounded-xl border border-border bg-surface-alt px-2.5 py-1.5">
@@ -23,6 +24,7 @@ function CompanySwitcher() {
         onChange={e => setActiveCompanyId(e.target.value || null)}
         className="bg-transparent text-xs text-text-body font-medium focus:outline-none cursor-pointer pr-1 max-w-[140px] truncate"
       >
+        <option value="">All Companies</option>
         {companies.map(c => (
           <option key={c.id} value={c.id}>{c.name}</option>
         ))}

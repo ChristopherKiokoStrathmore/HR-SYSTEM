@@ -4,7 +4,9 @@ import { createCookieClient, createServiceClient } from '@/lib/supabase-server'
 import { resolveEmployeeContext } from '@/lib/employee-context'
 
 function toDateString(d: Date) {
-  return d.toISOString().split('T')[0]
+  // Use Africa/Nairobi (EAT = UTC+3) so shift_date reflects the employee's local business day,
+  // not the UTC calendar date — matters for check-ins between 21:00-00:00 EAT.
+  return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' })
 }
 
 export async function GET(req: NextRequest) {
@@ -42,10 +44,18 @@ export async function POST(req: NextRequest) {
   const now = new Date().toISOString()
 
   const { data: existing } = await (service.from('attendance') as any)
-    .select('id, check_in_time')
+    .select('id, check_in_time, check_out_time')
     .eq('employee_id', emp.id)
     .eq('shift_date', today)
     .single()
+
+  // Already fully complete — don't allow another action today
+  if (existing?.check_in_time && existing?.check_out_time) {
+    return NextResponse.json(
+      { error: 'Attendance already completed for today', action: 'already_done' },
+      { status: 409 }
+    )
+  }
 
   const isCheckIn = !existing?.check_in_time
   const workHours = !isCheckIn && existing?.check_in_time

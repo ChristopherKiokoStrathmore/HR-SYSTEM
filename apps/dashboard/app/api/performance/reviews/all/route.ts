@@ -11,16 +11,16 @@ export async function GET(req: NextRequest) {
   let query = (supabase.from('performance_reviews') as any)
     .select(`
       *,
-      employee:employee_profiles(
+      employee:employee_profiles!inner(
         employee_number, job_title,
-        user:users(full_name, avatar_url)
+        user:users!user_id(full_name, avatar_url)
       ),
       reviewer:users!reviewer_id(full_name)
     `)
     .order('created_at', { ascending: false })
 
   if (companyId) {
-    query = query.eq('employee.company_id', companyId)
+    query = query.eq('employee_profiles.company_id', companyId)
   }
 
   const { data, error } = await query

@@ -1,20 +1,30 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { hrApiGet, HRApiError } from '@/lib/hr-api'
 
+/**
+ * GET /api/payroll/records
+ * Get payroll records for a specific employee
+ */
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient(true)
-  const { searchParams } = new URL(req.url)
-  const employeeId = searchParams.get('employeeId')
+  try {
+    const { searchParams } = new URL(req.url)
+    const employeeId = searchParams.get('employeeId')
 
-  if (!employeeId) return NextResponse.json({ error: 'employeeId required' }, { status: 400 })
+    if (!employeeId) {
+      return NextResponse.json({ error: 'employeeId required' }, { status: 400 })
+    }
 
-  const { data, error } = await supabase
-    .from('payroll_records')
-    .select('*, payroll_run:payroll_runs(period_month, period_year)')
-    .eq('employee_id', employeeId)
-    .order('created_at', { ascending: false })
+    const data = await hrApiGet('/payroll-records/', {
+      employee_id: employeeId,
+    })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
+    return NextResponse.json({ data })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    console.error('Failed to fetch payroll records:', err)
+    return NextResponse.json({ error: 'Failed to fetch payroll records' }, { status: 500 })
+  }
 }

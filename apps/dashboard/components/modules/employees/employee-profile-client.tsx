@@ -16,6 +16,7 @@ import { TabPayroll } from './tabs/tab-payroll'
 import { TabPerformance } from './tabs/tab-performance'
 import { TabTraining } from './tabs/tab-training'
 import { TabMedical } from './tabs/tab-medical'
+import { TabBackgroundChecks } from './tabs/tab-background-checks'
 import { TabActivityLog } from './tabs/tab-activity-log'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +29,7 @@ const TABS = [
   { id: 'performance', label: 'Performance' },
   { id: 'training', label: 'Training' },
   { id: 'medical', label: 'Medical' },
+  { id: 'background', label: 'Background Checks' },
   { id: 'activity', label: 'Activity Log' },
 ] as const
 
@@ -144,6 +146,7 @@ export function EmployeeProfileClient({ id }: { id: string }) {
         {activeTab === 'performance' && <TabPerformance employeeId={id} />}
         {activeTab === 'training' && <TabTraining employeeId={id} companyId={employee.company_id} />}
         {activeTab === 'medical' && <TabMedical employeeId={id} />}
+        {activeTab === 'background' && <TabBackgroundChecks employeeId={id} />}
         {activeTab === 'activity' && <TabActivityLog employeeId={id} />}
       </div>
 

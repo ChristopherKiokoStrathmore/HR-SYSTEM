@@ -1,53 +1,91 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { getSessionUserId } from '@/lib/get-session-user'
+import { hrApiGet, hrApiPost, HRApiError } from '@/lib/hr-api'
 
+/**
+ * GET /api/payroll/runs
+ * List all payroll runs, optionally filtered by company
+ */
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient(true)
-  const { searchParams } = new URL(req.url)
-  const companyId = searchParams.get('companyId')
+  try {
+    const { searchParams } = new URL(req.url)
+    const companyId = searchParams.get('companyId')
 
-  let query = supabase
-    .from('payroll_runs')
-    .select('*')
-    .eq('is_deleted', false)
-    .order('period_year', { ascending: false })
-    .order('period_month', { ascending: false })
+    const data = await hrApiGet<Array<Record<string, unknown>>>('/payroll-runs/', {
+      company_id: companyId || undefined,
+    })
 
-  if (companyId) query = query.eq('company_id', companyId)
+    // Add derived fields for UI compatibility
+    const enrichedData = (Array.isArray(data) ? data : []).map(run => {
+      const periodStart = run.period_start as string
+      const date = periodStart ? new Date(periodStart) : new Date()
 
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
+      // Calculate total_deductions from individual components
+      const totalDeductions =
+        (Number(run.total_paye) || 0) +
+        (Number(run.total_nssf) || 0) +
+        (Number(run.total_nhif) || 0) +
+        (Number(run.total_housing_levy) || 0) +
+        (Number(run.total_helb) || 0)
+
+      return {
+        ...run,
+        period_month: date.getMonth() + 1,
+        period_year: date.getFullYear(),
+        total_deductions: totalDeductions,
+      }
+    })
+
+    return NextResponse.json({ data: enrichedData })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    console.error('Failed to fetch payroll runs:', err)
+    return NextResponse.json({ error: 'Failed to fetch payroll runs' }, { status: 500 })
+  }
 }
 
+/**
+ * POST /api/payroll/runs
+ * Create a new payroll run
+ */
 export async function POST(req: NextRequest) {
   const limited = await checkRateLimit(req, 'moderate')
   if (limited) return limited
 
-  const supabase = createServerClient(true)
-  const body = await req.json()
-  const userId = await getSessionUserId()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const body = await req.json()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from('payroll_runs') as any)
-    .insert({
-      company_id: body.company_id,
-      period_month: body.period_month,
-      period_year: body.period_year,
-      status: 'draft',
-      total_gross: 0,
-      total_deductions: 0,
-      total_net: 0,
-      run_by: userId,
-      tenant_id: body.company_id,
-    })
-    .select()
-    .single()
+    // Map frontend format to Django API format
+    const payload: Record<string, unknown> = {
+      period_start: body.period_start,
+      period_end: body.period_end,
+      pay_date: body.pay_date,
+      notes: body.notes,
+      // If frontend sends period_month/period_year, convert to dates
+      ...(body.period_month && body.period_year && !body.period_start
+        ? {
+            period_start: `${body.period_year}-${String(body.period_month).padStart(2, '0')}-01`,
+            period_end: new Date(body.period_year, body.period_month, 0).toISOString().split('T')[0],
+          }
+        : {}),
+    }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data }, { status: 201 })
+    // Include company_id if provided
+    if (body.company_id) {
+      payload.company_id = body.company_id
+    }
+
+    const data = await hrApiPost('/payroll-runs/', payload)
+
+    return NextResponse.json({ data }, { status: 201 })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    console.error('Failed to create payroll run:', err)
+    return NextResponse.json({ error: 'Failed to create payroll run' }, { status: 500 })
+  }
 }

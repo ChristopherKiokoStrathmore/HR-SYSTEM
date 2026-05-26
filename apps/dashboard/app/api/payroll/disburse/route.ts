@@ -1,47 +1,81 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { hrApiPost, HRApiError } from '@/lib/hr-api'
 
-// Demo-mode disbursement â€” marks all pending records as paid with a generated reference.
-// Wire real Daraja / banking API credentials before going to production.
+/**
+ * POST /api/payroll/disburse
+ *
+ * Initiates payroll disbursement via PesaPal through the Django backend.
+ *
+ * Body: {
+ *   runId: string,
+ *   method?: 'bank' | 'mpesa' | 'airtel' | 'all',
+ *   recordIds?: string[]  // optional: disburse specific records only
+ * }
+ */
 export async function POST(req: NextRequest) {
   const limited = await checkRateLimit(req, 'moderate')
   if (limited) return limited
 
-  const supabase = createServerClient(true)
-  const { runId, method } = (await req.json()) as { runId: string; method: 'mpesa' | 'bank' | 'airtel' }
+  try {
+    const body = await req.json()
+    const { runId, method = 'all', recordIds } = body as {
+      runId: string
+      method?: 'bank' | 'mpesa' | 'airtel' | 'all'
+      recordIds?: string[]
+    }
 
-  if (!runId) return NextResponse.json({ error: 'runId required' }, { status: 400 })
+    if (!runId) {
+      return NextResponse.json({ error: 'runId required' }, { status: 400 })
+    }
 
-  const ref = `SL-${Date.now()}-${method.toUpperCase()}`
+    // Build the payload for Django API
+    const payload: Record<string, unknown> = {}
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: recErr } = await (supabase.from('payroll_records') as any)
-    .update({
-      payment_status: 'paid',
-      payment_reference: ref,
-      paid_at: new Date().toISOString(),
+    if (recordIds && recordIds.length > 0) {
+      payload.record_ids = recordIds
+    }
+
+    if (method !== 'all') {
+      payload.payment_methods = [method]
+    }
+
+    // Call Django API to disburse
+    const data = await hrApiPost<{
+      message?: string
+      batches?: Array<{
+        id: string
+        payment_method: string
+        status: string
+        record_count: number
+        successful_count: number
+        failed_count: number
+      }>
+    }>(`/payroll-runs/${runId}/disburse/`, payload)
+
+    // Transform batches to frontend format
+    const batches = (data.batches || []).map(b => ({
+      method: b.payment_method,
+      success: b.status !== 'failed',
+      processed: b.record_count,
+    }))
+
+    const totalProcessed = batches.reduce((sum, b) => sum + (b.processed || 0), 0)
+
+    return NextResponse.json({
+      success: true,
+      data,
+      batches,
+      totalProcessed,
+      demo: false,
+      reference: `SL-${Date.now()}`,
     })
-    .eq('payroll_run_id', runId)
-    .eq('payment_status', 'pending')
-
-  if (recErr) return NextResponse.json({ error: recErr.message }, { status: 500 })
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from('payroll_runs') as any)
-    .update({ status: 'completed', completed_at: new Date().toISOString() })
-    .eq('id', runId)
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  return NextResponse.json({
-    data,
-    reference: ref,
-    demo: true,
-  }, {
-    headers: { 'X-Demo-Mode': 'true' },
-  })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    console.error('Disbursement error:', err)
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
 }

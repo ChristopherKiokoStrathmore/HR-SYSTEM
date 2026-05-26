@@ -17,13 +17,13 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const companyId = searchParams.get('companyId')
-  if (!companyId) return NextResponse.json({ error: 'companyId required' }, { status: 400 })
-
   const supabase = createServerClient(true)
-  const { data, error } = await (supabase.from('payroll_runs') as any)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let psQuery = (supabase.from('payroll_runs') as any)
     .select('id, period_month, period_year, total_gross, total_deductions, total_net, status')
-    .eq('company_id', companyId)
     .eq('is_deleted', false)
+  if (companyId) psQuery = psQuery.eq('company_id', companyId)
+  const { data, error } = await psQuery
     .order('period_year', { ascending: false })
     .order('period_month', { ascending: false })
     .limit(12) as { data: RunRow[] | null; error: unknown }

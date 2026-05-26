@@ -1,322 +1,277 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import {
-  usePayrollRuns, useCreatePayrollRun,
-  useProcessPayrollRun, useDisbursePayroll,
+  useEmployeesWithPaymentStatus,
+  usePaymentHistory,
+  usePayEmployees,
 } from '@/lib/hooks/use-payroll'
-import { StatusBadge } from '@/components/ui/badge'
-import { SkeletonTable } from '@/components/ui/skeleton'
-import { Modal } from '@/components/ui/modal'
-import { toast } from '@/lib/toast'
-import { formatKES, monthYearLabel } from '@hr/shared'
-import type { PayrollRun } from '@hr/shared'
 import { useStore } from '@/lib/store'
-import {
-  Plus, Play, CreditCard, CheckCircle,
-  DollarSign, Users, TrendingUp, Loader2,
-} from 'lucide-react'
+import { toast } from '@/lib/toast'
+import { formatKES } from '@hr/shared'
 import { cn } from '@/lib/utils'
+import {
+  Users,
+  Clock,
+  DollarSign,
+  CheckCircle,
+  AlertCircle,
+  TrendingUp,
+} from 'lucide-react'
 
-const MONTHS = [
-  'January','February','March','April','May','June',
-  'July','August','September','October','November','December',
-]
+// Import new components
+import { PaymentSourceSelector } from './payment-source-selector'
+import { DepartmentBadges } from './department-badges'
+import { EmployeeSalaryTable } from './employee-salary-table'
+import { PaymentHistoryTable } from './payment-history-table'
+import { PayEmployeesModal } from './pay-employees-modal'
 
-function NewRunModal({
-  open, companyId, onClose,
-}: {
-  open: boolean; companyId: string; onClose: () => void
-}) {
-  const now = new Date()
-  const [month, setMonth] = useState(now.getMonth() + 1)
-  const [year, setYear] = useState(now.getFullYear())
-  const create = useCreatePayrollRun()
+const TABS = [
+  { id: 'employees', label: 'Pay Employees', icon: Users },
+  { id: 'history', label: 'Payment History', icon: Clock },
+] as const
 
-  async function handleCreate() {
-    try {
-      await create.mutateAsync({ company_id: companyId, period_month: month, period_year: year })
-      toast.success('Payroll run created')
-      onClose()
-    } catch (e) {
-      toast.error('Failed to create run', String(e))
-      onClose()
-    }
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title="New Payroll Run" size="sm">
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-text-body mb-1.5">Month</label>
-          <select className="input" value={month} onChange={e => setMonth(Number(e.target.value))}>
-            {MONTHS.map((m, i) => (
-              <option key={m} value={i + 1}>{m}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-text-body mb-1.5">Year</label>
-          <input
-            type="number" className="input"
-            value={year} min={2020} max={2030}
-            onChange={e => setYear(Number(e.target.value))}
-          />
-        </div>
-        <div className="flex gap-3 pt-2">
-          <button onClick={onClose} className="btn-ghost flex-1">Cancel</button>
-          <button
-            onClick={handleCreate}
-            disabled={create.isPending}
-            className="btn-primary flex-1 flex items-center justify-center gap-2"
-          >
-            {create.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-            Create Run
-          </button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
-
-function DisburseModal({
-  open, run, onClose,
-}: {
-  open: boolean; run: PayrollRun | null; onClose: () => void
-}) {
-  const [method, setMethod] = useState<'mpesa' | 'bank' | 'airtel'>('bank')
-  const disburse = useDisbursePayroll()
-
-  if (!run) return null
-
-  async function handleDisburse() {
-    try {
-      const res = await disburse.mutateAsync({ runId: run!.id, method })
-      toast.success(`Disbursed via ${method.toUpperCase()} — Ref: ${res.reference}`)
-      onClose()
-    } catch (e) {
-      toast.error('Disbursement failed', String(e))
-    }
-  }
-
-  return (
-    <Modal open={open} onClose={onClose} title="Disburse Payroll" size="sm">
-      <div className="space-y-4">
-        <div className="card bg-surface p-4 space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-text-muted">Period</span>
-            <span className="font-medium">{monthYearLabel(run.period_month, run.period_year)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-text-muted">Total Net</span>
-            <span className="font-bold text-text-primary">{formatKES(run.total_net)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-text-muted">Total Gross</span>
-            <span className="font-medium">{formatKES(run.total_gross)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-text-muted">Deductions</span>
-            <span className="font-medium text-red-600">{formatKES(run.total_deductions)}</span>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-text-body mb-1.5">Payment Method</label>
-          <div className="grid grid-cols-3 gap-2">
-            {(['bank', 'mpesa', 'airtel'] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMethod(m)}
-                className={cn(
-                  'py-2 rounded-lg border text-sm font-medium transition-colors capitalize',
-                  method === m
-                    ? 'border-accent bg-accent/10 text-accent'
-                    : 'border-border text-text-muted hover:border-accent/50'
-                )}
-              >
-                {m === 'mpesa' ? 'M-Pesa' : m === 'airtel' ? 'Airtel' : 'Bank EFT'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800">
-          This is a mock disbursement. In production, connect to the live payment gateway.
-        </div>
-
-        <div className="flex gap-3 pt-1">
-          <button onClick={onClose} className="btn-ghost flex-1">Cancel</button>
-          <button
-            onClick={handleDisburse}
-            disabled={disburse.isPending}
-            className="btn-primary flex-1 flex items-center justify-center gap-2"
-          >
-            {disburse.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-            Disburse
-          </button>
-        </div>
-      </div>
-    </Modal>
-  )
-}
+type TabId = (typeof TABS)[number]['id']
 
 export function PayrollClient() {
-  const activeCompanyId = useStore(s => s.activeCompanyId)
-  const [newRunModal, setNewRunModal] = useState(false)
-  const [disburseRun, setDisburseRun] = useState<PayrollRun | null>(null)
+  const [activeTab, setActiveTab] = useState<TabId>('employees')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [departmentFilter, setDepartmentFilter] = useState<string | null>(null)
+  const [payModalOpen, setPayModalOpen] = useState(false)
 
-  const { data, isLoading } = usePayrollRuns(activeCompanyId)
-  const processRun = useProcessPayrollRun()
+  const activeCompanyId = useStore((s) => s.activeCompanyId)
+  const paymentSource = useStore((s) => s.paymentSource)
 
-  const runs = data?.data ?? []
-  const totalPaid = runs.filter(r => r.status === 'completed').reduce((s, r) => s + r.total_net, 0)
+  // Fetch employee data with payment status
+  const {
+    data: employeeData,
+    isLoading: employeesLoading,
+  } = useEmployeesWithPaymentStatus(activeCompanyId)
 
-  async function handleProcess(runId: string) {
+  // Fetch payment history
+  const { data: historyData, isLoading: historyLoading } = usePaymentHistory(
+    activeCompanyId
+  )
+
+  // Pay employees mutation
+  const payEmployees = usePayEmployees()
+
+  const employees = employeeData?.data || []
+  const departments = employeeData?.departments || []
+  const historyRecords = historyData?.data || []
+
+  // Calculate stats
+  const stats = useMemo(() => {
+    const totalEmployees = employees.length
+    const paidCount = employees.filter((e) => e.payment_status === 'paid').length
+    const pendingCount = employees.filter((e) => e.payment_status === 'pending').length
+    const totalSalary = employees.reduce((sum, e) => sum + e.salary, 0)
+    const paidAmount = employees
+      .filter((e) => e.payment_status === 'paid')
+      .reduce((sum, e) => sum + e.salary, 0)
+
+    return { totalEmployees, paidCount, pendingCount, totalSalary, paidAmount }
+  }, [employees])
+
+  // Selection handlers
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectAll = () => {
+    // Select all pending employees (filtered by department if applicable)
+    const pendingEmployees = employees.filter((e) => {
+      if (e.payment_status !== 'pending') return false
+      if (departmentFilter && e.department !== departmentFilter) return false
+      return true
+    })
+
+    const allSelected = pendingEmployees.every((e) => selectedIds.has(e.id))
+
+    if (allSelected) {
+      // Deselect all
+      setSelectedIds(new Set())
+    } else {
+      // Select all pending
+      setSelectedIds(new Set(pendingEmployees.map((e) => e.id)))
+    }
+  }
+
+  const selectByDepartment = (department: string) => {
+    if (!department) {
+      setDepartmentFilter(null)
+      return
+    }
+    setDepartmentFilter(department)
+  }
+
+  const clearSelection = () => {
+    setSelectedIds(new Set())
+  }
+
+  const handlePayAll = () => {
+    const pendingEmployees = employees.filter((e) => e.payment_status === 'pending')
+    setSelectedIds(new Set(pendingEmployees.map((e) => e.id)))
+    setPayModalOpen(true)
+  }
+
+  const handlePayDepartment = (department: string) => {
+    const pendingEmployees = employees.filter(
+      (e) => e.payment_status === 'pending' && e.department === department
+    )
+    setSelectedIds(new Set(pendingEmployees.map((e) => e.id)))
+    setPayModalOpen(true)
+  }
+
+  // Calculate selected totals
+  const selectedEmployees = employees.filter((e) => selectedIds.has(e.id))
+  const selectedTotal = selectedEmployees.reduce((sum, e) => sum + e.salary, 0)
+
+  // Pay selected employees
+  const handlePaySelected = async () => {
+    if (!activeCompanyId) {
+      toast.error('No company selected')
+      return
+    }
+
     try {
-      const res = await processRun.mutateAsync(runId)
-      toast.success(`Calculated ${res.recordCount} payslips`)
-    } catch (e) {
-      toast.error('Processing failed', String(e))
+      const result = await payEmployees.mutateAsync({
+        employeeIds: Array.from(selectedIds),
+        paymentSource,
+        companyId: activeCompanyId,
+      })
+
+      if (result.success) {
+        toast.success(`Payment initiated for ${result.paidCount} employees`)
+        clearSelection()
+      }
+    } catch (err) {
+      toast.error('Payment failed', String(err))
     }
   }
 
   return (
     <div className="space-y-6">
-      {/* Demo mode notice */}
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 flex items-center gap-3">
-        <span className="inline-flex items-center rounded-full bg-amber-400 px-2 py-0.5 text-xs font-semibold text-white uppercase tracking-wide">Demo</span>
-        <p className="text-sm text-amber-800">
-          Payment disbursements are <strong>simulated</strong> — no real money moves. Connect Daraja / banking credentials for production.
-        </p>
-      </div>
+      {/* Payment Source Selector */}
+      <PaymentSourceSelector />
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary">Payroll</h1>
-          <p className="text-sm text-text-muted mt-0.5">{runs.length} run{runs.length !== 1 ? 's' : ''} total</p>
-        </div>
-        <button
-          onClick={() => setNewRunModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          New Run
-        </button>
-      </div>
+      {/* Department Badges */}
+      <DepartmentBadges
+        departments={departments}
+        selectedDepartment={departmentFilter}
+        onSelectDepartment={(dept) => setDepartmentFilter(dept)}
+      />
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: 'Completed Runs', value: runs.filter(r => r.status === 'completed').length, icon: CheckCircle, color: 'text-green-600' },
-          { label: 'Total Disbursed', value: formatKES(totalPaid), icon: DollarSign, color: 'text-primary' },
-          { label: 'Pending Runs', value: runs.filter(r => r.status !== 'completed').length, icon: TrendingUp, color: 'text-amber-600' },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="card flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-surface-alt flex items-center justify-center">
-              <Icon className={cn('w-5 h-5', color)} />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="card p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Users className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <p className={cn('text-xl font-bold', color)}>{value}</p>
-              <p className="text-xs text-text-muted">{label}</p>
+              <p className="text-2xl font-bold text-text-primary">
+                {stats.totalEmployees}
+              </p>
+              <p className="text-xs text-text-muted">Total Employees</p>
             </div>
           </div>
-        ))}
-      </div>
-
-      {/* Runs table */}
-      <div className="card p-0 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold text-text-primary">Payroll Runs</h3>
         </div>
-        {isLoading ? (
-          <SkeletonTable rows={5} />
-        ) : runs.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16">
-            <CreditCard className="w-12 h-12 text-border" />
-            <p className="text-text-muted text-sm">No payroll runs yet.</p>
-            <button onClick={() => setNewRunModal(true)} className="btn-primary">
-              Create first run
+
+        <div className="card p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-success/10">
+              <CheckCircle className="w-5 h-5 text-success" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-success">{stats.paidCount}</p>
+              <p className="text-xs text-text-muted">Paid This Period</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="card p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-warning/10">
+              <AlertCircle className="w-5 h-5 text-warning" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-warning">{stats.pendingCount}</p>
+              <p className="text-xs text-text-muted">Pending Payment</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="card p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-accent/10">
+              <DollarSign className="w-5 h-5 text-accent" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-text-primary">
+                {formatKES(stats.paidAmount)}
+              </p>
+              <p className="text-xs text-text-muted">Disbursed This Period</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-surface-alt rounded-xl border border-border w-fit">
+        {TABS.map((tab) => {
+          const Icon = tab.icon
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                activeTab === tab.id
+                  ? 'bg-white shadow-sm text-text-primary border border-border/50'
+                  : 'text-text-muted hover:text-text-primary'
+              )}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
             </button>
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {runs.map((run) => (
-              <PayrollRunRow
-                key={run.id}
-                run={run}
-                onProcess={() => handleProcess(run.id)}
-                onDisburse={() => setDisburseRun(run)}
-                processing={processRun.isPending && processRun.variables === run.id}
-              />
-            ))}
-          </div>
-        )}
+          )
+        })}
       </div>
 
-      <NewRunModal
-        open={newRunModal}
-        companyId={activeCompanyId ?? ''}
-        onClose={() => setNewRunModal(false)}
-      />
-      <DisburseModal
-        open={!!disburseRun}
-        run={disburseRun}
-        onClose={() => setDisburseRun(null)}
-      />
-    </div>
-  )
-}
+      {/* Tab Content */}
+      {activeTab === 'employees' ? (
+        <EmployeeSalaryTable
+          employees={employees}
+          isLoading={employeesLoading}
+          selectedIds={selectedIds}
+          departmentFilter={departmentFilter}
+          onToggleSelect={toggleSelect}
+          onSelectAll={selectAll}
+          onSelectDepartment={selectByDepartment}
+          onClearSelection={clearSelection}
+          onPaySelected={() => setPayModalOpen(true)}
+          onPayAll={handlePayAll}
+          onPayDepartment={handlePayDepartment}
+        />
+      ) : (
+        <PaymentHistoryTable records={historyRecords} isLoading={historyLoading} />
+      )}
 
-function PayrollRunRow({
-  run, onProcess, onDisburse, processing,
-}: {
-  run: PayrollRun
-  onProcess: () => void
-  onDisburse: () => void
-  processing: boolean
-}) {
-  return (
-    <div className="flex items-center gap-4 px-4 py-3">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-text-primary">
-          {monthYearLabel(run.period_month, run.period_year)}
-        </p>
-        {run.total_gross > 0 && (
-          <p className="text-xs text-text-muted mt-0.5">
-            Gross {formatKES(run.total_gross)} · Net {formatKES(run.total_net)} · Deductions {formatKES(run.total_deductions)}
-          </p>
-        )}
-      </div>
-      <StatusBadge status={run.status} />
-      <div className="flex gap-2 flex-shrink-0">
-        {run.status === 'draft' && (
-          <button
-            onClick={onProcess}
-            disabled={processing}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-            Calculate
-          </button>
-        )}
-        {run.status === 'processing' && (
-          <button
-            onClick={onDisburse}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors"
-          >
-            <CreditCard className="w-3.5 h-3.5" />
-            Disburse
-          </button>
-        )}
-        {run.status === 'completed' && (
-          <span className="flex items-center gap-1 text-xs text-green-600">
-            <CheckCircle className="w-3.5 h-3.5" />
-            Paid {run.completed_at ? new Date(run.completed_at).toLocaleDateString('en-KE') : ''}
-          </span>
-        )}
-      </div>
+      {/* Pay Modal */}
+      <PayEmployeesModal
+        open={payModalOpen}
+        selectedCount={selectedIds.size}
+        totalAmount={selectedTotal}
+        paymentSource={paymentSource}
+        onClose={() => setPayModalOpen(false)}
+        onConfirm={handlePaySelected}
+      />
     </div>
   )
 }

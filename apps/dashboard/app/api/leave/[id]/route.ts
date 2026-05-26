@@ -7,7 +7,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   const supabase = createServerClient(true)
   const { data, error } = await supabase
     .from('leaves')
-    .select('*, employee:employee_profiles(employee_number, job_title, user:users(full_name, email))')
+    .select('*, employee:employee_profiles(employee_number, job_title, user:users!user_id(full_name, email))')
     .eq('id', params.id)
     .single()
   if (error) return NextResponse.json({ error: error.message }, { status: 404 })
@@ -36,7 +36,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       *,
       employee:employee_profiles(
         job_title,
-        user:users(full_name, email)
+        user:users!user_id(full_name, email)
       )
     `)
     .single()
