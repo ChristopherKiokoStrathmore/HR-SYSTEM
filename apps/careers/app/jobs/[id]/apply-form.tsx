@@ -94,7 +94,7 @@ export function ApplyForm({ jobId, jobTitle }: Props) {
       if (data.tracking_token) {
         setTracking(data.tracking_token)
         try {
-          localStorage.setItem('sl_tracker_token', data.tracking_token)
+          sessionStorage.setItem('sl_tracker_token', data.tracking_token)
         } catch {
           // Ignore storage persistence failures so a successful submission
           // is not reported as a network error.
