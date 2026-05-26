@@ -93,7 +93,7 @@ export function ApplyForm({ jobId, jobTitle }: Props) {
       }
       if (data.tracking_token) {
         setTracking(data.tracking_token)
-        localStorage.setItem('sl_tracker_token', data.tracking_token)
+        sessionStorage.setItem('sl_tracker_token', data.tracking_token)
         window.dispatchEvent(new Event('sl-tracker-saved'))
       }
       setSubEmail(values.email)
