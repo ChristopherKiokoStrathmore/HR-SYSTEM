@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { TrackerButton } from '../components/tracker-button'
 
 export const metadata: Metadata = {
   title: {
@@ -35,25 +36,28 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </a>
 
-            <nav className="hidden sm:flex items-center gap-6 text-sm">
-              <a href="/jobs" className="text-text-muted hover:text-accent transition-colors font-medium">
-                Job Centre
-              </a>
-              <a
-                href="https://sheerlogicltd.com/about/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-text-muted hover:text-accent transition-colors font-medium"
-              >
-                About Us
-              </a>
-              <a
-                href="mailto:careers@sheerlogicltd.com"
-                className="btn-primary text-xs py-2 px-4"
-              >
-                Contact Us
-              </a>
-            </nav>
+            <div className="flex items-center gap-3">
+              <TrackerButton />
+              <nav className="hidden sm:flex items-center gap-6 text-sm">
+                <a href="/jobs" className="text-text-muted hover:text-accent transition-colors font-medium">
+                  Job Centre
+                </a>
+                <a
+                  href="https://sheerlogicltd.com/about/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-text-muted hover:text-accent transition-colors font-medium"
+                >
+                  About Us
+                </a>
+                <a
+                  href="mailto:careers@sheerlogicltd.com"
+                  className="btn-primary text-xs py-2 px-4"
+                >
+                  Contact Us
+                </a>
+              </nav>
+            </div>
           </div>
         </header>
 
