@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createServerClient } from '@hr/shared'
 import { CheckCircle2, Clock, ArrowLeft, Briefcase, Mail, Phone } from 'lucide-react'
+import { TrackerTokenSaver } from '../../../components/tracker-token-saver'
 
 export const metadata: Metadata = { title: 'Application Tracker | Sheer Logic Job Centre' }
 
@@ -86,6 +87,7 @@ export default async function TrackPage({ params }: { params: { token: string } 
 
   return (
     <div className="max-w-2xl mx-auto space-y-8 pb-20">
+      <TrackerTokenSaver token={params.token} />
 
       {/* Back */}
       <Link href="/jobs" className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-accent transition-colors group">

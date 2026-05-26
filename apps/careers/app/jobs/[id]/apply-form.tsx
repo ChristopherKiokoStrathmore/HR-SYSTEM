@@ -93,12 +93,8 @@ export function ApplyForm({ jobId, jobTitle }: Props) {
       }
       if (data.tracking_token) {
         setTracking(data.tracking_token)
-        try {
-          sessionStorage.setItem('sl_tracker_token', data.tracking_token)
-        } catch {
-          // Ignore storage persistence failures so a successful submission
-          // is not reported as a network error.
-        }
+        localStorage.setItem('sl_tracker_token', data.tracking_token)
+        window.dispatchEvent(new Event('sl-tracker-saved'))
       }
       setSubEmail(values.email)
       setSubmitState('success')

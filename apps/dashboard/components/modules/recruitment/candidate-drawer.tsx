@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   X, User, Mail, Phone, Calendar, Sparkles, CheckCircle2,
   AlertTriangle, Globe, BookOpen, ExternalLink, ChevronRight,
@@ -86,22 +86,29 @@ interface Props {
 
 export function CandidateDrawer({ candidate, onClose }: Props) {
   const [movingTo, setMovingTo] = useState<CandidateStage | null>(null)
+  const [localStage, setLocalStage] = useState<CandidateStage | null>(candidate?.current_stage ?? null)
   const moveStage = useUpdateCandidateStage()
 
-  if (!candidate) return null
+  // Sync local stage when a different candidate is opened
+  useEffect(() => {
+    setLocalStage(candidate?.current_stage ?? null)
+  }, [candidate?.id])
+
+  if (!candidate || !localStage) return null
 
   const isPortal   = candidate.source === 'portal'
   const careersUrl = process.env.NEXT_PUBLIC_CAREERS_URL ?? 'http://localhost:3002'
-  const currentStageDef = STAGES.find((s) => s.key === candidate.current_stage)
-  const nextStage = NEXT_STAGE[candidate.current_stage]
-  const nextStageLabel = NEXT_STAGE_LABEL[candidate.current_stage]
+  const currentStageDef = STAGES.find((s) => s.key === localStage)
+  const nextStage = NEXT_STAGE[localStage]
+  const nextStageLabel = NEXT_STAGE_LABEL[localStage]
   const jobTitle = (candidate as any).job_posting?.title ?? 'the position'
 
   async function handleMove(stage: CandidateStage, sendEmail = false) {
-    if (candidate!.current_stage === stage || movingTo) return
+    if (localStage === stage || movingTo) return
     setMovingTo(stage)
     try {
       await moveStage.mutateAsync({ id: candidate!.id, stage })
+      setLocalStage(stage)
       const stageName = STAGES.find((s) => s.key === stage)?.label ?? stage
       toast.success(`Moved to ${stageName}`)
 
@@ -121,7 +128,7 @@ export function CandidateDrawer({ candidate, onClose }: Props) {
     if (tpl) openMailTo(candidate!.email, tpl.subject, tpl.body)
   }
 
-  const isTerminal = candidate.current_stage === 'hired' || candidate.current_stage === 'rejected'
+  const isTerminal = localStage === 'hired' || localStage === 'rejected'
 
   return (
     <>
@@ -200,7 +207,7 @@ export function CandidateDrawer({ candidate, onClose }: Props) {
               <p className="text-[10px] font-bold text-text-muted uppercase tracking-widest">Move to Stage</p>
               <div className="grid grid-cols-3 gap-2">
                 {STAGES.map((s) => {
-                  const isCurrent = candidate.current_stage === s.key
+                  const isCurrent = localStage === s.key
                   const isLoading = movingTo === s.key
                   return (
                     <button
