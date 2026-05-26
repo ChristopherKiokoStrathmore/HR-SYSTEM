@@ -13,8 +13,10 @@ export interface PayrollRecord {
   overtime: number
   bonus: number
   gross_pay: number
+  gross_salary: number  // Alias for gross_pay
   nssf_employee: number
   nssf_employer: number
+  nssf: number  // Total NSSF
   nhif: number
   paye: number
   housing_levy_employee: number
@@ -23,10 +25,12 @@ export interface PayrollRecord {
   other_deductions: number
   total_deductions: number
   net_pay: number
+  net_salary: number  // Alias for net_pay
   payment_status: 'pending' | 'processing' | 'paid' | 'failed'
   payment_method: 'bank' | 'mpesa' | 'airtel'
   payment_reference: string | null
   payment_date: string | null
+  paid_at: string | null
 }
 
 export interface PayrollRun {
@@ -51,6 +55,18 @@ export interface PayrollRun {
   approved_at: string | null
   created_at: string
   records?: PayrollRecord[]
+  completed_at: string | null
+  // Derived/computed fields for UI compatibility
+  period_month: number
+  period_year: number
+  total_deductions: number
+}
+
+export interface PayrollRecordWithEmployee extends PayrollRecord {
+  employee_details?: {
+    employee_number: string
+    full_name: string
+  }
 }
 
 export interface PaymentStatusSummary {
@@ -105,10 +121,13 @@ export function useCreatePayrollRun() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (body: {
-      period_start: string
-      period_end: string
-      pay_date: string
+      period_start?: string
+      period_end?: string
+      pay_date?: string
       notes?: string
+      company_id?: string
+      period_month?: number
+      period_year?: number
     }) => {
       const res = await fetch('/api/payroll/runs', {
         method: 'POST',
@@ -161,9 +180,19 @@ export function useProcessPayrollRun() {
   return useCalculatePayroll()
 }
 
+interface DisburseBatch {
+  method: string
+  success: boolean
+  processed?: number
+  error?: string
+}
+
 interface DisburseResult {
   success: boolean
-  data: PayrollRun
+  data?: PayrollRun
+  batches: DisburseBatch[]
+  totalProcessed: number
+  demo: boolean
   reference: string
 }
 
