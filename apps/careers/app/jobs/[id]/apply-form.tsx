@@ -91,7 +91,10 @@ export function ApplyForm({ jobId, jobTitle }: Props) {
         setSubmitState('error')
         return
       }
-      if (data.tracking_token) setTracking(data.tracking_token)
+      if (data.tracking_token) {
+        setTracking(data.tracking_token)
+        localStorage.setItem('sl_tracker_token', data.tracking_token)
+      }
       setSubEmail(values.email)
       setSubmitState('success')
     } catch {
