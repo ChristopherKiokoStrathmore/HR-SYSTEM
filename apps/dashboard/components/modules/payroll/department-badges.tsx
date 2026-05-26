@@ -18,6 +18,11 @@ export function DepartmentBadges({
     return null
   }
 
+  const visibleDepartments = [...departments]
+    .sort((a, b) => b.totalEmployees - a.totalEmployees)
+    .slice(0, 5)
+  const extraCount = departments.length - visibleDepartments.length
+
   const getStatusColor = (status: DepartmentPaymentStatus['status']) => {
     switch (status) {
       case 'all_paid':
@@ -43,7 +48,7 @@ export function DepartmentBadges({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-text-body">Departments</span>
+        <span className="text-sm font-medium text-text-body">Major Departments</span>
         {selectedDepartment && (
           <button
             onClick={() => onSelectDepartment(null)}
@@ -55,7 +60,7 @@ export function DepartmentBadges({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {departments.map((dept) => (
+        {visibleDepartments.map((dept) => (
           <button
             key={dept.department}
             onClick={() =>
@@ -78,6 +83,12 @@ export function DepartmentBadges({
             </span>
           </button>
         ))}
+
+        {extraCount > 0 && (
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/80 bg-surface-alt px-3 py-1.5 text-xs text-text-muted">
+            +{extraCount} more
+          </div>
+        )}
       </div>
 
       {/* Legend */}
