@@ -138,11 +138,6 @@ export function DashboardHomeClient() {
           className="w-10 h-0.5 mt-2"
           style={{ background: 'linear-gradient(90deg, #F47920, #F9A05C)' }}
         />
-        {!companyId && (
-          <p className="text-text-muted text-sm mt-2">
-            Select a company in the header to view live data.
-          </p>
-        )}
       </motion.div>
 
       {/* Stat cards with stagger */}
@@ -189,8 +184,7 @@ export function DashboardHomeClient() {
             <AlertTriangle className="w-4 h-4 text-danger" />
             Contract Expiry Alerts (Next 30 Days)
           </h2>
-          {!companyId && <p className="text-text-muted text-sm">Select a company to view.</p>}
-          {companyId && !data?.contractExpiries?.length && (
+          {data !== undefined && !data?.contractExpiries?.length && (
             <p className="text-text-muted text-sm">No contracts expiring in the next 30 days.</p>
           )}
           <div className="space-y-2">
@@ -218,8 +212,7 @@ export function DashboardHomeClient() {
             <Calendar className="w-4 h-4 text-accent" />
             Pending Leave Approvals
           </h2>
-          {!companyId && <p className="text-text-muted text-sm">Select a company to view.</p>}
-          {companyId && !data?.pendingLeave?.length && (
+          {data !== undefined && !data?.pendingLeave?.length && (
             <p className="text-text-muted text-sm">No pending leave requests.</p>
           )}
           <div className="space-y-2">

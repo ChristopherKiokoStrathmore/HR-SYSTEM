@@ -5,6 +5,7 @@ import { useStore } from '@/lib/store'
 import { createBrowserClient } from '@hr/shared'
 import { useRouter, usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
 
 function CompanySwitcher() {
   const { activeCompanyId, setActiveCompanyId } = useStore()
@@ -15,7 +16,16 @@ function CompanySwitcher() {
   })
   const companies: { id: string; name: string }[] = data?.data ?? []
 
-  if (companies.length <= 1) return null
+  // Auto-select the first company, or reset a stale persisted ID that no longer exists
+  useEffect(() => {
+    if (companies.length === 0) return
+    const ids = companies.map((c) => c.id)
+    if (!activeCompanyId || !ids.includes(activeCompanyId)) {
+      setActiveCompanyId(companies[0].id)
+    }
+  }, [companies, activeCompanyId, setActiveCompanyId])
+
+  if (companies.length < 2) return null
   return (
     <div className="flex items-center gap-1.5 rounded-xl border border-border bg-surface-alt px-2.5 py-1.5">
       <Building2 className="w-3.5 h-3.5 text-text-muted flex-shrink-0" />
