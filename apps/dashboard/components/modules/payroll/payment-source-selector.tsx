@@ -61,7 +61,7 @@ export function PaymentSourceSelector() {
               : 'bg-primary'
           )}
         />
-        Payments via PesaPal {paymentMethod === 'bank' ? 'Bank EFT' : paymentMethod === 'mpesa' ? 'M-Pesa' : 'Airtel Money'}
+        Payments via {paymentMethod === 'mpesa' ? 'IntaSend M-Pesa' : paymentMethod === 'bank' ? 'PesaPal Bank EFT' : 'PesaPal Airtel Money'}
       </div>
     </div>
   )

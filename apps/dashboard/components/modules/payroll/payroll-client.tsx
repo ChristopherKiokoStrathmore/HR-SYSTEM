@@ -131,7 +131,7 @@ export function PayrollClient() {
   const selectedEmployees = employees.filter((e) => selectedIds.has(e.id))
   const selectedTotal = selectedEmployees.reduce((sum, e) => sum + e.salary, 0)
 
-  // Pay selected employees via PesaPal
+  // Pay selected employees (M-Pesa via IntaSend, Bank/Airtel via PesaPal)
   const handlePaySelected = async (paymentMethod: PaymentMethodType) => {
     if (!activeCompanyId) {
       toast.error('No company selected')
@@ -263,7 +263,7 @@ export function PayrollClient() {
         <PaymentHistoryTable records={historyRecords} isLoading={historyLoading} />
       )}
 
-      {/* Pay Modal with PesaPal Payment Source Selection */}
+      {/* Pay Modal with Payment Source Selection */}
       <PayEmployeesModal
         open={payModalOpen}
         selectedCount={selectedIds.size}

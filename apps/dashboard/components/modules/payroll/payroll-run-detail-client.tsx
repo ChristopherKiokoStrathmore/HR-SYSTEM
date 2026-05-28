@@ -79,7 +79,7 @@ function DisburseSelectedModal({
         </div>
 
         <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-xs text-blue-800">
-          Payments will be processed via PesaPal (M-Pesa, Airtel Money, Bank EFT).
+          Payments will be processed via IntaSend (M-Pesa) and PesaPal (Airtel Money, Bank EFT).
         </div>
 
         <div className="flex gap-3 pt-1">
