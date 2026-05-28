@@ -25,6 +25,7 @@ interface DepartmentPaymentStatus {
 /**
  * GET /api/payroll/employee-status
  * Get all employees for payroll and derive a simple department summary.
+ * Checks payroll_records to determine actual payment status for current period.
  */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -52,20 +53,65 @@ export async function GET(req: NextRequest) {
     }
 
     const rows = (data ?? []) as any[]
+    const employeeIds = rows.map((r) => r.id)
 
-    const employeeSalaryRows: EmployeeSalaryRow[] = rows.map((r) => ({
-      id: r.id,
-      employee_id: r.id,
-      employee_name: r.user?.full_name ?? '',
-      employee_number: r.employee_number,
-      department: r.department ?? null,
-      salary: typeof r.salary === 'string' ? parseFloat(r.salary) : r.salary ?? 0,
-      payment_status: 'pending',
-      payment_method: (r.payment_method as 'bank' | 'mpesa' | 'airtel') || 'bank',
-      last_paid_at: null,
-    }))
+    // Get current period (month/year)
+    const now = new Date()
+    const currentMonth = now.getMonth() + 1
+    const currentYear = now.getFullYear()
 
-    // Build simple department summary
+    // Calculate date range for current period
+    const periodStart = new Date(currentYear, currentMonth - 1, 1).toISOString()
+    const periodEnd = new Date(currentYear, currentMonth, 0, 23, 59, 59).toISOString()
+
+    // Fetch payroll records for the current period to check payment status
+    const paymentStatusMap = new Map<string, { status: 'pending' | 'processing' | 'paid' | 'failed'; paid_at: string | null }>()
+
+    if (employeeIds.length > 0) {
+      const { data: payrollRecords, error: payrollError } = await supabase
+        .from('payroll_records')
+        .select('employee_id, payment_status, paid_at')
+        .in('employee_id', employeeIds)
+        .gte('created_at', periodStart)
+        .lte('created_at', periodEnd)
+
+      if (payrollError) {
+        console.error('Error fetching payroll records:', payrollError)
+        // Continue without payment status - default to pending
+      } else if (payrollRecords) {
+        for (const record of payrollRecords as any[]) {
+          // If employee has multiple records, use the most recent/best status
+          const existing = paymentStatusMap.get(record.employee_id)
+          const recordStatus = record.payment_status || 'pending'
+
+          // Priority: paid > processing > failed > pending
+          const statusPriority: Record<string, number> = { paid: 4, processing: 3, failed: 2, pending: 1 }
+          if (!existing || statusPriority[recordStatus] > statusPriority[existing.status]) {
+            paymentStatusMap.set(record.employee_id, {
+              status: recordStatus,
+              paid_at: record.paid_at,
+            })
+          }
+        }
+      }
+    }
+
+    const employeeSalaryRows: EmployeeSalaryRow[] = rows.map((r) => {
+      const paymentInfo = paymentStatusMap.get(r.id)
+      return {
+        id: r.id,
+        employee_id: r.id,
+        employee_name: r.user?.full_name ?? '',
+        employee_number: r.employee_number,
+        department: r.department ?? null,
+        salary: typeof r.salary === 'string' ? parseFloat(r.salary) : r.salary ?? 0,
+        payment_status: paymentInfo?.status || 'pending',
+        payment_method: (r.payment_method as 'bank' | 'mpesa' | 'airtel') || 'bank',
+        last_paid_at: paymentInfo?.paid_at || null,
+      }
+    })
+
+    // Build simple department summary based on actual payment status
     const deptMap = new Map<string, { total: number; paid: number; pending: number }>()
     for (const e of employeeSalaryRows) {
       const dept = e.department || 'Unspecified'
