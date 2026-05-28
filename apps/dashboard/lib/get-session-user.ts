@@ -20,6 +20,16 @@ export async function getSessionUserId(): Promise<string | null> {
       },
     }
   )
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.user.id ?? null
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession()
+    if (error) {
+      // Handle invalid refresh token gracefully
+      console.error('Auth error in getSessionUserId:', error.message)
+      return null
+    }
+    return session?.user.id ?? null
+  } catch (err) {
+    console.error('Unexpected auth error:', err)
+    return null
+  }
 }
