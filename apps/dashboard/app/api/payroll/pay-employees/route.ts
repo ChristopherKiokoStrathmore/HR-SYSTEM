@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { hrApiPost, hrApiGet, hrApiDelete, HRApiError } from '@/lib/hr-api'
 
-// PesaPal payment methods
+// Payment methods
 type PaymentMethodType = 'mpesa' | 'bank' | 'airtel'
 
 // Legacy payment source type for backwards compatibility
@@ -11,12 +11,12 @@ type PaymentSourceType = 'mpesa_wallet' | 'bank_wallet'
 
 /**
  * POST /api/payroll/pay-employees
- * Pay selected employees via PesaPal - creates/uses a payroll run and disburses to selected employees
+ * Pay selected employees - creates/uses a payroll run and disburses to selected employees
  *
- * Supports three payment methods through PesaPal:
- * - bank: Bank EFT transfer
- * - mpesa: M-Pesa B2C (Business to Customer)
- * - airtel: Airtel Money
+ * Supports three payment methods:
+ * - mpesa: M-Pesa B2C via IntaSend (primary provider for M-Pesa)
+ * - bank: Bank EFT transfer via PesaPal
+ * - airtel: Airtel Money via PesaPal
  */
 export async function POST(req: NextRequest) {
   const limited = await checkRateLimit(req, 'moderate')

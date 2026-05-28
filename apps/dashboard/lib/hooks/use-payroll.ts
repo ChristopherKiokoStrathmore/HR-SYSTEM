@@ -334,8 +334,11 @@ export function usePaymentHistory(companyId: string | null) {
 }
 
 /**
- * Pay selected employees via PesaPal
- * Supports payment methods: bank (EFT), mpesa (M-Pesa B2C), airtel (Airtel Money)
+ * Pay selected employees
+ * Supports payment methods:
+ * - mpesa: M-Pesa B2C via IntaSend
+ * - bank: Bank EFT via PesaPal
+ * - airtel: Airtel Money via PesaPal
  */
 export function usePayEmployees() {
   const qc = useQueryClient()

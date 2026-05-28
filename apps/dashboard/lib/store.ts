@@ -1,7 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-// Payment methods supported by PesaPal
+// Payment methods supported by the system
+// - M-Pesa: Processed via IntaSend B2C
+// - Bank: Processed via PesaPal EFT
+// - Airtel: Processed via PesaPal
 export type PaymentMethodType = 'mpesa' | 'bank' | 'airtel'
 
 // Legacy type for backwards compatibility
@@ -15,6 +18,7 @@ export interface PaymentSource {
   icon: 'smartphone' | 'banknote' | 'phone'
   color: string
   description: string
+  provider: 'intasend' | 'pesapal'
 }
 
 export const PAYMENT_SOURCES: PaymentSource[] = [
@@ -25,6 +29,7 @@ export const PAYMENT_SOURCES: PaymentSource[] = [
     icon: 'banknote',
     color: 'primary',
     description: 'Pay via bank EFT transfer',
+    provider: 'pesapal',
   },
   {
     id: 'mpesa',
@@ -32,7 +37,8 @@ export const PAYMENT_SOURCES: PaymentSource[] = [
     method: 'mpesa',
     icon: 'smartphone',
     color: 'green',
-    description: 'Pay via Safaricom M-Pesa',
+    description: 'Pay via IntaSend M-Pesa B2C',
+    provider: 'intasend',
   },
   {
     id: 'airtel',
@@ -41,6 +47,7 @@ export const PAYMENT_SOURCES: PaymentSource[] = [
     icon: 'phone',
     color: 'red',
     description: 'Pay via Airtel Money',
+    provider: 'pesapal',
   },
 ]
 

@@ -225,12 +225,12 @@ export function PayEmployeesModal({
               Payment via {currentSource.name}
             </p>
             <p className="opacity-80">
-              Funds will be disbursed through PesaPal{' '}
-              {currentSource.method === 'bank'
-                ? 'Bank EFT'
-                : currentSource.method === 'mpesa'
-                ? 'M-Pesa B2C'
-                : 'Airtel Money'}{' '}
+              Funds will be disbursed through{' '}
+              {currentSource.method === 'mpesa'
+                ? 'IntaSend M-Pesa B2C'
+                : currentSource.method === 'bank'
+                ? 'PesaPal Bank EFT'
+                : 'PesaPal Airtel Money'}{' '}
               to {selectedCount} employee{selectedCount !== 1 ? 's' : ''}.
             </p>
           </div>
@@ -239,7 +239,7 @@ export function PayEmployeesModal({
         {/* Warning */}
         <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800">
           Please confirm that you want to proceed with this payment. This action
-          will initiate transfers to the selected employees via PesaPal.
+          will initiate transfers to the selected employees.
         </div>
 
         {/* Actions */}

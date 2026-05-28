@@ -6,7 +6,9 @@ import { hrApiPost, HRApiError } from '@/lib/hr-api'
 /**
  * POST /api/payroll/disburse
  *
- * Initiates payroll disbursement via PesaPal through the Django backend.
+ * Initiates payroll disbursement through the Django backend.
+ * - M-Pesa payments are processed via IntaSend B2C
+ * - Bank and Airtel payments are processed via PesaPal
  *
  * Body: {
  *   runId: string,
