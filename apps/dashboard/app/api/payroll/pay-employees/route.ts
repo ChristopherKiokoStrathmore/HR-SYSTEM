@@ -9,6 +9,11 @@ type PaymentMethodType = 'mpesa' | 'bank' | 'airtel'
 // Legacy payment source type for backwards compatibility
 type PaymentSourceType = 'mpesa_wallet' | 'bank_wallet'
 
+// Test mode configuration - for development/testing only
+const TEST_MODE = true // Set to false for production
+const TEST_PHONE = '0720523299'
+const TEST_AMOUNT = 10 // KES
+
 /**
  * POST /api/payroll/pay-employees
  * Pay selected employees - creates/uses a payroll run and disburses to selected employees
@@ -17,6 +22,9 @@ type PaymentSourceType = 'mpesa_wallet' | 'bank_wallet'
  * - mpesa: M-Pesa B2C via IntaSend (primary provider for M-Pesa)
  * - bank: Bank EFT transfer via PesaPal
  * - airtel: Airtel Money via PesaPal
+ *
+ * TEST MODE: When TEST_MODE is true and payment method is M-Pesa,
+ * sends 10 KSH to test phone number instead of actual employee payments.
  */
 export async function POST(req: NextRequest) {
   const limited = await checkRateLimit(req, 'moderate')
@@ -198,6 +206,53 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('[pay-employees] Step 5: Disbursing to employees:', employeeIds.length, 'via', method)
+
+    // TEST MODE: For M-Pesa, send test payment instead of actual salaries
+    if (TEST_MODE && method === 'mpesa') {
+      console.log('[pay-employees] TEST MODE: Sending test payment of', TEST_AMOUNT, 'KES to', TEST_PHONE)
+
+      try {
+        const testResult = await hrApiPost<{
+          success: boolean
+          tracking_id?: string
+          error?: string
+          message?: string
+        }>('/intasend/send-mpesa/', {
+          phone: TEST_PHONE,
+          amount: TEST_AMOUNT,
+          name: 'Test Payment',
+          reference: `TEST-${Date.now()}`,
+          narrative: `Test payment for ${employeeIds.length} employees`
+        })
+
+        console.log('[pay-employees] Test payment result:', testResult)
+
+        if (testResult.success) {
+          return NextResponse.json({
+            success: true,
+            paidCount: employeeIds.length,
+            failedCount: 0,
+            paymentMethod: method,
+            reference: testResult.tracking_id || `TEST-${Date.now()}`,
+            testMode: true,
+            message: `TEST MODE: Sent KES ${TEST_AMOUNT} to ${TEST_PHONE} (representing ${employeeIds.length} employee payments)`,
+          })
+        } else {
+          return NextResponse.json({
+            success: false,
+            error: testResult.error || 'Test payment failed',
+            testMode: true,
+          }, { status: 400 })
+        }
+      } catch (testErr) {
+        console.error('[pay-employees] Test payment error:', testErr)
+        return NextResponse.json({
+          success: false,
+          error: String(testErr),
+          testMode: true,
+        }, { status: 500 })
+      }
+    }
 
     // Disburse to selected employees using PesaPal payment method
     let disburseResult: {
