@@ -65,6 +65,54 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // TEST MODE: For M-Pesa, send test payment instead of actual salaries
+    // This bypasses all payroll run logic and sends directly via IntaSend
+    if (TEST_MODE && method === 'mpesa') {
+      console.log('[pay-employees] TEST MODE: Sending test payment of', TEST_AMOUNT, 'KES to', TEST_PHONE)
+
+      try {
+        const testResult = await hrApiPost<{
+          success: boolean
+          tracking_id?: string
+          error?: string
+          message?: string
+        }>('/intasend/send-mpesa/', {
+          phone: TEST_PHONE,
+          amount: TEST_AMOUNT,
+          name: 'Test Payment',
+          reference: `TEST-${Date.now()}`,
+          narrative: `Test payment for ${employeeIds.length} employees`
+        })
+
+        console.log('[pay-employees] Test payment result:', testResult)
+
+        if (testResult.success) {
+          return NextResponse.json({
+            success: true,
+            paidCount: employeeIds.length,
+            failedCount: 0,
+            paymentMethod: method,
+            reference: testResult.tracking_id || `TEST-${Date.now()}`,
+            testMode: true,
+            message: `TEST MODE: Sent KES ${TEST_AMOUNT} to ${TEST_PHONE} (representing ${employeeIds.length} employee payments)`,
+          })
+        } else {
+          return NextResponse.json({
+            success: false,
+            error: testResult.error || 'Test payment failed',
+            testMode: true,
+          }, { status: 400 })
+        }
+      } catch (testErr) {
+        console.error('[pay-employees] Test payment error:', testErr)
+        return NextResponse.json({
+          success: false,
+          error: String(testErr),
+          testMode: true,
+        }, { status: 500 })
+      }
+    }
+
     // Get current period
     const now = new Date()
     const periodMonth = now.getMonth() + 1
@@ -177,8 +225,37 @@ export async function POST(req: NextRequest) {
         payrollRunId = newRun.id
         console.log('[pay-employees] Created payroll run:', payrollRunId)
       } catch (err) {
-        console.error('[pay-employees] Failed to create payroll run:', err)
-        throw err
+        // Check if error is "payroll run already exists"
+        const errStr = String(err)
+        if (errStr.includes('already exists') || errStr.includes('A payroll run already exists')) {
+          console.log('[pay-employees] Payroll run already exists, fetching it...')
+          // Re-fetch and find the existing run
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const refetchResponse: any = await hrApiGet('/payroll-runs/', {
+              company_id: companyId,
+              period_month: periodMonth,
+              period_year: periodYear,
+            })
+            const refetchedRuns = refetchResponse?.results || refetchResponse || []
+            const existingRun = refetchedRuns.find((r: { period_month?: number; period_year?: number }) =>
+              r.period_month === periodMonth && r.period_year === periodYear
+            )
+            if (existingRun) {
+              payrollRunId = existingRun.id
+              console.log('[pay-employees] Found existing payroll run:', payrollRunId)
+            } else {
+              console.error('[pay-employees] Could not find existing payroll run after error')
+              throw err
+            }
+          } catch (refetchErr) {
+            console.error('[pay-employees] Failed to refetch payroll runs:', refetchErr)
+            throw err
+          }
+        } else {
+          console.error('[pay-employees] Failed to create payroll run:', err)
+          throw err
+        }
       }
 
       console.log('[pay-employees] Step 3: Calculating payroll for employees:', employeeIds)
@@ -206,53 +283,6 @@ export async function POST(req: NextRequest) {
     }
 
     console.log('[pay-employees] Step 5: Disbursing to employees:', employeeIds.length, 'via', method)
-
-    // TEST MODE: For M-Pesa, send test payment instead of actual salaries
-    if (TEST_MODE && method === 'mpesa') {
-      console.log('[pay-employees] TEST MODE: Sending test payment of', TEST_AMOUNT, 'KES to', TEST_PHONE)
-
-      try {
-        const testResult = await hrApiPost<{
-          success: boolean
-          tracking_id?: string
-          error?: string
-          message?: string
-        }>('/intasend/send-mpesa/', {
-          phone: TEST_PHONE,
-          amount: TEST_AMOUNT,
-          name: 'Test Payment',
-          reference: `TEST-${Date.now()}`,
-          narrative: `Test payment for ${employeeIds.length} employees`
-        })
-
-        console.log('[pay-employees] Test payment result:', testResult)
-
-        if (testResult.success) {
-          return NextResponse.json({
-            success: true,
-            paidCount: employeeIds.length,
-            failedCount: 0,
-            paymentMethod: method,
-            reference: testResult.tracking_id || `TEST-${Date.now()}`,
-            testMode: true,
-            message: `TEST MODE: Sent KES ${TEST_AMOUNT} to ${TEST_PHONE} (representing ${employeeIds.length} employee payments)`,
-          })
-        } else {
-          return NextResponse.json({
-            success: false,
-            error: testResult.error || 'Test payment failed',
-            testMode: true,
-          }, { status: 400 })
-        }
-      } catch (testErr) {
-        console.error('[pay-employees] Test payment error:', testErr)
-        return NextResponse.json({
-          success: false,
-          error: String(testErr),
-          testMode: true,
-        }, { status: 500 })
-      }
-    }
 
     // Disburse to selected employees using PesaPal payment method
     let disburseResult: {
