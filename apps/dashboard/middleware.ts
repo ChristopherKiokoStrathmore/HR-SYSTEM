@@ -30,8 +30,42 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
   const { pathname } = request.nextUrl
+
+  // Try to get the session, handling invalid refresh token errors
+  let session = null
+  try {
+    const { data, error } = await supabase.auth.getSession()
+    if (error) {
+      // If refresh token is invalid, clear auth cookies and redirect to login
+      if (error.code === 'refresh_token_not_found' || error.message?.includes('Refresh Token')) {
+        // Clear Supabase auth cookies
+        const cookiesToClear = ['sb-access-token', 'sb-refresh-token']
+        for (const cookieName of cookiesToClear) {
+          response.cookies.delete(cookieName)
+        }
+        // Also clear any cookies that start with sb-
+        request.cookies.getAll().forEach((cookie) => {
+          if (cookie.name.startsWith('sb-')) {
+            response.cookies.delete(cookie.name)
+          }
+        })
+
+        if (!pathname.startsWith('/login')) {
+          return NextResponse.redirect(new URL('/login', request.url))
+        }
+        return response
+      }
+    }
+    session = data.session
+  } catch (err) {
+    // Handle any unexpected auth errors gracefully
+    console.error('Auth error in middleware:', err)
+    if (!pathname.startsWith('/login')) {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+    return response
+  }
 
   if (!session && !pathname.startsWith('/login')) {
     return NextResponse.redirect(new URL('/login', request.url))
