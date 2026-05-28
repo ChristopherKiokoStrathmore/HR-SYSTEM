@@ -10,7 +10,7 @@ const TIERS: Record<Tier, Parameters<typeof Ratelimit.slidingWindow>> = {
   loose:    [60, '1 m'],   // general reads
 }
 
-let limiters: Partial<Record<Tier, Ratelimit>> = {}
+const limiters: Partial<Record<Tier, Ratelimit>> = {}
 
 function getLimiter(tier: Tier): Ratelimit | null {
   if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
