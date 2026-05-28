@@ -5,6 +5,7 @@ import {
   useEmployeesWithPaymentStatus,
   usePaymentHistory,
   usePayEmployees,
+  type PaymentMethodType,
 } from '@/lib/hooks/use-payroll'
 import { useStore } from '@/lib/store'
 import { toast } from '@/lib/toast'
@@ -16,7 +17,6 @@ import {
   DollarSign,
   CheckCircle,
   AlertCircle,
-  TrendingUp,
 } from 'lucide-react'
 
 // Import new components
@@ -40,7 +40,6 @@ export function PayrollClient() {
   const [payModalOpen, setPayModalOpen] = useState(false)
 
   const activeCompanyId = useStore((s) => s.activeCompanyId)
-  const paymentSource = useStore((s) => s.paymentSource)
 
   // Fetch employee data with payment status
   const {
@@ -132,8 +131,8 @@ export function PayrollClient() {
   const selectedEmployees = employees.filter((e) => selectedIds.has(e.id))
   const selectedTotal = selectedEmployees.reduce((sum, e) => sum + e.salary, 0)
 
-  // Pay selected employees
-  const handlePaySelected = async () => {
+  // Pay selected employees via PesaPal
+  const handlePaySelected = async (paymentMethod: PaymentMethodType) => {
     if (!activeCompanyId) {
       toast.error('No company selected')
       return
@@ -142,16 +141,17 @@ export function PayrollClient() {
     try {
       const result = await payEmployees.mutateAsync({
         employeeIds: Array.from(selectedIds),
-        paymentSource,
+        paymentMethod,
         companyId: activeCompanyId,
       })
 
       if (result.success) {
-        toast.success(`Payment initiated for ${result.paidCount} employees`)
+        toast.success(result.message || `Payment initiated for ${result.paidCount} employees via ${paymentMethod.toUpperCase()}`)
         clearSelection()
       }
     } catch (err) {
       toast.error('Payment failed', String(err))
+      throw err // Re-throw so modal can show error
     }
   }
 
@@ -263,12 +263,11 @@ export function PayrollClient() {
         <PaymentHistoryTable records={historyRecords} isLoading={historyLoading} />
       )}
 
-      {/* Pay Modal */}
+      {/* Pay Modal with PesaPal Payment Source Selection */}
       <PayEmployeesModal
         open={payModalOpen}
         selectedCount={selectedIds.size}
         totalAmount={selectedTotal}
-        paymentSource={paymentSource}
         onClose={() => setPayModalOpen(false)}
         onConfirm={handlePaySelected}
       />

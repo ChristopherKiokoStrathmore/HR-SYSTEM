@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     const supabase = createServerClient(true)
 
     let employeeIds: string[] | null = null
-    let employeeMap = new Map<string, { employee_name: string; employee_number: string; department: string | null }>()
+    const employeeMap = new Map<string, { employee_name: string; employee_number: string; department: string | null }>()
 
     if (companyId) {
       const { data: employees, error: employeeError } = await supabase
@@ -81,6 +81,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ data: [] })
     }
 
+    // If no companyId filter, fetch employee info for the records we have
     if (!employeeIds) {
       const ids = Array.from(new Set(recordList.map((record) => record.employee_id)))
       const { data: employees, error: employeeError } = await supabase

@@ -6,6 +6,8 @@
  */
 
 const HR_API_URL = process.env.HR_API_URL || 'http://localhost:8000/api'
+const HR_API_TOKEN = process.env.HR_API_TOKEN || ''
+const HR_SERVICE_KEY = process.env.HR_SERVICE_KEY || ''
 
 export class HRApiError extends Error {
   constructor(
@@ -54,6 +56,8 @@ export async function hrApi<T = unknown>(
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      ...(HR_SERVICE_KEY ? { 'X-Service-Key': HR_SERVICE_KEY } : {}),
+      ...(HR_API_TOKEN ? { Authorization: `Token ${HR_API_TOKEN}` } : {}),
       ...headers,
     },
   }

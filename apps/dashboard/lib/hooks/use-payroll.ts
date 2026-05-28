@@ -71,6 +71,7 @@ export interface PayrollRecordWithEmployee extends PayrollRecord {
 
 // Types for new employee-centric payroll UI
 export type PaymentSourceType = 'mpesa_wallet' | 'bank_wallet'
+export type PaymentMethodType = 'mpesa' | 'bank' | 'airtel'
 
 export interface EmployeeSalaryRow {
   id: string
@@ -333,31 +334,37 @@ export function usePaymentHistory(companyId: string | null) {
 }
 
 /**
- * Pay selected employees
+ * Pay selected employees via PesaPal
+ * Supports payment methods: bank (EFT), mpesa (M-Pesa B2C), airtel (Airtel Money)
  */
 export function usePayEmployees() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({
       employeeIds,
-      paymentSource,
+      paymentMethod,
+      paymentSource, // Legacy support
       companyId,
     }: {
       employeeIds: string[]
-      paymentSource: PaymentSourceType
+      paymentMethod?: PaymentMethodType
+      paymentSource?: PaymentSourceType // Legacy support
       companyId: string
     }) => {
       const res = await fetch('/api/payroll/pay-employees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeIds, paymentSource, companyId }),
+        body: JSON.stringify({ employeeIds, paymentMethod, paymentSource, companyId }),
       })
       if (!res.ok) throw new Error((await res.json()).error)
       return res.json() as Promise<{
         success: boolean
         paidCount: number
         failedCount: number
+        paymentMethod: PaymentMethodType
         reference: string
+        batchId?: string
+        message?: string
       }>
     },
     onSuccess: () => {
