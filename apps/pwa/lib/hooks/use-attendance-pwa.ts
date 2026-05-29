@@ -30,7 +30,7 @@ export function useAttendance() {
 export function useCheckInOut() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (payload: { lat?: number; lng?: number; distanceKm?: number }) => {
+    mutationFn: async (payload: { lat?: number; lng?: number; distanceKm?: number; action?: 'capture_location' }) => {
       const res = await fetch('/api/me/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

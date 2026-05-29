@@ -42,9 +42,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const today = toDateString(new Date())
   const now = new Date().toISOString()
+  const action = body.action as 'capture_location' | undefined
 
   const { data: existing } = await (service.from('attendance') as any)
-    .select('id, check_in_time, check_out_time')
+    .select('id, check_in_time, check_out_time, check_in_lat, check_in_lng')
     .eq('employee_id', emp.id)
     .eq('shift_date', today)
     .single()
@@ -61,6 +62,32 @@ export async function POST(req: NextRequest) {
   const workHours = !isCheckIn && existing?.check_in_time
     ? (new Date(now).getTime() - new Date(existing.check_in_time).getTime()) / (1000 * 60 * 60)
     : null
+
+  if (action === 'capture_location') {
+    if (!existing?.check_in_time) {
+      return NextResponse.json({ error: 'No check-in exists for today' }, { status: 409 })
+    }
+
+    const lat = body.lat ?? null
+    const lng = body.lng ?? null
+
+    if (lat == null || lng == null) {
+      return NextResponse.json({ error: 'GPS coordinates are required to capture location' }, { status: 400 })
+    }
+
+    const { data, error } = await (service.from('attendance') as any)
+      .update({
+        check_in_lat: lat,
+        check_in_lng: lng,
+        gps_path: [{ lat, lng, timestamp: existing.check_in_time ?? now }],
+      })
+      .eq('id', existing.id)
+      .select()
+      .single()
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ data, action: 'captured_location', workHours: null })
+  }
 
   const record: Record<string, unknown> = {
     employee_id: emp.id,

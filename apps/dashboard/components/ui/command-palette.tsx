@@ -7,19 +7,19 @@ import { useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Users, Calendar, Clock, DollarSign,
   TrendingUp, GraduationCap, Stethoscope, BarChart3,
-  Settings, UserPlus, ClipboardList, Search, ArrowRight
+  Settings, UserPlus, ClipboardList, Search, ArrowRight, ShieldCheck
 } from 'lucide-react'
 
 const pages = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard, group: 'Navigation' },
-  { label: 'Employees', href: '/employees', icon: Users, group: 'Navigation' },
   { label: 'Recruitment', href: '/recruitment', icon: UserPlus, group: 'Navigation' },
+  { label: 'Background Checks', href: '/background-checks', icon: ShieldCheck, group: 'Navigation' },
   { label: 'Onboarding', href: '/onboarding', icon: ClipboardList, group: 'Navigation' },
-  { label: 'Leave Management', href: '/leave', icon: Calendar, group: 'Navigation' },
+  { label: 'Employees', href: '/employees', icon: Users, group: 'Navigation' },
   { label: 'Attendance', href: '/attendance', icon: Clock, group: 'Navigation' },
-  { label: 'Payroll', href: '/payroll', icon: DollarSign, group: 'Navigation' },
   { label: 'Performance', href: '/performance', icon: TrendingUp, group: 'Navigation' },
-  { label: 'Training', href: '/training', icon: GraduationCap, group: 'Navigation' },
+  { label: 'Payroll', href: '/payroll', icon: DollarSign, group: 'Navigation' },
+  { label: 'Leave', href: '/leave', icon: Calendar, group: 'Navigation' },
   { label: 'Medical', href: '/medical', icon: Stethoscope, group: 'Navigation' },
   { label: 'Reports', href: '/reports', icon: BarChart3, group: 'Navigation' },
   { label: 'Settings', href: '/settings', icon: Settings, group: 'Navigation' },
