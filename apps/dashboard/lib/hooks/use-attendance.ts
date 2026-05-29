@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import type { Attendance } from '@hr/shared'
+import type { LocationRow } from '@/app/api/attendance/locations/route'
 
 interface AttendanceWithEmployee extends Attendance {
   employee?: {
@@ -15,6 +16,23 @@ interface AttendanceWithEmployee extends Attendance {
 interface AttendanceSummary {
   data: AttendanceWithEmployee[]
   stats: { present: number; absent: number; late: number; total: number }
+}
+
+export function useAttendanceLocations(companyId: string | null, date?: string) {
+  return useQuery({
+    queryKey: ['attendance-locations', companyId, date],
+    queryFn: async () => {
+      if (!companyId) return { data: [] as LocationRow[] }
+      const params = new URLSearchParams({ companyId })
+      if (date) params.set('date', date)
+      const res = await fetch(`/api/attendance/locations?${params}`)
+      if (!res.ok) throw new Error('Failed to fetch attendance locations')
+      return res.json() as Promise<{ data: LocationRow[] }>
+    },
+    staleTime: 0,
+    refetchInterval: 30 * 1000,
+    enabled: !!companyId,
+  })
 }
 
 export function useAttendanceSummary(companyId: string | null, date?: string) {

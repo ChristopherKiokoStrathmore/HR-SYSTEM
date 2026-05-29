@@ -74,6 +74,7 @@ export default function AttendancePage() {
   const history = data?.data?.filter((r) => r.shift_date !== data.today) ?? []
   const isCheckedIn = !!todayRecord?.check_in_time
   const isCheckedOut = !!todayRecord?.check_out_time
+  const hasGps = todayRecord?.check_in_lat != null && todayRecord?.check_in_lng != null
 
   useEffect(() => {
     if (shouldReduce) return
@@ -125,6 +126,23 @@ export default function AttendancePage() {
       } else {
         toast.error(msg)
       }
+    }
+  }
+
+  async function handleCaptureLocation() {
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 })
+      )
+      await checkInOut.mutateAsync({
+        action: 'capture_location',
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+      })
+      toast.success('Location captured', { description: 'The attendance map will update shortly.' })
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Could not capture GPS location'
+      toast.error(msg)
     }
   }
 
@@ -211,12 +229,30 @@ export default function AttendancePage() {
       </motion.div>
 
       {/* GPS indicator */}
-      {todayRecord?.check_in_lat && (
+      {hasGps ? (
         <div className="rounded-2xl bg-white flex items-center gap-2 p-4" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
           <MapPin className="w-4 h-4 text-success flex-shrink-0" />
           <p className="text-sm text-text-body">
             {t(lang, 'attendance.gps_recorded')}: {todayRecord.check_in_lat.toFixed(4)}, {todayRecord.check_in_lng?.toFixed(4)}
           </p>
+        </div>
+      ) : isCheckedIn && !isCheckedOut ? (
+        <div className="rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between gap-3 p-4">
+          <div className="flex items-start gap-2 min-w-0">
+            <MapPin className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-amber-900">No GPS captured for this check-in</p>
+              <p className="text-xs text-amber-800/80">Tap to re-capture location so the dashboard map can show where this check-in happened.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="rounded-full bg-amber-600 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
+            onClick={handleCaptureLocation}
+            disabled={checkInOut.isPending}
+          >
+            Capture location
+          </button>
         </div>
       )}
 

@@ -2,16 +2,16 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { useAttendanceSummary } from '@/lib/hooks/use-attendance'
+import { useAttendanceSummary, useAttendanceLocations } from '@/lib/hooks/use-attendance'
 import { SkeletonTable } from '@/components/ui/skeleton'
 import { useStore } from '@/lib/store'
-import { Calendar, MapPin, Users, Clock, AlertCircle } from 'lucide-react'
+import { Calendar, MapPin, Users, Clock, AlertCircle, RefreshCw, Navigation } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { CheckInLocation } from './check-in-map'
 
 const CheckInMap = dynamic(
   () => import('./check-in-map').then(m => ({ default: m.CheckInMap })),
-  { ssr: false, loading: () => <div className="rounded-xl bg-surface-alt border border-border" style={{ height: 280 }} /> }
+  { ssr: false, loading: () => <div className="rounded-xl bg-surface-alt border border-border" style={{ height: 320 }} /> }
 )
 
 function formatDisplayDate(dateStr: string) {
@@ -50,7 +50,8 @@ export function AttendanceClient() {
   const activeCompanyId = useStore(s => s.activeCompanyId)
   const [date, setDate] = useState(() => new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' }))
 
-  const { data, isLoading } = useAttendanceSummary(activeCompanyId, date)
+  const { data, isLoading, refetch, isFetching } = useAttendanceSummary(activeCompanyId, date)
+  const { data: locData } = useAttendanceLocations(activeCompanyId, date)
 
   const records = data?.data ?? []
   const stats = data?.stats ?? { present: 0, absent: 0, late: 0, total: 0 }
@@ -73,6 +74,15 @@ export function AttendanceClient() {
             max={new Date().toISOString().slice(0, 10)}
             onChange={(e) => setDate(e.target.value)}
           />
+          <button
+            type="button"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-2 text-xs font-medium text-text-primary transition-colors hover:bg-surface-alt"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw className={cn('w-3.5 h-3.5', isFetching && 'animate-spin')} />
+            Refresh
+          </button>
         </div>
       </div>
 
@@ -124,33 +134,32 @@ export function AttendanceClient() {
         </div>
       </div>
 
-      {/* Check-in Map */}
+      {/* Check-in Map — uses tenant-wide locations so sister-company check-ins are visible */}
       <div className="card">
         <div className="flex items-center gap-2 mb-3">
           <MapPin className="w-4 h-4 text-accent" />
           <h3 className="text-sm font-semibold text-text-primary">Check-in Locations</h3>
           <span className="ml-auto text-xs text-text-muted">
             {(() => {
-              const n = records.filter(r => r.check_in_lat).length
-              return n > 0 ? `${n} location${n !== 1 ? 's' : ''} today` : 'OpenStreetMap · no API key needed'
+              const n = locData?.data?.length ?? 0
+              return n > 0 ? `${n} GPS check-in${n !== 1 ? 's' : ''} today` : 'OpenStreetMap · no API key needed'
             })()}
           </span>
         </div>
         {(() => {
-          const locs: CheckInLocation[] = records
-            .filter(r => r.check_in_lat && r.check_in_lng)
-            .map(r => ({
-              lat: r.check_in_lat as number,
-              lng: r.check_in_lng as number,
-              name: r.employee?.user?.full_name ?? '—',
-              time: r.check_in_time
-                ? new Date(r.check_in_time).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
-                : null,
-              status: r.status,
-            }))
+          const locs: CheckInLocation[] = (locData?.data ?? []).map(r => ({
+            lat: r.check_in_lat as number,
+            lng: r.check_in_lng as number,
+            name: r.employee_name ?? '—',
+            time: r.check_in_time
+              ? new Date(r.check_in_time).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
+              : null,
+            status: r.status,
+            is_late: r.is_late,
+          }))
           if (locs.length === 0) {
             return (
-              <div className="rounded-xl bg-surface-alt border border-border flex items-center justify-center" style={{ height: 280 }}>
+              <div className="rounded-xl bg-surface-alt border border-border flex items-center justify-center" style={{ height: 320 }}>
                 <div className="text-center">
                   <MapPin className="w-10 h-10 text-border mx-auto mb-2" />
                   <p className="text-sm text-text-muted">No GPS check-ins recorded for {formatDisplayDate(date)}</p>
@@ -214,6 +223,15 @@ export function AttendanceClient() {
                           <MapPin className="w-3 h-3" />{rec.distance_covered_km.toFixed(1)} km
                         </span>
                       )}
+                      {rec.check_in_lat != null && rec.check_in_lng != null ? (
+                        <span className="flex items-center gap-0.5 text-green-600" title="GPS location captured">
+                          <Navigation className="w-3 h-3" /> GPS
+                        </span>
+                      ) : checkIn ? (
+                        <span className="flex items-center gap-0.5 text-text-muted/50" title="No GPS — check in via PWA for location tracking">
+                          <Navigation className="w-3 h-3" />
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                   <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium', getStatusMeta(rec.status).className)}>

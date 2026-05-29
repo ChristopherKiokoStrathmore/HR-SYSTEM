@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sheer Logic HR System — Executive Presentation</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<style>
+  :root {
+    --navy: #0A0E1A;
+    --navy2: #0D1B3E;
+    --blue: #1A2E5A;
+    --gold: #D4AF37;
+    --gold2: #F5D76E;
+    --cyan: #00D4FF;
+    --cyan2: #00FFEA;
+    --white: #FFFFFF;
+    --gray: #8A9BB5;
+    --card-bg: rgba(26, 46, 90, 0.55);
+    --card-border: rgba(0, 212, 255, 0.18);
+    --glass: rgba(255,255,255,0.04);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--navy);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--white);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    user-select: none;
+  }
+
+  /* ── CANVAS BACKGROUND ── */
+  #bg-canvas {
+    position: fixed; inset: 0; z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ── GRID OVERLAY ── */
+  .grid-overlay {
+    position: fixed; inset: 0; z-index: 1;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+
+  /* ── PERSPECTIVE STAGE ── */
+  #stage {
+    position: fixed; inset: 0; z-index: 2;
+    perspective: 1400px;
+    perspective-origin: 50% 50%;
+  }
+
+  /* ── SLIDES ── */
+  .slide {
+    position: absolute; inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 60px;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+    will-change: transform, opacity;
+  }
+  .slide.active { display: flex; }
+
+  /* ── PROGRESS BAR ── */
+  #progress-bar {
+    position: fixed; top: 0; left: 0; z-index: 20;
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold), var(--cyan));
+    transition: width 0.5s ease;
+    box-shadow: 0 0 10px var(--cyan);
+  }
+
+  /* ── SLIDE COUNTER ── */
+  #slide-counter {
+    position: fixed; bottom: 28px; right: 40px; z-index: 20;
+    font-size: 12px; letter-spacing: 3px; color: var(--gray);
+    font-weight: 600;
+  }
+  #slide-counter span { color: var(--cyan); }
+
+  /* ── NAV ARROWS ── */
+  .nav-btn {
+    position: fixed; top: 50%; z-index: 20;
+    transform: translateY(-50%);
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.2);
+    color: var(--cyan);
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s;
+    backdrop-filter: blur(10px);
+  }
+  .nav-btn:hover { background: rgba(0,212,255,0.2); box-shadow: 0 0 20px rgba(0,212,255,0.3); }
+  #prev-btn { left: 20px; }
+  #next-btn { right: 20px; }
+
+  /* ── FULLSCREEN BTN ── */
+  #fs-btn {
+    position: fixed; top: 20px; right: 20px; z-index: 20;
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.2);
+    color: var(--cyan);
+    padding: 8px 16px; border-radius: 20px;
+    font-size: 11px; letter-spacing: 2px; font-weight: 700;
+    cursor: pointer; backdrop-filter: blur(10px);
+    transition: all 0.3s;
+  }
+  #fs-btn:hover { background: rgba(0,212,255,0.18); }
+
+  /* ── SLIDE NAV DOTS ── */
+  #nav-dots {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    z-index: 20; display: flex; gap: 8px;
+  }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+    cursor: pointer; transition: all 0.3s;
+  }
+  .dot.active {
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+    width: 20px; border-radius: 3px;
+  }
+
+  /* ══════════════════════════════════════════════
+     COMMON SLIDE ELEMENTS
+  ══════════════════════════════════════════════ */
+
+  .slide-tag {
+    font-size: 11px; letter-spacing: 4px; font-weight: 700;
+    color: var(--cyan); text-transform: uppercase;
+    margin-bottom: 12px; opacity: 0;
+  }
+
+  .slide-title {
+    font-size: clamp(28px, 4vw, 52px);
+    font-weight: 800;
+    line-height: 1.1;
+    text-align: center;
+    margin-bottom: 10px;
+    opacity: 0;
+  }
+
+  .slide-subtitle {
+    font-size: clamp(14px, 1.5vw, 18px);
+    color: var(--gray);
+    text-align: center;
+    margin-bottom: 36px;
+    opacity: 0;
+    max-width: 700px;
+  }
+
+  .gold { color: var(--gold); }
+  .cyan { color: var(--cyan); }
+
+  .gradient-text {
+    background: linear-gradient(135deg, var(--gold), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── DIVIDER LINE ── */
+  .divider {
+    width: 80px; height: 2px;
+    background: linear-gradient(90deg, var(--gold), var(--cyan));
+    margin: 0 auto 32px;
+    opacity: 0;
+    border-radius: 2px;
+  }
+
+  /* ── GLASS CARD ── */
+  .glass-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 20px 24px;
+    transition: transform 0.3s, box-shadow 0.3s;
+    opacity: 0;
+    transform: translateY(30px);
+    cursor: default;
+  }
+  .glass-card:hover {
+    transform: translateY(-4px) scale(1.02) !important;
+    box-shadow: 0 20px 60px rgba(0,212,255,0.15);
+    border-color: rgba(0,212,255,0.4);
+  }
+
+  /* ── MODULE NUMBER BADGE ── */
+  .mod-badge {
+    font-size: 10px; font-weight: 800; letter-spacing: 2px;
+    padding: 3px 10px; border-radius: 20px;
+    display: inline-block; margin-bottom: 10px;
+  }
+  .badge-blue  { background: rgba(0,212,255,0.15); color: var(--cyan); border: 1px solid rgba(0,212,255,0.3); }
+  .badge-gold  { background: rgba(212,175,55,0.15); color: var(--gold); border: 1px solid rgba(212,175,55,0.3); }
+  .badge-green { background: rgba(0,255,136,0.12); color: #00FF88; border: 1px solid rgba(0,255,136,0.3); }
+  .badge-purple{ background: rgba(160,100,255,0.15); color: #C084FC; border: 1px solid rgba(160,100,255,0.3); }
+  .badge-orange{ background: rgba(255,150,50,0.15); color: #FFA040; border: 1px solid rgba(255,150,50,0.3); }
+
+  .card-title {
+    font-size: 14px; font-weight: 700; margin-bottom: 6px; color: var(--white);
+    line-height: 1.3;
+  }
+  .card-desc {
+    font-size: 11px; color: var(--gray); line-height: 1.5;
+  }
+  .card-icon { font-size: 22px; margin-bottom: 8px; }
+
+  /* module grid */
+  .module-grid {
+    display: grid;
+    gap: 14px;
+    width: 100%;
+    max-width: 1300px;
+  }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-5 { grid-template-columns: repeat(5, 1fr); }
+  .grid-auto { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+  /* ══════════════════════════════════════════════
+     SLIDE 1 — TITLE
+  ══════════════════════════════════════════════ */
+  #slide-1 { background: radial-gradient(ellipse at 30% 50%, rgba(26,46,90,0.6) 0%, transparent 70%); }
+
+  .logo-ring {
+    width: 100px; height: 100px; border-radius: 50%;
+    border: 2px solid rgba(0,212,255,0.3);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 28px;
+    position: relative;
+    opacity: 0;
+  }
+  .logo-ring::before {
+    content: '';
+    position: absolute; inset: -8px;
+    border-radius: 50%;
+    border: 1px solid rgba(212,175,55,0.2);
+  }
+  .logo-ring::after {
+    content: '';
+    position: absolute; inset: -16px;
+    border-radius: 50%;
+    border: 1px dashed rgba(0,212,255,0.1);
+  }
+  .logo-inner {
+    font-size: 36px; font-weight: 900; color: var(--cyan);
+    letter-spacing: -2px;
+  }
+
+  .hero-title {
+    font-size: clamp(38px, 6vw, 72px);
+    font-weight: 900;
+    text-align: center;
+    line-height: 1.05;
+    opacity: 0;
+    margin-bottom: 16px;
+  }
+  .hero-sub {
+    font-size: clamp(14px, 1.8vw, 20px);
+    color: var(--gray);
+    text-align: center;
+    opacity: 0;
+    margin-bottom: 40px;
+    max-width: 700px;
+  }
+
+  .stats-row {
+    display: flex; gap: 40px; justify-content: center;
+    flex-wrap: wrap; opacity: 0;
+  }
+  .stat-item {
+    text-align: center;
+  }
+  .stat-num {
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--gold), var(--cyan));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-label { font-size: 11px; letter-spacing: 3px; color: var(--gray); font-weight: 600; }
+  .stat-sep { width: 1px; background: rgba(255,255,255,0.1); height: 50px; }
+
+  .tech-pills {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    justify-content: center; margin-top: 36px;
+    opacity: 0;
+  }
+  .pill {
+    padding: 6px 16px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    border: 1px solid rgba(0,212,255,0.25);
+    color: var(--cyan);
+    background: rgba(0,212,255,0.06);
+  }
+
+  /* ══════════════════════════════════════════════
+     SLIDE 2 — ARCHITECTURE
+  ══════════════════════════════════════════════ */
+  .arch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+    max-width: 1100px;
+    margin-bottom: 20px;
+  }
+  .arch-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 30px 24px;
+    text-align: center;
+    backdrop-filter: blur(20px);
+    opacity: 0;
+    transform: perspective(800px) rotateX(30px) translateY(40px);
+    position: relative;
+    overflow: hidden;
+  }
+  .arch-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .arch-card.app1::before { background: linear-gradient(90deg, var(--cyan), #0084FF); }
+  .arch-card.app2::before { background: linear-gradient(90deg, var(--gold), #FF8C00); }
+  .arch-card.app3::before { background: linear-gradient(90deg, #00FF88, #00D4FF); }
+
+  .arch-icon { font-size: 44px; margin-bottom: 14px; display: block; }
+  .arch-name { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+  .arch-count {
+    font-size: 38px; font-weight: 900; line-height: 1;
+    margin-bottom: 6px;
+  }
+  .arch-label { font-size: 11px; letter-spacing: 2px; color: var(--gray); }
+  .arch-tech { margin-top: 14px; font-size: 10px; color: var(--gray); line-height: 1.8; }
+
+  .infra-strip {
+    width: 100%; max-width: 1100px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 20px 30px;
+    backdrop-filter: blur(20px);
+    display: flex; align-items: center; gap: 20px;
+    opacity: 0; flex-wrap: wrap;
+  }
+  .infra-label { font-size: 12px; letter-spacing: 3px; color: var(--gold); font-weight: 700; white-space: nowrap; }
+  .infra-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .infra-pill {
+    font-size: 11px; padding: 4px 12px; border-radius: 12px;
+    background: rgba(212,175,55,0.1); color: var(--gold2);
+    border: 1px solid rgba(212,175,55,0.25);
+    font-weight: 600;
+  }
+
+  /* ══════════════════════════════════════════════
+     SLIDE 3 & 4 — DASHBOARD MODULES
+  ══════════════════════════════════════════════ */
+  .section-header {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 24px; opacity: 0;
+    width: 100%; max-width: 1300px;
+  }
+  .section-icon { font-size: 28px; }
+  .section-info { flex: 1; }
+  .section-name { font-size: 22px; font-weight: 800; }
+  .section-desc { font-size: 12px; color: var(--gray); letter-spacing: 2px; margin-top: 2px; }
+  .section-count {
+    font-size: 11px; font-weight: 800; letter-spacing: 2px;
+    padding: 6px 16px; border-radius: 20px;
+    background: rgba(0,212,255,0.1);
+    color: var(--cyan); border: 1px solid rgba(0,212,255,0.3);
+  }
+
+  /* ══════════════════════════════════════════════
+     SLIDE 8 — INTEGRATIONS
+  ══════════════════════════════════════════════ */
+  .integration-col {
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .int-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 16px 20px;
+    backdrop-filter: blur(20px);
+    opacity: 0; transform: translateX(-30px);
+  }
+  .int-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .int-items { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .int-tag {
+    font-size: 10px; padding: 3px 10px; border-radius: 10px;
+    font-weight: 600;
+  }
+  .int-tag.payment { background: rgba(0,255,136,0.12); color: #00FF88; }
+  .int-tag.ai      { background: rgba(160,100,255,0.15); color: #C084FC; }
+  .int-tag.comms   { background: rgba(0,212,255,0.12); color: var(--cyan); }
+  .int-tag.infra   { background: rgba(212,175,55,0.12); color: var(--gold); }
+
+  /* ══════════════════════════════════════════════
+     SLIDE 9 — SUMMARY METRICS
+  ══════════════════════════════════════════════ */
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    width: 100%; max-width: 1100px;
+    margin-bottom: 30px;
+  }
+  .metric-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 30px 20px;
+    text-align: center;
+    backdrop-filter: blur(20px);
+    opacity: 0;
+    position: relative; overflow: hidden;
+  }
+  .metric-card::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  }
+  .metric-big {
+    font-size: 56px; font-weight: 900; line-height: 1;
+    margin-bottom: 8px;
+  }
+  .metric-label { font-size: 11px; letter-spacing: 3px; color: var(--gray); font-weight: 600; }
+
+  .summary-table {
+    width: 100%; max-width: 1100px;
+    border-collapse: collapse;
+    opacity: 0;
+  }
+  .summary-table th {
+    font-size: 10px; letter-spacing: 3px; color: var(--gold);
+    text-align: left; padding: 10px 20px; font-weight: 800;
+    border-bottom: 1px solid rgba(212,175,55,0.3);
+  }
+  .summary-table td {
+    font-size: 13px; padding: 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    vertical-align: middle;
+  }
+  .summary-table tr:hover td { background: rgba(0,212,255,0.04); }
+  .count-cell {
+    font-weight: 800; font-size: 18px; color: var(--cyan);
+    text-align: center;
+  }
+
+  /* ══════════════════════════════════════════════
+     SLIDE 10 — PRICING
+  ══════════════════════════════════════════════ */
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    width: 100%; max-width: 1000px;
+  }
+  .pricing-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 20px;
+    padding: 28px;
+    backdrop-filter: blur(20px);
+    opacity: 0;
+    transform: scale(0.92);
+    position: relative; overflow: hidden;
+  }
+  .pricing-card.premium {
+    border-color: rgba(212,175,55,0.4);
+    background: rgba(212,175,55,0.06);
+  }
+  .pricing-card.premium::before {
+    content: 'PREMIUM';
+    position: absolute; top: 16px; right: 16px;
+    font-size: 9px; letter-spacing: 3px; font-weight: 800;
+    color: var(--gold); padding: 3px 10px; border-radius: 10px;
+    background: rgba(212,175,55,0.15);
+    border: 1px solid rgba(212,175,55,0.3);
+  }
+  .pricing-icon { font-size: 32px; margin-bottom: 14px; }
+  .pricing-title { font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+  .pricing-desc { font-size: 12px; color: var(--gray); line-height: 1.7; }
+  .pricing-tag {
+    display: inline-block; margin-top: 14px;
+    font-size: 10px; letter-spacing: 2px; font-weight: 700;
+    padding: 4px 12px; border-radius: 10px;
+    background: rgba(0,212,255,0.1); color: var(--cyan);
+  }
+  .pricing-card.premium .pricing-tag {
+    background: rgba(212,175,55,0.15); color: var(--gold);
+  }
+
+  /* ══════════════════════════════════════════════
+     RESPONSIVENESS
+  ══════════════════════════════════════════════ */
+  @media (max-width: 1100px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .arch-grid { grid-template-columns: 1fr; }
+    .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    .pricing-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 768px) {
+    .slide { padding: 20px 24px; }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+    .grid-5 { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Background canvas for particles -->
+<canvas id="bg-canvas"></canvas>
+<div class="grid-overlay"></div>
+
+<!-- UI chrome -->
+<div id="progress-bar"></div>
+<button class="nav-btn" id="prev-btn">&#8592;</button>
+<button class="nav-btn" id="next-btn">&#8594;</button>
+<button id="fs-btn" onclick="toggleFS()">⛶ FULLSCREEN</button>
+<div id="nav-dots"></div>
+<div id="slide-counter"><span id="cur-slide">1</span> / <span id="tot-slides">10</span></div>
+
+<!-- ╔══════════════════════════════════════════════════╗ -->
+<!--   SLIDE 1 — TITLE                                   -->
+<!-- ╚══════════════════════════════════════════════════╝ -->
+<div id="stage">
+
+<section class="slide active" id="slide-1">
+  <div class="logo-ring" id="s1-logo">
+    <div class="logo-inner">SL</div>
+  </div>
+  <p class="slide-tag" id="s1-tag">Executive Briefing — 2026</p>
+  <h1 class="hero-title" id="s1-title">
+    Sheer Logic<br><span class="gradient-text">HR System</span>
+  </h1>
+  <p class="hero-sub" id="s1-sub">
+    A complete, enterprise-grade Human Resource &amp; CRM platform — three applications,
+    end-to-end payroll, AI-powered recruitment, and full mobile coverage.
+  </p>
+  <div class="divider" id="s1-div"></div>
+  <div class="stats-row" id="s1-stats">
+    <div class="stat-item">
+      <div class="stat-num" id="cnt1">35</div>
+      <div class="stat-label">Billable Modules</div>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat-item">
+      <div class="stat-num">3</div>
+      <div class="stat-label">Applications</div>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat-item">
+      <div class="stat-num">3</div>
+      <div class="stat-label">Payment Channels</div>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat-item">
+      <div class="stat-num">2</div>
+      <div class="stat-label">Languages</div>
+    </div>
+  </div>
+  <div class="tech-pills" id="s1-pills">
+    <span class="pill">Next.js 14</span>
+    <span class="pill">Supabase</span>
+    <span class="pill">Proprietary ML</span>
+    <span class="pill">M-Pesa</span>
+    <span class="pill">PWA</span>
+    <span class="pill">TypeScript</span>
+    <span class="pill">Turborepo</span>
+    <span class="pill">KDPA 2019</span>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════╗ -->
+<!--   SLIDE 2 — ARCHITECTURE                            -->
+<!-- ╚══════════════════════════════════════════════════╝ -->
+<section class="slide" id="slide-2">
+  <p class="slide-tag" id="s2-tag">Product Architecture</p>
+  <h2 class="slide-title" id="s2-title">Three-App <span class="gradient-text">Ecosystem</span></h2>
+  <div class="divider" id="s2-div"></div>
+
+  <div class="arch-grid">
+    <div class="arch-card app1" id="ac1">
+      <span class="arch-icon">🖥️</span>
+      <div class="arch-name cyan">Admin Dashboard</div>
+      <div class="arch-count cyan">16</div>
+      <div class="arch-label">CORE MODULES</div>
+      <div class="arch-tech">Next.js 14 · TypeScript<br>TanStack Query · Zustand<br>Recharts · jsPDF · XLSX</div>
+    </div>
+    <div class="arch-card app2" id="ac2">
+      <span class="arch-icon">📱</span>
+      <div class="arch-name gold">Employee PWA</div>
+      <div class="arch-count gold">7</div>
+      <div class="arch-label">MOBILE MODULES</div>
+      <div class="arch-tech">Next.js 14 · Workbox PWA<br>Offline-first · App install<br>Swiper · Lottie · i18n</div>
+    </div>
+    <div class="arch-card app3" id="ac3">
+      <span class="arch-icon">🌐</span>
+      <div class="arch-name" style="color:#00FF88">Careers Portal</div>
+      <div class="arch-count" style="color:#00FF88">4</div>
+      <div class="arch-label">PUBLIC MODULES</div>
+      <div class="arch-tech">Next.js 14 · AI Screening<br>CV Upload · Token Tracking<br>SMS + Email Alerts</div>
+    </div>
+  </div>
+
+  <div class="infra-strip" id="s2-infra">
+    <div class="infra-label">⚙️ SHARED INFRASTRUCTURE — 8 MODULES</div>
+    <div class="infra-pills">
+      <span class="infra-pill">Turborepo Monorepo</span>
+      <span class="infra-pill">Supabase Postgres + RLS</span>
+      <span class="infra-pill">PII Encryption (Vault)</span>
+      <span class="infra-pill">KDPA 2019 Compliance</span>
+      <span class="infra-pill">Django HR-API Backend</span>
+      <span class="infra-pill">Resend Email</span>
+      <span class="infra-pill">Africa's Talking SMS</span>
+      <span class="infra-pill">Playwright E2E Testing</span>
+      <span class="infra-pill">Vercel Deployment</span>
+    </div>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════╗ -->
+<!--   SLIDE 3 — DASHBOARD MODULES (1-8)                 -->
+<!-- ╚══════════════════════════════════════════════════╝ -->
+<section class="slide" id="slide-3">
+  <div class="section-header" id="s3-hdr">
+    <div class="section-icon">🖥️</div>
+    <div class="section-info">
+      <div class="section-name">Admin Dashboard — <span class="cyan">Core Modules</span></div>
+      <div class="section-desc">MODULES 1.1 – 1.8 · HR OPERATIONS & TALENT</div>
+    </div>
+    <div class="section-count">8 of 16 Modules</div>
+  </div>
+
+  <div class="module-grid grid-4" style="max-width:1300px">
+    <div class="glass-card" id="m11">
+      <span class="card-icon">🔐</span>
+      <span class="mod-badge badge-blue">1.1</span>
+      <div class="card-title">Platform Shell &amp; Auth</div>
+      <div class="card-desc">Multi-tenant login, RBAC (4 roles), session management, command palette, sidebar navigation, settings</div>
+    </div>
+    <div class="glass-card" id="m12">
+      <span class="card-icon">📋</span>
+      <span class="mod-badge badge-blue">1.2</span>
+      <div class="card-title">Recruitment Management</div>
+      <div class="card-desc">Job postings, drag-and-drop Kanban pipeline, candidate profiles, stage progression, status tracking</div>
+    </div>
+    <div class="glass-card" id="m13">
+      <span class="card-icon">🤖</span>
+      <span class="mod-badge badge-purple">1.3</span>
+      <div class="card-title">AI CV Screening</div>
+      <div class="card-desc">PDF CV parsing, proprietary trained ML model, 0–100 candidate fit scoring, intelligent skill extraction, rate-limited inference pipeline</div>
+    </div>
+    <div class="glass-card" id="m14">
+      <span class="card-icon">🔍</span>
+      <span class="mod-badge badge-blue">1.4</span>
+      <div class="card-title">Background Checks</div>
+      <div class="card-desc">Fitness verification (fit / fit with conditions / unfit), status tracking, document association per candidate</div>
+    </div>
+    <div class="glass-card" id="m15">
+      <span class="card-icon">🎯</span>
+      <span class="mod-badge badge-blue">1.5</span>
+      <div class="card-title">Onboarding</div>
+      <div class="card-desc">New-hire onboarding workflows, task checklists, document collection per onboarding stage</div>
+    </div>
+    <div class="glass-card" id="m16">
+      <span class="card-icon">👥</span>
+      <span class="mod-badge badge-blue">1.6</span>
+      <div class="card-title">Employee Management</div>
+      <div class="card-desc">Employee CRUD, encrypted PII profiles, document management (ID, KRA, NSSF, NHIF, contracts), termination flow</div>
+    </div>
+    <div class="glass-card" id="m17">
+      <span class="card-icon">⏰</span>
+      <span class="mod-badge badge-blue">1.7</span>
+      <div class="card-title">Attendance Tracking</div>
+      <div class="card-desc">Daily check-in/out records, attendance summaries, present / absent / half-day statuses, analytics</div>
+    </div>
+    <div class="glass-card" id="m18">
+      <span class="card-icon">🏖️</span>
+      <span class="mod-badge badge-blue">1.8</span>
+      <div class="card-title">Leave Management</div>
+      <div class="card-desc">Request & approval workflow, leave balances, annual / sick / maternity / paternity / study leave types</div>
+    </div>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════╗ -->
+<!--   SLIDE 4 — DASHBOARD MODULES (9-16)                -->
+<!-- ╚══════════════════════════════════════════════════╝ -->
+<section class="slide" id="slide-4">
+  <div class="section-header" id="s4-hdr">
+    <div class="section-icon">🖥️</div>
+    <div class="section-info">
+      <div class="section-name">Admin Dashboard — <span class="gold">Finance & Compliance</span></div>
+      <div class="section-desc">MODULES 1.9 – 1.16 · PAYROLL, PAYMENTS & OPERATIONS</div>
+    </div>
+    <div class="section-count" style="color:var(--gold);border-color:rgba(212,175,55,0.4);background:rgba(212,175,55,0.08)">8 of 16 Modules</div>
+  </div>
+
+  <div class="module-grid grid-4" style="max-width:1300px">
+    <div class="glass-card" id="m19">
+      <span class="card-icon">💰</span>
+      <span class="mod-badge badge-gold">1.9</span>
+      <div class="card-title">Payroll Management</div>
+      <div class="card-desc">Payroll run lifecycle (draft → processing → completed), salary calculations, payslip generation via Edge Functions, bulk approval</div>
+    </div>
+    <div class="glass-card" id="m110">
+      <span class="card-icon">💳</span>
+      <span class="mod-badge badge-gold">1.10</span>
+      <div class="card-title">Payment Disbursement</div>
+      <div class="card-desc">M-Pesa, Airtel Money, Bank Transfer per employee, powered by IntaSend, real-time wallet balance checks, full payment records</div>
+    </div>
+    <div class="glass-card" id="m111">
+      <span class="card-icon">📈</span>
+      <span class="mod-badge badge-blue">1.11</span>
+      <div class="card-title">Performance Management</div>
+      <div class="card-desc">Performance reviews, KPI tracking, review cycles, manager evaluations</div>
+    </div>
+    <div class="glass-card" id="m112">
+      <span class="card-icon">🏥</span>
+      <span class="mod-badge badge-blue">1.12</span>
+      <div class="card-title">Medical Records</div>
+      <div class="card-desc">Employee health records, medical claims tracking, health insurance info, provider management</div>
+    </div>
+    <div class="glass-card" id="m113">
+      <span class="card-icon">🎓</span>
+      <span class="mod-badge badge-blue">1.13</span>
+      <div class="card-title">Training Management</div>
+      <div class="card-desc">Training sessions management, employee enrollment, training records &amp; completion tracking</div>
+    </div>
+    <div class="glass-card" id="m114">
+      <span class="card-icon">📊</span>
+      <span class="mod-badge badge-blue">1.14</span>
+      <div class="card-title">Reports &amp; Analytics</div>
+      <div class="card-desc">Headcount, leave, payroll summaries; recharts dashboards, Excel/PDF export, KPI views</div>
+    </div>
+    <div class="glass-card" id="m115">
+      <span class="card-icon">🛡️</span>
+      <span class="mod-badge badge-gold">1.15</span>
+      <div class="card-title">Audit Logs &amp; Compliance</div>
+      <div class="card-desc">Full audit trail (KDPA 2019), 7-year retention, immutable logs, soft-delete policy, company settings</div>
+    </div>
+    <div class="glass-card" id="m116">
+      <span class="card-icon">🏢</span>
+      <span class="mod-badge badge-blue">1.16</span>
+      <div class="card-title">User &amp; Company Management</div>
+      <div class="card-desc">Multi-company tenant management, user roles &amp; permissions, company payment account configuration</div>
+    </div>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════╗ -->
+<!--   SLIDE 5 — PWA MODULES                             -->
+<!-- ╚══════════════════════════════════════════════════╝ -->
+<section class="slide" id="slide-5">
+  <div class="section-header" id="s5-hdr">
+    <div class="section-icon">📱</div>
+    <div class="section-info">
+      <div class="section-name">Employee Self-Service — <span class="gold">Mobile PWA</span></div>
+      <div class="section-desc">MODULES 2.1 – 2.7 · EMPLOYEE-FACING MOBILE APPLICATION</div>
+    </div>
+    <div class="section-count" style="color:var(--gold);border-color:rgba(212,175,55,0.4);background:rgba(212,175,55,0.08)">7 Modules</div>
+  </div>
+
+  <div class="module-grid grid-3" style="max-width:1000px">
+    <div class="glass-card" id="p21">
+      <span class="card-icon">📲</span>
+      <span class="mod-badge badge-gold">2.1</span>
+      <div class="card-title">PWA Shell &amp; App Install</div>
+      <div class="card-desc">App manifest, Workbox service worker, offline caching (NetworkFirst/CacheFirst), home screen install prompt, app shortcuts</div>
+    </div>
+    <div class="glass-card" id="p22">
+      <span class="card-icon">🏠</span>
+      <span class="mod-badge badge-gold">2.2</span>
+      <div class="card-title">Employee Home Dashboard</div>
+      <div class="card-desc">Summary cards, quick-action buttons, Lottie animations for empty states, circular progress indicators</div>
+    </div>
+    <div class="glass-card" id="p23">
+      <span class="card-icon">⏱️</span>
+      <span class="mod-badge badge-gold">2.3</span>
+      <div class="card-title">Attendance (Mobile)</div>
+      <div class="card-desc">One-tap clock in / clock out, attendance history view, direct home screen shortcut</div>
+    </div>
+    <div class="glass-card" id="p24">
+      <span class="card-icon">🌴</span>
+      <span class="mod-badge badge-gold">2.4</span>
+      <div class="card-title">Leave Requests (Mobile)</div>
+      <div class="card-desc">Mobile-optimized leave request form, balance view, direct home screen shortcut via PWA manifest</div>
+    </div>
+    <div class="glass-card" id="p25">
+      <span class="card-icon">🧾</span>
+      <span class="mod-badge badge-gold">2.5</span>
+      <div class="card-title">Payslip Viewer</div>
+      <div class="card-desc">View &amp; download payslips, confetti celebration animation on download, offline cache support</div>
+    </div>
+    <div class="glass-card" id="p26">
+      <span class="card-icon">👤</span>
+      <span class="mod-badge badge-gold">2.6</span>
+      <div class="card-title">Employee Profile (Mobile)</div>
+      <div class="card-desc">Personal info view, Swiper carousel for profile sections, profile management on mobile</div>
+    </div>
+    <div class="glass-card" id="p27">
+      <span class="card-icon">🌍</span>
+      <span class="mod-badge badge-orange">2.7</span>
+      <div class="card-title">Internationalisation (i18n)</div>
+      <div class="card-desc">English + Swahili language support across Dashboard &amp; PWA via shared i18n package (en.json / sw.json)</div>
+    </div>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════╗ -->
+<!--   SLIDE 6 — CAREERS PORTAL                          -->
+<!-- ╚══════════════════════════════════════════════════╝ -->
+<section class="slide" id="slide-6">
+  <p class="slide-tag" id="s6-tag">Public-Facing Application</p>
+  <h2 class="slide-title" id="s6-title">Careers <span class="gradient-text">Portal</span></h2>
+  <p class="slide-subtitle" id="s6-sub">Four modules powering external talent acquisition — from job discovery to application tracking</p>
+  <div class="divider" id="s6-div"></div>
+
+  <div class="module-grid grid-2" style="max-width:900px">
+    <div class="glass-card" id="c31" style="padding:30px 28px">
+      <span class="card-icon" style="font-size:36px">🔎</span>
+      <span class="mod-badge badge-green">3.1</span>
+      <div class="card-title" style="font-size:17px">Job Listings</div>
+      <div class="card-desc" style="font-size:13px">Public job board with all open positions. Search &amp; filter by keyword, location, and job type. SEO-optimised for discoverability.</div>
+    </div>
+    <div class="glass-card" id="c32" style="padding:30px 28px">
+      <span class="card-icon" style="font-size:36px">📝</span>
+      <span class="mod-badge badge-green">3.2</span>
+      <div class="card-title" style="font-size:17px">Job Application</div>
+      <div class="card-desc" style="font-size:13px">Job detail page, CV upload &amp; parsing, application submission form. Proprietary ML screening model triggered automatically on submit.</div>
+    </div>
+    <div class="glass-card" id="c33" style="padding:30px 28px">
+      <span class="card-icon" style="font-size:36px">🔗</span>
+      <span class="mod-badge badge-green">3.3</span>
+      <div class="card-title" style="font-size:17px">Application Tracking</div>
+      <div class="card-desc" style="font-size:13px">Candidate-facing status tracking via unique token — no login required. Real-time pipeline stage updates visible to applicant.</div>
+    </div>
+    <div class="glass-card" id="c34" style="padding:30px 28px">
+      <span class="card-icon" style="font-size:36px">🔔</span>
+      <span class="mod-badge badge-green">3.4</span>
+      <div class="card-title" style="font-size:17px">Job Alerts</div>
+      <div class="card-desc" style="font-size:13px">Email + SMS subscription for new job notifications. Africa's Talking for SMS, Resend for email. Manages alert preferences per subscriber.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════╗ -->
+<!--   SLIDE 7 — INFRASTRUCTURE                          -->
+<!-- ╚══════════════════════════════════════════════════╝ -->
+<section class="slide" id="slide-7">
+  <p class="slide-tag" id="s7-tag">Foundation Layer</p>
+  <h2 class="slide-title" id="s7-title">Infrastructure &amp; <span class="gradient-text">Platform</span></h2>
+  <div class="divider" id="s7-div"></div>
+
+  <div class="module-grid grid-4" style="max-width:1200px">
+    <div class="glass-card" id="i41">
+      <span class="card-icon">🏗️</span>
+      <span class="mod-badge badge-orange">4.1</span>
+      <div class="card-title">Monorepo Architecture</div>
+      <div class="card-desc">Turborepo, shared packages (types, Zod schemas, utilities), incremental builds, cross-app linking</div>
+    </div>
+    <div class="glass-card" id="i42">
+      <span class="card-icon">🗄️</span>
+      <span class="mod-badge badge-orange">4.2</span>
+      <div class="card-title">Database &amp; Backend</div>
+      <div class="card-desc">Supabase Postgres multi-tenant schema, RLS, migrations, stored functions, cron jobs (contract expiry, payroll automation), Vault PII encryption</div>
+    </div>
+    <div class="glass-card" id="i43">
+      <span class="card-icon">🛡️</span>
+      <span class="mod-badge badge-orange">4.3</span>
+      <div class="card-title">Security &amp; Compliance</div>
+      <div class="card-desc">KDPA 2019 compliance, CSP headers, X-Frame-Options, Upstash rate limiting, soft-delete policy, role-based data isolation</div>
+    </div>
+    <div class="glass-card" id="i44">
+      <span class="card-icon">✉️</span>
+      <span class="mod-badge badge-orange">4.4</span>
+      <div class="card-title">Email Infrastructure</div>
+      <div class="card-desc">Transactional email via Resend, payslip delivery via Supabase Edge Functions, templated notifications</div>
+    </div>
+    <div class="glass-card" id="i45">
+      <span class="card-icon">📡</span>
+      <span class="mod-badge badge-orange">4.5</span>
+      <div class="card-title">SMS Infrastructure</div>
+      <div class="card-desc">Africa's Talking integration for job alert SMS and transactional notifications, delivery tracking</div>
+    </div>
+    <div class="glass-card" id="i46">
+      <span class="card-icon">🐍</span>
+      <span class="mod-badge badge-orange">4.6</span>
+      <div class="card-title">Django HR-API Backend</div>
+      <div class="card-desc">Separate Python/Django backend service managing payment disbursement via IntaSend, ML model inference routing, and core business logic layer</div>
+    </div>
+    <div class="glass-card" id="i47">
+      <span class="card-icon">🚀</span>
+      <span class="mod-badge badge-orange">4.7</span>
+      <div class="card-title">DevOps &amp; Deployment</div>
+      <div class="card-desc">Vercel config for all 3 apps, environment variable management via Turbo, CI/CD pipeline</div>
+    </div>
+    <div class="glass-card" id="i48">
+      <span class="card-icon">🧪</span>
+      <span class="mod-badge badge-orange">4.8</span>
+      <div class="card-title">Testing Suite</div>
+      <div class="card-desc">Playwright E2E tests across Dashboard, PWA, and UAT projects. Automated UAT loop script, regression coverage</div>
+    </div>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════╗ -->
+<!--   SLIDE 8 — INTEGRATIONS                            -->
+<!-- ╚══════════════════════════════════════════════════╝ -->
+<section class="slide" id="slide-8">
+  <p class="slide-tag" id="s8-tag">Third-Party Ecosystem</p>
+  <h2 class="slide-title" id="s8-title">Key <span class="gradient-text">Integrations</span></h2>
+  <div class="divider" id="s8-div"></div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;width:100%;max-width:1100px">
+    <div class="integration-col">
+      <div class="int-card" id="int1">
+        <div class="int-title" style="color:#00FF88">💳 Payment Channels</div>
+        <div style="font-size:12px;color:var(--gray)">3-channel salary disbursement — employees paid directly via preferred channel, backed by IntaSend</div>
+        <div class="int-items">
+          <span class="int-tag payment">M-Pesa</span>
+          <span class="int-tag payment">Airtel Money</span>
+          <span class="int-tag payment">Bank Transfer</span>
+          <span class="int-tag infra">Powered by IntaSend</span>
+        </div>
+      </div>
+      <div class="int-card" id="int2">
+        <div class="int-title" style="color:#C084FC">🤖 Proprietary ML Engine</div>
+        <div style="font-size:12px;color:var(--gray)">In-house trained models for CV screening and applicant intelligence</div>
+        <div class="int-items">
+          <span class="int-tag ai">Trained CV Screening Model</span>
+          <span class="int-tag ai">PDF Parsing Pipeline</span>
+          <span class="int-tag ai">Skill Extraction NLP</span>
+          <span class="int-tag ai">Fit Scoring 0–100</span>
+          <span class="int-tag ai">Applicant Ranking Engine</span>
+        </div>
+      </div>
+    </div>
+    <div class="integration-col">
+      <div class="int-card" id="int3" style="transform:translateX(30px)">
+        <div class="int-title" style="color:var(--cyan)">📬 Communications</div>
+        <div style="font-size:12px;color:var(--gray)">Multi-channel notifications for candidates and employees</div>
+        <div class="int-items">
+          <span class="int-tag comms">Resend (Email)</span>
+          <span class="int-tag comms">Africa's Talking (SMS)</span>
+          <span class="int-tag comms">Supabase Edge Functions</span>
+          <span class="int-tag comms">Job Alert Subscriptions</span>
+        </div>
+      </div>
+      <div class="int-card" id="int4" style="transform:translateX(30px)">
+        <div class="int-title" style="color:var(--gold)">⚙️ Infrastructure Services</div>
+        <div style="font-size:12px;color:var(--gray)">Performance, location, and caching services</div>
+        <div class="int-items">
+          <span class="int-tag infra">Upstash Redis</span>
+          <span class="int-tag infra">Google Maps API</span>
+          <span class="int-tag infra">Supabase Auth</span>
+          <span class="int-tag infra">Supabase Realtime</span>
+          <span class="int-tag infra">Supabase Storage</span>
+          <span class="int-tag infra">Workbox (PWA)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════╗ -->
+<!--   SLIDE 9 — SUMMARY                                 -->
+<!-- ╚══════════════════════════════════════════════════╝ -->
+<section class="slide" id="slide-9">
+  <p class="slide-tag" id="s9-tag">Executive Summary</p>
+  <h2 class="slide-title" id="s9-title">Module <span class="gradient-text">Scorecard</span></h2>
+  <div class="divider" id="s9-div"></div>
+
+  <div class="metric-grid">
+    <div class="metric-card" id="mc1">
+      <div class="metric-big cyan" data-target="35">0</div>
+      <div class="metric-label">TOTAL MODULES</div>
+    </div>
+    <div class="metric-card" id="mc2">
+      <div class="metric-big gold" data-target="3">0</div>
+      <div class="metric-label">APPLICATIONS</div>
+    </div>
+    <div class="metric-card" id="mc3">
+      <div class="metric-big" style="color:#00FF88" data-target="3">0</div>
+      <div class="metric-label">PAYMENT CHANNELS</div>
+    </div>
+    <div class="metric-card" id="mc4">
+      <div class="metric-big" style="color:#C084FC" data-target="50">0</div>
+      <div class="metric-label">API ENDPOINTS</div>
+    </div>
+  </div>
+
+  <table class="summary-table" id="s9-table">
+    <thead>
+      <tr>
+        <th>APPLICATION</th>
+        <th>FOCUS AREA</th>
+        <th style="text-align:center">MODULES</th>
+        <th>HIGHLIGHTS</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span style="color:var(--cyan);font-weight:700">🖥️ Admin Dashboard</span></td>
+        <td style="color:var(--gray)">HR Operations &amp; Finance</td>
+        <td class="count-cell">16</td>
+        <td style="color:var(--gray);font-size:12px">Payroll · Recruitment · AI · Compliance · Analytics</td>
+      </tr>
+      <tr>
+        <td><span style="color:var(--gold);font-weight:700">📱 Employee PWA</span></td>
+        <td style="color:var(--gray)">Mobile Self-Service</td>
+        <td class="count-cell" style="color:var(--gold)">7</td>
+        <td style="color:var(--gray);font-size:12px">Offline-first · Attendance · Leave · Payslips · i18n</td>
+      </tr>
+      <tr>
+        <td><span style="color:#00FF88;font-weight:700">🌐 Careers Portal</span></td>
+        <td style="color:var(--gray)">Talent Acquisition</td>
+        <td class="count-cell" style="color:#00FF88">4</td>
+        <td style="color:var(--gray);font-size:12px">Job Board · AI Screening · Tracking · SMS Alerts</td>
+      </tr>
+      <tr>
+        <td><span style="color:var(--gold2);font-weight:700">⚙️ Infrastructure</span></td>
+        <td style="color:var(--gray)">Platform &amp; Security</td>
+        <td class="count-cell" style="color:var(--gold2)">8</td>
+        <td style="color:var(--gray);font-size:12px">Supabase · KDPA · Django · Vercel · Playwright</td>
+      </tr>
+      <tr style="background:rgba(0,212,255,0.05)">
+        <td><span style="font-weight:900;font-size:14px">TOTAL</span></td>
+        <td></td>
+        <td class="count-cell" style="color:var(--white);font-size:24px">35</td>
+        <td style="color:var(--gray);font-size:12px">End-to-end HR lifecycle · Kenya market-ready</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ╔══════════════════════════════════════════════════╗ -->
+<!--   SLIDE 10 — PRICING STRATEGY                       -->
+<!-- ╚══════════════════════════════════════════════════╝ -->
+<section class="slide" id="slide-10">
+  <p class="slide-tag" id="s10-tag">Commercial Strategy</p>
+  <h2 class="slide-title" id="s10-title">Key <span class="gradient-text">Pricing Levers</span></h2>
+  <p class="slide-subtitle" id="s10-sub">Modules commanding premium rates due to complexity, integration depth, or strategic value</p>
+  <div class="divider" id="s10-div"></div>
+
+  <div class="pricing-grid">
+    <div class="pricing-card premium" id="pr1">
+      <div class="pricing-icon">🤖</div>
+      <div class="pricing-title">AI CV Screening (1.3)</div>
+      <div class="pricing-desc">Proprietary trained ML model for CV parsing, NLP-based skill extraction, 0–100 candidate fit scoring, and applicant ranking engine. Custom-trained AI commands the highest per-module premium in the market.</div>
+      <span class="pricing-tag">HIGHEST PREMIUM</span>
+    </div>
+    <div class="pricing-card premium" id="pr2">
+      <div class="pricing-icon">💳</div>
+      <div class="pricing-title">Payment Disbursement (1.10)</div>
+      <div class="pricing-desc">3-channel disbursement — M-Pesa, Airtel Money, Bank Transfer — all backed by IntaSend. Each channel requires certification, sandbox testing, and compliance documentation. IntaSend provides the secure settlement layer.</div>
+      <span class="pricing-tag">HIGHEST PREMIUM</span>
+    </div>
+    <div class="pricing-card" id="pr3">
+      <div class="pricing-icon">🏗️</div>
+      <div class="pricing-title">Multi-Tenant Architecture (4.2)</div>
+      <div class="pricing-desc">Multi-company Supabase Postgres with RLS on every table, Vault encryption for PII, automated cron jobs. Significant upfront architecture cost — not an afterthought feature.</div>
+      <span class="pricing-tag">ARCHITECTURE PREMIUM</span>
+    </div>
+    <div class="pricing-card" id="pr4">
+      <div class="pricing-icon">📱</div>
+      <div class="pricing-title">Employee PWA (App 2)</div>
+      <div class="pricing-desc">A fully separate application — offline-first architecture, service worker, install prompt, app manifest, mobile-optimised UX. Typically priced as a standalone product line by engineering firms.</div>
+      <span class="pricing-tag">SEPARATE PRODUCT LINE</span>
+    </div>
+    <div class="pricing-card" id="pr5">
+      <div class="pricing-icon">🛡️</div>
+      <div class="pricing-title">Compliance &amp; Audit (1.15 + 4.3)</div>
+      <div class="pricing-desc">KDPA 2019 compliance, 7-year audit retention, CSP headers, soft-delete-only policy, rate limiting. Regulatory compliance engagements require specialist review and legal alignment — billed separately.</div>
+      <span class="pricing-tag">COMPLIANCE PREMIUM</span>
+    </div>
+    <div class="pricing-card" id="pr6">
+      <div class="pricing-icon">🌍</div>
+      <div class="pricing-title">i18n — Swahili (2.7)</div>
+      <div class="pricing-desc">Additional language support via a shared package (en.json / sw.json) across Dashboard and PWA. Internationalisation is always an add-on module — priced per additional language pair.</div>
+      <span class="pricing-tag">ADD-ON MODULE</span>
+    </div>
+  </div>
+</section>
+
+</div><!-- end #stage -->
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  PARTICLE BACKGROUND
+// ══════════════════════════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('bg-canvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles;
+
+  function resize() {
+    W = canvas.width = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function init() {
+    resize();
+    particles = Array.from({length: 60}, () => ({
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.5 + 0.3,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      alpha: Math.random() * 0.5 + 0.1,
+      color: Math.random() > 0.5 ? '0,212,255' : '212,175,55'
+    }));
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // gradient bg
+    const grad = ctx.createRadialGradient(W*0.3, H*0.4, 0, W*0.3, H*0.4, W*0.6);
+    grad.addColorStop(0, 'rgba(26,46,90,0.4)');
+    grad.addColorStop(1, 'rgba(10,14,26,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    particles.forEach(p => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = W;
+      if (p.x > W) p.x = 0;
+      if (p.y < 0) p.y = H;
+      if (p.y > H) p.y = 0;
+
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${p.color},${p.alpha})`;
+      ctx.fill();
+    });
+
+    // draw faint connection lines
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 120) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.strokeStyle = `rgba(0,212,255,${0.06 * (1 - dist/120)})`;
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
+      }
+    }
+
+    requestAnimationFrame(draw);
+  }
+
+  init();
+  draw();
+  window.addEventListener('resize', () => { resize(); });
+})();
+
+// ══════════════════════════════════════════════════════════
+//  SLIDE ENGINE
+// ══════════════════════════════════════════════════════════
+const slides = Array.from(document.querySelectorAll('.slide'));
+const TOTAL = slides.length;
+let current = 0;
+let isAnimating = false;
+
+// Build dots
+const dotsEl = document.getElementById('nav-dots');
+document.getElementById('tot-slides').textContent = TOTAL;
+slides.forEach((_, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot' + (i === 0 ? ' active' : '');
+  d.addEventListener('click', () => goTo(i));
+  dotsEl.appendChild(d);
+});
+
+function updateUI() {
+  document.getElementById('cur-slide').textContent = current + 1;
+  document.getElementById('progress-bar').style.width = ((current + 1) / TOTAL * 100) + '%';
+  document.querySelectorAll('.dot').forEach((d, i) => {
+    d.classList.toggle('active', i === current);
+  });
+}
+
+function goTo(idx) {
+  if (isAnimating || idx === current || idx < 0 || idx >= TOTAL) return;
+  isAnimating = true;
+
+  const dir = idx > current ? 1 : -1;
+  const outSlide = slides[current];
+  const inSlide  = slides[idx];
+
+  // set initial state of incoming slide
+  inSlide.style.display = 'flex';
+  anime.set(inSlide, { opacity: 0, rotateY: dir * 60, translateZ: -200 });
+
+  // outgoing
+  anime({
+    targets: outSlide,
+    opacity: [1, 0],
+    rotateY: [0, -dir * 60],
+    translateZ: [0, -200],
+    duration: 500,
+    easing: 'easeInCubic',
+    complete() {
+      outSlide.style.display = 'none';
+      outSlide.classList.remove('active');
+      anime.set(outSlide, { opacity: 1, rotateY: 0, translateZ: 0 });
+    }
+  });
+
+  // incoming
+  anime({
+    targets: inSlide,
+    opacity: [0, 1],
+    rotateY: [dir * 60, 0],
+    translateZ: [-200, 0],
+    duration: 600,
+    easing: 'easeOutCubic',
+    delay: 200,
+    complete() {
+      inSlide.classList.add('active');
+      current = idx;
+      updateUI();
+      isAnimating = false;
+      animateSlide(current);
+    }
+  });
+}
+
+document.getElementById('next-btn').addEventListener('click', () => goTo(current + 1));
+document.getElementById('prev-btn').addEventListener('click', () => goTo(current - 1));
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); goTo(current + 1); }
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); goTo(current - 1); }
+});
+
+// ══════════════════════════════════════════════════════════
+//  PER-SLIDE ANIMATIONS
+// ══════════════════════════════════════════════════════════
+function animateSlide(idx) {
+  const fns = [s1, s2, s3, s4, s5, s6, s7, s8, s9, s10];
+  if (fns[idx]) fns[idx]();
+}
+
+// helper: stagger cards in
+function showCards(ids, delay=0, dx=0, dy=30) {
+  anime({
+    targets: ids.map(id => document.getElementById(id)).filter(Boolean),
+    opacity: [0, 1],
+    translateY: [dy, 0],
+    translateX: [dx, 0],
+    rotateX: [dy ? 15 : 0, 0],
+    duration: 600,
+    delay: anime.stagger(80, {start: delay}),
+    easing: 'easeOutBack'
+  });
+}
+function showEl(id, props={}, delay=0) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  anime({ targets: el, opacity: [0,1], duration: 700, delay, easing: 'easeOutCubic', ...props });
+}
+
+/* SLIDE 1 */
+function s1() {
+  const tl = anime.timeline({ easing: 'easeOutCubic' });
+  tl.add({ targets: '#s1-logo', opacity: [0,1], scale: [0.5,1], duration: 800, easing: 'easeOutBack' })
+    .add({ targets: '#s1-tag', opacity: [0,1], translateY: [20,0], duration: 600 }, '-=200')
+    .add({ targets: '#s1-title', opacity: [0,1], translateY: [30,0], duration: 700 }, '-=300')
+    .add({ targets: '#s1-sub', opacity: [0,1], translateY: [20,0], duration: 600 }, '-=400')
+    .add({ targets: '#s1-div', opacity: [0,1], width: [0,'80px'], duration: 600 }, '-=300')
+    .add({ targets: '#s1-stats', opacity: [0,1], translateY: [20,0], duration: 600 }, '-=400')
+    .add({ targets: '#s1-pills', opacity: [0,1], translateY: [20,0], duration: 600 }, '-=300');
+
+  // Animate pills stagger
+  anime({ targets: '#s1-pills .pill', opacity: [0,1], translateY: [15,0], delay: anime.stagger(60, {start: 1200}), duration: 400, easing: 'easeOutCubic' });
+
+  // Rotating ring
+  anime({ targets: '#s1-logo', rotate: [0, 360], duration: 20000, loop: true, easing: 'linear' });
+}
+
+/* SLIDE 2 */
+function s2() {
+  const tl = anime.timeline({ easing: 'easeOutCubic' });
+  tl.add({ targets: '#s2-tag', opacity: [0,1], translateY: [20,0], duration: 500 })
+    .add({ targets: '#s2-title', opacity: [0,1], translateY: [25,0], duration: 600 }, '-=200')
+    .add({ targets: '#s2-div', opacity: [0,1], width: [0,'80px'], duration: 500 }, '-=300');
+
+  anime({
+    targets: ['#ac1','#ac2','#ac3'],
+    opacity: [0,1],
+    rotateX: [30,0],
+    translateY: [40,0],
+    delay: anime.stagger(120, {start: 500}),
+    duration: 700,
+    easing: 'easeOutBack'
+  });
+  anime({
+    targets: '#s2-infra',
+    opacity: [0,1],
+    translateY: [20,0],
+    duration: 600,
+    delay: 900,
+    easing: 'easeOutCubic'
+  });
+}
+
+/* SLIDE 3 */
+function s3() {
+  anime({ targets: '#s3-hdr', opacity: [0,1], translateX: [-30,0], duration: 600, easing: 'easeOutCubic' });
+  showCards(['m11','m12','m13','m14','m15','m16','m17','m18'], 200);
+}
+
+/* SLIDE 4 */
+function s4() {
+  anime({ targets: '#s4-hdr', opacity: [0,1], translateX: [-30,0], duration: 600, easing: 'easeOutCubic' });
+  showCards(['m19','m110','m111','m112','m113','m114','m115','m116'], 200);
+}
+
+/* SLIDE 5 */
+function s5() {
+  anime({ targets: '#s5-hdr', opacity: [0,1], translateX: [-30,0], duration: 600, easing: 'easeOutCubic' });
+  showCards(['p21','p22','p23','p24','p25','p26','p27'], 200);
+}
+
+/* SLIDE 6 */
+function s6() {
+  const tl = anime.timeline({ easing: 'easeOutCubic' });
+  tl.add({ targets: '#s6-tag', opacity: [0,1], translateY: [20,0], duration: 500 })
+    .add({ targets: '#s6-title', opacity: [0,1], translateY: [25,0], duration: 600 }, '-=200')
+    .add({ targets: '#s6-sub', opacity: [0,1], translateY: [20,0], duration: 500 }, '-=300')
+    .add({ targets: '#s6-div', opacity: [0,1], width: [0,'80px'], duration: 500 }, '-=300');
+  showCards(['c31','c32','c33','c34'], 400);
+}
+
+/* SLIDE 7 */
+function s7() {
+  const tl = anime.timeline({ easing: 'easeOutCubic' });
+  tl.add({ targets: '#s7-tag', opacity: [0,1], translateY: [20,0], duration: 500 })
+    .add({ targets: '#s7-title', opacity: [0,1], translateY: [25,0], duration: 600 }, '-=200')
+    .add({ targets: '#s7-div', opacity: [0,1], width: [0,'80px'], duration: 500 }, '-=300');
+  showCards(['i41','i42','i43','i44','i45','i46','i47','i48'], 300);
+}
+
+/* SLIDE 8 */
+function s8() {
+  const tl = anime.timeline({ easing: 'easeOutCubic' });
+  tl.add({ targets: '#s8-tag', opacity: [0,1], translateY: [20,0], duration: 500 })
+    .add({ targets: '#s8-title', opacity: [0,1], translateY: [25,0], duration: 600 }, '-=200')
+    .add({ targets: '#s8-div', opacity: [0,1], width: [0,'80px'], duration: 500 }, '-=300');
+
+  anime({ targets: ['#int1','#int2'], opacity: [0,1], translateX: [-30,0], delay: anime.stagger(150, {start:400}), duration: 600, easing: 'easeOutCubic' });
+  anime({ targets: ['#int3','#int4'], opacity: [0,1], translateX: [30,0], delay: anime.stagger(150, {start:400}), duration: 600, easing: 'easeOutCubic' });
+}
+
+/* SLIDE 9 — animated counters */
+function s9() {
+  const tl = anime.timeline({ easing: 'easeOutCubic' });
+  tl.add({ targets: '#s9-tag', opacity: [0,1], translateY: [20,0], duration: 500 })
+    .add({ targets: '#s9-title', opacity: [0,1], translateY: [25,0], duration: 600 }, '-=200')
+    .add({ targets: '#s9-div', opacity: [0,1], width: [0,'80px'], duration: 500 }, '-=300');
+
+  anime({ targets: ['#mc1','#mc2','#mc3','#mc4'], opacity: [0,1], translateY: [30,0], scale: [0.85,1], delay: anime.stagger(100, {start:300}), duration: 600, easing: 'easeOutBack' });
+  anime({ targets: '#s9-table', opacity: [0,1], translateY: [20,0], duration: 600, delay: 700, easing: 'easeOutCubic' });
+
+  // count up numbers
+  document.querySelectorAll('.metric-big[data-target]').forEach((el, i) => {
+    const target = +el.getAttribute('data-target');
+    anime({ targets: {val:0}, val: target, round: 1, duration: 1500, delay: 300 + i*100, easing: 'easeOutQuart',
+      update(a) { el.textContent = Math.round(a.animations[0].currentValue); }
+    });
+  });
+}
+
+/* SLIDE 10 */
+function s10() {
+  const tl = anime.timeline({ easing: 'easeOutCubic' });
+  tl.add({ targets: '#s10-tag', opacity: [0,1], translateY: [20,0], duration: 500 })
+    .add({ targets: '#s10-title', opacity: [0,1], translateY: [25,0], duration: 600 }, '-=200')
+    .add({ targets: '#s10-sub', opacity: [0,1], translateY: [20,0], duration: 500 }, '-=300')
+    .add({ targets: '#s10-div', opacity: [0,1], width: [0,'80px'], duration: 500 }, '-=300');
+
+  anime({
+    targets: ['#pr1','#pr2','#pr3','#pr4','#pr5','#pr6'],
+    opacity: [0,1],
+    scale: [0.88,1],
+    delay: anime.stagger(100, {start:400}),
+    duration: 600,
+    easing: 'easeOutBack'
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  FULLSCREEN
+// ══════════════════════════════════════════════════════════
+function toggleFS() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════
+updateUI();
+// slight delay so DOM is settled
+setTimeout(() => animateSlide(0), 100);
+</script>
+</body>
+</html>
