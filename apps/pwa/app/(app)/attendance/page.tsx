@@ -233,7 +233,7 @@ export default function AttendancePage() {
         <div className="rounded-2xl bg-white flex items-center gap-2 p-4" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
           <MapPin className="w-4 h-4 text-success flex-shrink-0" />
           <p className="text-sm text-text-body">
-            {t(lang, 'attendance.gps_recorded')}: {todayRecord.check_in_lat.toFixed(4)}, {todayRecord.check_in_lng?.toFixed(4)}
+            {t(lang, 'attendance.gps_recorded')}: {todayRecord?.check_in_lat?.toFixed(4)}, {todayRecord?.check_in_lng?.toFixed(4)}
           </p>
         </div>
       ) : isCheckedIn && !isCheckedOut ? (
@@ -254,7 +254,7 @@ export default function AttendancePage() {
             Capture location
           </button>
         </div>
-      )}
+      ) : null}
 
       {/* Weekly history */}
       {history.length > 0 && (
