@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { usePayrollRun, useDisbursePayroll, type PayrollRecordWithEmployee } from '@/lib/hooks/use-payroll'
 import { Modal } from '@/components/ui/modal'
 import { StatusBadge } from '@/components/ui/badge'
+import { ShareButton } from '@/components/ui/share-button'
+import { ApprovalsPanel } from '@/components/modules/payroll/approvals-panel'
 import { SkeletonTable } from '@/components/ui/skeleton'
 import { formatKES, monthYearLabel } from '@hr/shared'
 import { toast } from '@/lib/toast'
@@ -194,8 +196,15 @@ export function PayrollRunDetailClient({ runId }: { runId: string }) {
           </h1>
           <p className="text-sm text-text-muted mt-0.5">{records.length} employee{records.length !== 1 ? 's' : ''}</p>
         </div>
-        <StatusBadge status={run.status} />
+        <div className="flex items-center gap-3">
+          <ShareButton module="payroll" objectId={runId}
+                       title={`Payroll ${monthYearLabel(run.period_month, run.period_year)}`} />
+          <StatusBadge status={run.status} />
+        </div>
       </div>
+
+      {/* Quorum approval workflow (M-of-N signatures, documents, lock) */}
+      <ApprovalsPanel runId={runId} status={String(run.status)} />
 
       {/* Summary cards */}
       <div className="grid grid-cols-4 gap-4">

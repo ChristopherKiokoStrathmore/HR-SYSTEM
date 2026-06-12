@@ -7,11 +7,17 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Loader2, Upload, FileText, X, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react'
 
+// Retention period communicated to applicants (Kenya Data Protection Act 2019)
+const DATA_RETENTION_MONTHS = 12
+
 const schema = z.object({
   full_name: z.string().min(2, 'Full name is required'),
   email: z.string().email('Enter a valid email address'),
   phone: z.string().optional(),
   cover_note: z.string().optional(),
+  data_consent: z.literal(true, {
+    errorMap: () => ({ message: 'You must consent to data processing to apply' }),
+  }),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -72,6 +78,7 @@ export function ApplyForm({ jobId, jobTitle }: Props) {
     try {
       const body = {
         ...values,
+        data_retention_months: DATA_RETENTION_MONTHS,
         ...(cvPayload?.mode === 'pdf'
           ? { fileBase64: cvPayload.fileBase64, mimeType: cvPayload.mimeType }
           : cvPayload?.mode === 'text'
@@ -278,6 +285,23 @@ export function ApplyForm({ jobId, jobTitle }: Props) {
           </div>
         )}
 
+        <label className="flex items-start gap-3 bg-surface border border-border rounded-xl px-4 py-3 cursor-pointer">
+          <input
+            type="checkbox"
+            className="mt-0.5 rounded border-border"
+            {...register('data_consent')}
+          />
+          <span className="text-xs text-text-muted">
+            I consent to the processing of my personal data (including my CV) for
+            recruitment purposes, in line with the Kenya Data Protection Act, 2019.
+            My data will be retained for up to <strong>{DATA_RETENTION_MONTHS} months</strong>{' '}
+            and I may request access, correction or deletion at any time.
+          </span>
+        </label>
+        {errors.data_consent && (
+          <p className="text-xs text-red-600">{errors.data_consent.message}</p>
+        )}
+
         <button
           type="submit"
           disabled={submitState === 'submitting'}
@@ -286,10 +310,6 @@ export function ApplyForm({ jobId, jobTitle }: Props) {
           {submitState === 'submitting' && <Loader2 className="w-5 h-5 animate-spin" />}
           {submitState === 'submitting' ? 'Submitting your application…' : 'Submit application'}
         </button>
-
-        <p className="text-xs text-text-muted text-center">
-          By applying, you agree to us processing your data for recruitment purposes.
-        </p>
       </form>
     </div>
   )

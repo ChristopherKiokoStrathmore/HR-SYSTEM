@@ -4,7 +4,8 @@
     "leave": "Leave",
     "attendance": "Attendance",
     "payslip": "Payslip",
-    "profile": "Profile"
+    "profile": "Profile",
+    "approvals": "Approvals"
   },
   "actions": {
     "request_leave": "Request Leave",
