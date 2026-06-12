@@ -1,0 +1,6 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "cd ../.. && npx turbo build --filter=@hr/careers",
+  "installCommand": "cd ../.. && npm install",
+  "outputDirectory": ".next"
+}

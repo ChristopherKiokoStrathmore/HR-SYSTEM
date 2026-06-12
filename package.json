@@ -1,0 +1,46 @@
+{
+  "name": "sheer-logic-hr-system",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "test:uat": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 npx playwright test --project=uat",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
+    "clean": "turbo clean && rm -rf node_modules",
+    "test:e2e": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 npx playwright test",
+    "test:e2e:ui": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 npx playwright test --ui",
+    "test:e2e:report": "npx playwright show-report playwright-report/html",
+    "test:e2e:dashboard": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 npx playwright test --project=dashboard",
+    "test:e2e:pwa": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 npx playwright test --project=pwa",
+    "test:dashboard": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 npx playwright test --project=dashboard",
+    "test:pwa": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 npx playwright test --project=pwa",
+    "uat": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/uat-loop.mjs",
+    "uat:dashboard": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/uat-loop.mjs --project=dashboard",
+    "uat:pwa": "cross-env NODE_TLS_REJECT_UNAUTHORIZED=0 node scripts/uat-loop.mjs --project=pwa"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@turbo/gen": "^2.3.3",
+    "@typescript-eslint/eslint-plugin": "^8.60.0",
+    "@typescript-eslint/parser": "^8.60.0",
+    "cross-env": "^10.1.0",
+    "prettier": "^3.3.3",
+    "turbo": "^2.3.3",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "packageManager": "npm@10.9.2",
+  "dependencies": {
+    "@supabase/ssr": "^0.10.3",
+    "@supabase/supabase-js": "^2.105.4"
+  }
+}
