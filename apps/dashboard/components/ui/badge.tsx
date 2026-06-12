@@ -41,6 +41,8 @@ export function StatusBadge({ status }: { status: string }) {
     terminated: 'danger',
     resigned: 'danger',
     pending: 'warning',
+    pending_approval: 'warning',
+    calculated: 'primary',
     approved: 'success',
     rejected: 'danger',
     cancelled: 'muted',
@@ -61,6 +63,7 @@ export function StatusBadge({ status }: { status: string }) {
   const labels: Record<string, string> = {
     active: 'Active', on_leave: 'On Leave', suspended: 'Suspended',
     terminated: 'Terminated', resigned: 'Resigned', pending: 'Pending',
+    pending_approval: 'Pending Approval', calculated: 'Calculated',
     approved: 'Approved', rejected: 'Rejected', cancelled: 'Cancelled',
     verified: 'Verified', uploaded: 'Uploaded', open: 'Open',
     closed: 'Closed', on_hold: 'On Hold', draft: 'Draft',

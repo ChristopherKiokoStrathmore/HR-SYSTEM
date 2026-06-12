@@ -11,7 +11,6 @@ import {
   Clock,
   DollarSign,
   TrendingUp,
-  GraduationCap,
   Stethoscope,
   ShieldCheck,
   BarChart3,
@@ -20,6 +19,10 @@ import {
   ChevronRight,
   Moon,
   Sun,
+  Gavel,
+  DoorOpen,
+  Award,
+  MapPin,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/lib/store'
@@ -32,10 +35,14 @@ const navItems = [
   { href: '/onboarding', label: 'Onboarding', icon: ClipboardList },
   { href: '/employees', label: 'Employees', icon: Users },
   { href: '/attendance', label: 'Attendance', icon: Clock },
+  { href: '/attendance/geofence', label: 'Geofence', icon: MapPin },
   { href: '/performance', label: 'Performance', icon: TrendingUp },
   { href: '/payroll', label: 'Payroll', icon: DollarSign },
   { href: '/leave', label: 'Leave', icon: Calendar },
   { href: '/medical', label: 'Medical', icon: Stethoscope },
+  { href: '/disciplinary', label: 'Disciplinary', icon: Gavel },
+  { href: '/exits', label: 'Exits', icon: DoorOpen },
+  { href: '/certificates', label: 'Certificates', icon: Award },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]

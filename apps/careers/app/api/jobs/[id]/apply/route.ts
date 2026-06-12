@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   try {
     const body = await req.json()
-    const { full_name, email, phone, cover_note, cvText, fileBase64, mimeType } = body as {
+    const { full_name, email, phone, cover_note, cvText, fileBase64, mimeType, data_consent, data_retention_months } = body as {
       full_name: string
       email: string
       phone?: string
@@ -28,10 +28,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       cvText?: string
       fileBase64?: string
       mimeType?: 'application/pdf' | 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      data_consent?: boolean
+      data_retention_months?: number
     }
 
     if (!full_name?.trim() || !email?.trim()) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
+    }
+
+    // Kenya DPA 2019: explicit consent is required before processing applicant data
+    if (data_consent !== true) {
+      return NextResponse.json(
+        { error: 'Data processing consent is required to apply' },
+        { status: 400 },
+      )
     }
 
     const supabase = createServerClient(true)
@@ -87,6 +97,20 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     if (insertError) {
       console.error('Candidate insert error:', insertError)
       return NextResponse.json({ error: 'Failed to submit application. Please try again.' }, { status: 500 })
+    }
+
+    // Record consent metadata (columns added by sql/sheerlogic_extensions.sql;
+    // non-fatal until that migration is applied to Supabase).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: consentError } = await (supabase.from('candidates') as any)
+      .update({
+        data_consent: true,
+        consent_at: new Date().toISOString(),
+        data_retention_months: data_retention_months ?? 12,
+      })
+      .eq('id', candidate.id)
+    if (consentError) {
+      console.warn('Consent columns not yet in candidates table:', consentError.message)
     }
 
     // AI screening is awaited here so the score is persisted before the request ends.

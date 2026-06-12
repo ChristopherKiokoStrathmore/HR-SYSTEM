@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Calendar, Clock, FileText, User } from 'lucide-react'
+import { Home, Calendar, Clock, FileText, User, ClipboardCheck } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useStore } from '@/lib/store'
 import { t } from '@hr/i18n'
@@ -11,6 +11,7 @@ const navItems = [
   { href: '/home',       key: 'nav.home',       icon: Home },
   { href: '/leave',      key: 'nav.leave',      icon: Calendar },
   { href: '/attendance', key: 'nav.attendance',  icon: Clock },
+  { href: '/approvals',  key: 'nav.approvals',   icon: ClipboardCheck },
   { href: '/payslip',   key: 'nav.payslip',     icon: FileText },
   { href: '/profile',   key: 'nav.profile',     icon: User },
 ]

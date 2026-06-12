@@ -4,7 +4,8 @@
     "leave": "Likizo",
     "attendance": "Mahudhurio",
     "payslip": "Malipo",
-    "profile": "Wasifu"
+    "profile": "Wasifu",
+    "approvals": "Idhini"
   },
   "actions": {
     "request_leave": "Omba Likizo",
