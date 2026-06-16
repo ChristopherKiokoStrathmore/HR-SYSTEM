@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createServerClient } from '@hr/shared'
+import { djangoGet } from '@/lib/django-client'
 import { CheckCircle2, Clock, ArrowLeft, Briefcase, Mail, Phone } from 'lucide-react'
 import { TrackerTokenSaver } from '../../../components/tracker-token-saver'
 
@@ -54,24 +54,15 @@ function formatDate(iso: string) {
 }
 
 export default async function TrackPage({ params }: { params: { token: string } }) {
-  const supabase = createServerClient(true)
-
-  const { data } = await supabase
-    .from('candidates')
-    .select(`
-      id, full_name, email, phone, current_stage, created_at,
-      job_postings ( id, title, department, location_name, employment_type, closing_date )
-    `)
-    .eq('tracking_token', params.token)
-    .single<{
-      id: string
-      full_name: string
-      email: string
-      phone: string | null
-      current_stage: string
-      created_at: string
-      job_postings: { id: string; title: string; department: string | null; location_name: string | null; employment_type: string; closing_date: string | null } | null
-    }>()
+  const { data } = await djangoGet<{
+    id: string
+    full_name: string
+    email: string
+    phone: string | null
+    current_stage: string
+    created_at: string
+    job_posting: { id: string; title: string; department: string | null; location_name: string | null; employment_type: string; closing_date: string | null } | null
+  }>(`/careers/applications/track/${params.token}/`)
 
   if (!data) notFound()
 
@@ -79,7 +70,7 @@ export default async function TrackPage({ params }: { params: { token: string } 
   const isRejected   = currentStage === 'rejected'
   const activeIdx    = isRejected ? -1 : (STAGE_INDEX[currentStage] ?? 1)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const job: any     = data.job_postings
+  const job: any     = data.job_posting
 
   const currentStageDef = isRejected
     ? { label: 'Unsuccessful', description: "Thank you for your interest in this position. After careful consideration, we won't be moving forward with your application at this time. We encourage you to browse our other open positions." }

@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createCookieClient, createServiceClient } from '@/lib/supabase-server'
-import { resolvePwaUserRecord, resolveEmployeeContext } from '@/lib/employee-context'
+import { getSession } from '@/lib/session'
+import { djangoGet } from '@/lib/django-client'
 
 /**
  * PWA proxy to the Django HR-API (overtime, leave recalls, attendance
@@ -25,14 +25,10 @@ async function proxy(req: NextRequest, params: { path: string[] }) {
     return NextResponse.json({ error: 'Unknown HR API path' }, { status: 404 })
   }
 
-  const supa = await createCookieClient()
-  const service = createServiceClient()
-  const { data: { user } } = await supa.auth.getUser()
-  const record = await resolvePwaUserRecord(service, user)
-  if (!record) {
+  const session = await getSession()
+  if (!session) {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
   }
-  const { employee } = await resolveEmployeeContext(service, user)
 
   const path = params.path.join('/')
   const search = new URL(req.url).search
@@ -42,10 +38,10 @@ async function proxy(req: NextRequest, params: { path: string[] }) {
     'Content-Type': 'application/json',
     Accept: 'application/json',
     ...(HR_SERVICE_KEY ? { 'X-Service-Key': HR_SERVICE_KEY } : {}),
-    'X-User-Id': String(record.id),
-    ...(record.role ? { 'X-User-Role': String(record.role) } : {}),
-    ...(record.email ? { 'X-User-Email': String(record.email) } : {}),
-    ...(record.company_id ? { 'X-Company-Id': String(record.company_id) } : {}),
+    'X-User-Id': session.userId,
+    ...(session.role ? { 'X-User-Role': session.role } : {}),
+    ...(session.email ? { 'X-User-Email': session.email } : {}),
+    ...(session.companyId ? { 'X-Company-Id': session.companyId } : {}),
   }
 
   let body: string | undefined
@@ -54,14 +50,16 @@ async function proxy(req: NextRequest, params: { path: string[] }) {
       const json = await req.json()
       // Stamp the caller's employee/company/manager ids so the PWA can't act
       // for others, and manager notifications (SMS/email one-tap) fire.
-      if (employee && json && typeof json === 'object') {
+      if (session.employeeId && json && typeof json === 'object') {
         if ('employee_id' in json) {
-          json.employee_id = employee.id
+          json.employee_id = session.employeeId
         }
-        json.company_id = json.company_id ?? employee.company_id
-        if (employee.manager_id && !json.manager_id &&
-            ['overtime', 'leave-recalls'].includes(params.path[0])) {
-          json.manager_id = employee.manager_id
+        json.company_id = json.company_id ?? session.companyId
+        if (!json.manager_id && ['overtime', 'leave-recalls'].includes(params.path[0])) {
+          const { data: employee } = await djangoGet<{ manager_id: string | null }>(
+            session, `/all-employees/${session.employeeId}/`,
+          )
+          if (employee?.manager_id) json.manager_id = employee.manager_id
         }
       }
       body = JSON.stringify(json)

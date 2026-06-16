@@ -1,13 +1,12 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { djangoGet, djangoPost } from '@/lib/django-client'
 import { alertMatchesJob, type JobPosting, type JobAlert } from '@/lib/notifications/match-alerts'
 import { sendAlertEmail } from '@/lib/notifications/email'
 import { sendAlertSms }   from '@/lib/notifications/sms'
 
-// Called by the dashboard or a Supabase Database Webhook when a job is published.
-// Supabase webhook payload: { type, table, record, old_record }
-// Manual call:              { job_posting_id }
+// Called by the dashboard when a job is published, or manually.
+// Body: { job_posting_id }
 
 export async function POST(req: NextRequest) {
   // Verify shared secret (set ALERT_NOTIFY_SECRET in both apps)
@@ -23,78 +22,48 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-
-    // Supabase webhook format
-    if (body.record?.id && body.record?.status === 'open') {
-      // Only fire when status transitions TO open
-      if (body.type === 'INSERT' || body.old_record?.status !== 'open') {
-        jobId = body.record.id
-      }
-    }
-    // Manual trigger format
-    else if (body.job_posting_id) {
-      jobId = body.job_posting_id
-    }
+    if (body.job_posting_id) jobId = body.job_posting_id
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
   if (!jobId) return NextResponse.json({ skipped: true })
 
-  const supabase = createServerClient(true)
-
-  // Fetch the job posting
-  const { data: job } = await supabase
-    .from('job_postings')
-    .select('id, title, department, description, required_keywords, employment_type, experience_level, location_name, location_lat, location_lng, closing_date, status')
-    .eq('id', jobId)
-    .eq('status', 'open')
-    .eq('is_deleted', false)
-    .single()
-
+  // Fetch the job posting (public endpoint already filters status=open, is_deleted=false)
+  const { data: job } = await djangoGet<JobPosting>(`/careers/jobs/${jobId}/`)
   if (!job) return NextResponse.json({ skipped: true, reason: 'job not found or not open' })
 
   // Fetch active instant-frequency alerts
-  const { data: alerts } = await supabase
-    .from('job_alerts')
-    .select('id, name, email, phone, keywords, categories, job_types, experience_levels, location_name, location_lat, location_lng, radius_km, unsubscribe_token, frequency')
-    .eq('is_active', true)
-    .eq('frequency', 'instant')
-
+  const { data: alerts } = await djangoGet<JobAlert[]>('/careers/alerts/matching/', { job_posting_id: jobId })
   if (!alerts?.length) return NextResponse.json({ sent: 0 })
 
-  const jobPosting = job as unknown as JobPosting
-  const matched    = (alerts as unknown as JobAlert[]).filter((a) => alertMatchesJob(a, jobPosting))
+  const matched = alerts.filter((a) => alertMatchesJob(a, job))
+
+  // Already-notified alert/channel combos for this job, fetched once.
+  const { data: existingLogs } = await djangoGet<{ alert_id: string; channel: string }[]>(
+    '/careers/alerts/logs/', { job_posting_id: jobId },
+  )
+  const alreadySent = new Set((existingLogs ?? []).map((l) => `${l.alert_id}:${l.channel}`))
 
   let emailsSent = 0
   let smsSent    = 0
+  const newLogs: { alert_id: string; job_posting_id: string; channel: string; status: string }[] = []
 
   for (const alert of matched) {
-    // Skip if already notified for this job
-    const { data: existing } = await supabase
-      .from('job_alert_logs')
-      .select('id')
-      .eq('alert_id', alert.id)
-      .eq('job_posting_id', jobId)
-      .limit(1)
-
-    if (existing?.length) continue
+    const needsEmail = !alreadySent.has(`${alert.id}:email`)
+    const needsSms   = alert.phone && !alreadySent.has(`${alert.id}:sms`)
+    if (!needsEmail && !needsSms) continue
 
     const [emailOk, smsOk] = await Promise.all([
-      sendAlertEmail(alert, jobPosting),
-      alert.phone ? sendAlertSms(alert, jobPosting) : Promise.resolve(false),
+      needsEmail ? sendAlertEmail(alert, job) : Promise.resolve(false),
+      needsSms   ? sendAlertSms(alert, job)   : Promise.resolve(false),
     ])
 
-    // Log what was sent
-    const logs: { alert_id: string; job_posting_id: string; channel: string; status: string }[] = []
-    if (emailOk) logs.push({ alert_id: alert.id, job_posting_id: jobId, channel: 'email', status: 'sent' })
-    if (smsOk)   logs.push({ alert_id: alert.id, job_posting_id: jobId, channel: 'sms',   status: 'sent' })
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if (logs.length) await (supabase.from('job_alert_logs') as any).insert(logs)
-
-    if (emailOk) emailsSent++
-    if (smsOk)   smsSent++
+    if (emailOk) { newLogs.push({ alert_id: alert.id, job_posting_id: jobId, channel: 'email', status: 'sent' }); emailsSent++ }
+    if (smsOk)   { newLogs.push({ alert_id: alert.id, job_posting_id: jobId, channel: 'sms',   status: 'sent' }); smsSent++ }
   }
+
+  if (newLogs.length) await djangoPost('/careers/alerts/logs/', newLogs)
 
   return NextResponse.json({ matched: matched.length, emailsSent, smsSent })
 }
