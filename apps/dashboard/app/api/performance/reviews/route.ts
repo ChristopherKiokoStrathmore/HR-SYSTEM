@@ -1,34 +1,37 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { djangoGet, djangoPost } from '@/lib/django-client'
+
+interface ReviewRow { id: string; reviewer_id: string | null; [key: string]: unknown }
+interface UserRow { id: string; full_name: string }
 
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient(true)
   const { searchParams } = new URL(req.url)
-  const employeeId = searchParams.get('employeeId')
+  const companyId = searchParams.get('companyId') || undefined
+  const { data: reviews, error } = await djangoGet<ReviewRow[]>('/performance-reviews/', {
+    employee_id: searchParams.get('employeeId') || undefined,
+    company_id: companyId,
+  })
+  if (error) return NextResponse.json({ error }, { status: 500 })
 
-  if (!employeeId) return NextResponse.json({ error: 'employeeId required' }, { status: 400 })
+  const list = reviews ?? []
+  const reviewerIds = [...new Set(list.map((r) => r.reviewer_id).filter(Boolean))]
+  let reviewerById = new Map<string, UserRow>()
+  if (reviewerIds.length) {
+    const { data: users } = await djangoGet<UserRow[]>('/users/', { company_id: companyId })
+    reviewerById = new Map((users ?? []).map((u) => [u.id, u]))
+  }
 
-  const { data, error } = await supabase
-    .from('performance_reviews')
-    .select('*, reviewer:users!reviewer_id(full_name)')
-    .eq('employee_id', employeeId)
-    .order('created_at', { ascending: false })
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const data = list.map((r) => ({
+    ...r,
+    reviewer: r.reviewer_id ? { full_name: reviewerById.get(r.reviewer_id)?.full_name ?? 'Unknown' } : undefined,
+  }))
   return NextResponse.json({ data })
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createServerClient(true)
   const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('performance_reviews')
-    .insert(body)
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  const { data, error } = await djangoPost('/performance-reviews/', body)
+  if (error) return NextResponse.json({ error }, { status: 500 })
   return NextResponse.json({ data }, { status: 201 })
 }

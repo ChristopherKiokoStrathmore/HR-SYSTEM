@@ -1,6 +1,5 @@
 'use client'
 
-import { createBrowserClient } from '@supabase/ssr'
 import { useRouter } from 'next/navigation'
 import { UserX } from 'lucide-react'
 
@@ -8,11 +7,7 @@ export function NotEmployeeScreen() {
   const router = useRouter()
 
   async function handleSignOut() {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!
-    )
-    await supabase.auth.signOut()
+    await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
   }
 

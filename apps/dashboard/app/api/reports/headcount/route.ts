@@ -1,68 +1,61 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { djangoGet } from '@/lib/django-client'
 
 interface EmployeeRow {
-  department: string | null
-  employment_type: string
   employment_status: string
-  start_date: string
+  department: string | null
   gender: string | null
+  start_date: string
 }
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const companyId = searchParams.get('companyId')
-  const supabase = createServerClient(true)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let hcQuery = (supabase.from('employee_profiles') as any)
-    .select('department, employment_type, employment_status, start_date, gender')
-    .eq('is_deleted', false)
-  if (companyId) hcQuery = hcQuery.eq('company_id', companyId)
-  const { data, error } = await hcQuery as { data: EmployeeRow[] | null; error: unknown }
+  const companyId = searchParams.get('companyId') ?? undefined
 
+  const { data, error } = await djangoGet<EmployeeRow[]>('/all-employees/', {
+    company_id: companyId,
+    page_size: 5000,
+  })
   if (error) return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 })
 
   const employees = data ?? []
   const total = employees.length
   const active = employees.filter((e) => e.employment_status === 'active').length
-  const byDepartment: Record<string, number> = {}
-  const byType: Record<string, number> = {}
-  const byStatus: Record<string, number> = {}
-  const byGender: Record<string, number> = {}
 
+  const deptCounts = new Map<string, number>()
+  const genderCounts = new Map<string, number>()
   for (const e of employees) {
-    const dept = e.department ?? 'Unassigned'
-    byDepartment[dept] = (byDepartment[dept] ?? 0) + 1
-    byType[e.employment_type] = (byType[e.employment_type] ?? 0) + 1
-    byStatus[e.employment_status] = (byStatus[e.employment_status] ?? 0) + 1
-    const rawGender = e.gender ?? 'Unspecified'
-    const g = rawGender.charAt(0).toUpperCase() + rawGender.slice(1).toLowerCase()
-    byGender[g] = (byGender[g] ?? 0) + 1
+    const dept = e.department || 'Unassigned'
+    deptCounts.set(dept, (deptCounts.get(dept) ?? 0) + 1)
+    const gender = e.gender || 'Unknown'
+    genderCounts.set(gender, (genderCounts.get(gender) ?? 0) + 1)
   }
 
-  // Monthly hires in the last 12 months
+  // Last 12 months of hires
   const now = new Date()
-  const monthlyHires: { month: string; count: number }[] = []
+  const monthBuckets: { key: string; month: string; count: number }[] = []
   for (let i = 11; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const label = d.toLocaleDateString('en-KE', { month: 'short', year: '2-digit' })
-    const count = employees.filter((e) => {
-      const s = new Date(e.start_date)
-      return s.getFullYear() === d.getFullYear() && s.getMonth() === d.getMonth()
-    }).length
-    monthlyHires.push({ month: label, count })
+    monthBuckets.push({ key: `${d.getFullYear()}-${d.getMonth()}`, month: `${MONTHS[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`, count: 0 })
+  }
+  const bucketByKey = new Map(monthBuckets.map((b) => [b.key, b]))
+  for (const e of employees) {
+    const d = new Date(e.start_date)
+    const key = `${d.getFullYear()}-${d.getMonth()}`
+    const bucket = bucketByKey.get(key)
+    if (bucket) bucket.count++
   }
 
   return NextResponse.json({
     data: {
       total,
       active,
-      byDepartment: Object.entries(byDepartment).map(([name, value]) => ({ name, value })),
-      byType: Object.entries(byType).map(([name, value]) => ({ name, value })),
-      byStatus: Object.entries(byStatus).map(([name, value]) => ({ name, value })),
-      byGender: Object.entries(byGender).map(([name, value]) => ({ name, value })),
-      monthlyHires,
+      byDepartment: [...deptCounts.entries()].map(([name, value]) => ({ name, value })),
+      byGender: [...genderCounts.entries()].map(([name, value]) => ({ name, value })),
+      monthlyHires: monthBuckets.map(({ month, count }) => ({ month, count })),
     },
   })
 }

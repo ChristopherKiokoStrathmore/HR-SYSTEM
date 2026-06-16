@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { djangoPost } from '@/lib/django-client'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -21,10 +21,8 @@ const schema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const body = schema.parse(await req.json())
-    const supabase = createServerClient(true)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from('job_alerts') as any).insert({
+    const { error } = await djangoPost('/careers/alerts/subscribe/', {
       name:              body.name ?? null,
       email:             body.email,
       phone:             body.phone ?? null,

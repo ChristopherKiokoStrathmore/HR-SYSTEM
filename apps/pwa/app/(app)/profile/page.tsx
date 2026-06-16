@@ -6,7 +6,6 @@ import { motion, useReducedMotion, AnimatePresence } from 'framer-motion'
 import { useMe, useUpdatePaymentMethod } from '@/lib/hooks/use-me'
 import { useStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
-import { createBrowserClient } from '@hr/shared'
 import { t } from '@hr/i18n'
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
@@ -250,8 +249,7 @@ export default function ProfilePage() {
   const emp = me?.employee
 
   async function handleLogout() {
-    const supabase = createBrowserClient()
-    await supabase.auth.signOut()
+    await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
     router.refresh()
   }

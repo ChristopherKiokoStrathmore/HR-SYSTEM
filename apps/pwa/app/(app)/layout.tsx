@@ -4,45 +4,18 @@ import { InstallPrompt } from '@/components/mobile/install-prompt'
 import { NotEmployeeScreen } from '@/components/mobile/not-employee-screen'
 import { Toaster } from 'sonner'
 import { redirect } from 'next/navigation'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import type { CookieOptions } from '@supabase/ssr'
-import { createServiceClient } from '@/lib/supabase-server'
+import { getSession } from '@/lib/session'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!,
-    {
-      cookies: {
-        get(name: string) { return cookieStore.get(name)?.value },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set(name, value, options)
-        },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set(name, '', { ...options, maxAge: 0 })
-        },
-      },
-    }
-  )
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  const session = await getSession()
 
   if (!session) {
     redirect('/login')
   }
 
-  const svc = createServiceClient()
-  const { data: emp } = await svc
-    .from('employee_profiles')
-    .select('id')
-    .eq('user_id', session.user.id)
-    .eq('is_deleted', false)
-    .maybeSingle()
-
-  if (!emp) {
+  // employeeId is resolved (and stamped into the session) at login time via
+  // Django's UserProfile — no per-request DB lookup needed here.
+  if (!session.employeeId) {
     return <NotEmployeeScreen />
   }
 

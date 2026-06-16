@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { djangoGet, djangoPost } from '@/lib/django-client'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { sendApplicationConfirmation } from '@/lib/notifications/application-email'
 import { screenCv } from '@/lib/ai/screen-cv'
@@ -10,8 +10,6 @@ interface JobRow {
   description: string
   required_keywords: string[]
   nice_to_have_keywords: string[]
-  auto_reject_threshold: number
-  company_id: string
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
@@ -44,76 +42,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       )
     }
 
-    const supabase = createServerClient(true)
-
-    const { data: posting } = await supabase
-      .from('job_postings')
-      .select('title, description, required_keywords, nice_to_have_keywords, auto_reject_threshold, company_id')
-      .eq('id', params.id)
-      .eq('is_deleted', false)
-      .eq('status', 'open')
-      .single<JobRow>()
-
+    const { data: posting } = await djangoGet<JobRow>(`/careers/jobs/${params.id}/`)
     if (!posting) {
       return NextResponse.json({ error: 'This position is no longer accepting applications' }, { status: 404 })
     }
 
-    // Duplicate check
-    const { data: existing } = await supabase
-      .from('candidates')
-      .select('id')
-      .eq('job_posting_id', params.id)
-      .eq('email', email.toLowerCase().trim())
-      .maybeSingle()
-
-    if (existing) {
-      return NextResponse.json(
-        { error: 'You have already applied for this position with this email address' },
-        { status: 409 },
-      )
-    }
-
-    // Create candidate
-    const trackingToken = crypto.randomUUID()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: candidate, error: insertError } = await (supabase.from('candidates') as any)
-      .insert({
-        job_posting_id: params.id,
-        tenant_id: posting.company_id,
-        full_name: full_name.trim(),
-        email: email.toLowerCase().trim(),
-        phone: phone?.trim() ?? null,
-        cv_url: '',
-        cv_text: cvText ?? null,
-        notes: cover_note?.trim() ?? null,
-        current_stage: 'screened',
-        ai_extracted_skills: [],
-        tracking_token: trackingToken,
-        source: 'portal',
-      })
-      .select('id, tracking_token')
-      .single()
-
-    if (insertError) {
-      console.error('Candidate insert error:', insertError)
-      return NextResponse.json({ error: 'Failed to submit application. Please try again.' }, { status: 500 })
-    }
-
-    // Record consent metadata (columns added by sql/sheerlogic_extensions.sql;
-    // non-fatal until that migration is applied to Supabase).
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: consentError } = await (supabase.from('candidates') as any)
-      .update({
-        data_consent: true,
-        consent_at: new Date().toISOString(),
-        data_retention_months: data_retention_months ?? 12,
-      })
-      .eq('id', candidate.id)
-    if (consentError) {
-      console.warn('Consent columns not yet in candidates table:', consentError.message)
-    }
-
-    // AI screening is awaited here so the score is persisted before the request ends.
+    // AI screening is awaited here so the score is included in the create
+    // call below (Django decides auto-reject server-side, since the public
+    // job endpoint doesn't expose auto_reject_threshold to this route).
+    let aiFields: Record<string, unknown> = {}
     if (cvText || fileBase64) {
       try {
         const screening = await screenCv({
@@ -125,28 +62,45 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
           fileBase64,
           mimeType,
         })
-
         if (screening) {
           const { result: aiResult } = screening
-          const autoRejected = aiResult.match_score < posting.auto_reject_threshold
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase.from('candidates') as any)
-            .update({
-              ai_score: aiResult.match_score,
-              ai_summary: aiResult.summary,
-              ai_extracted_skills: aiResult.skills,
-              ai_experience_years: aiResult.experience_years,
-              ai_education: aiResult.education,
-              current_stage: autoRejected ? 'rejected' : 'screened',
-              rejection_reason: autoRejected
-                ? `Auto-rejected: score ${aiResult.match_score} below threshold ${posting.auto_reject_threshold}`
-                : null,
-            })
-            .eq('id', candidate.id)
+          aiFields = {
+            ai_score: aiResult.match_score,
+            ai_summary: aiResult.summary,
+            ai_extracted_skills: aiResult.skills,
+            ai_experience_years: aiResult.experience_years,
+            ai_education: aiResult.education,
+          }
         }
       } catch (err) {
         console.error('AI screening failed (non-fatal):', err)
       }
+    }
+
+    const { data: candidate, error, status } = await djangoPost<{ id: string; tracking_token: string }>(
+      `/careers/jobs/${params.id}/apply/`,
+      {
+        full_name: full_name.trim(),
+        email: email.toLowerCase().trim(),
+        phone: phone?.trim() ?? null,
+        cv_text: cvText ?? null,
+        notes: cover_note?.trim() ?? null,
+        source: 'portal',
+        data_consent: true,
+        data_retention_months: data_retention_months ?? 12,
+        ...aiFields,
+      },
+    )
+
+    if (error || !candidate) {
+      if (status === 409) {
+        return NextResponse.json(
+          { error: 'You have already applied for this position with this email address' },
+          { status: 409 },
+        )
+      }
+      console.error('Candidate create error:', error)
+      return NextResponse.json({ error: 'Failed to submit application. Please try again.' }, { status: 500 })
     }
 
     // Send confirmation email with tracking link (non-blocking)

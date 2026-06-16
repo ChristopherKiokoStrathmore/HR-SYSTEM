@@ -1,160 +1,69 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient, createBackgroundCheckSchema } from '@hr/shared'
-import { checkRateLimit } from '@/lib/rate-limit'
-import { getSessionUserId } from '@/lib/get-session-user'
+import { djangoGet, djangoPost } from '@/lib/django-client'
 
-/**
- * GET /api/background-checks
- * List background checks with optional filters
- */
+interface BackgroundCheckRow {
+  id: string
+  employee_id: string | null
+  candidate_id: string | null
+  [key: string]: unknown
+}
+interface EmployeeRow { id: string; employee_number: string }
+interface UserRow { employee_id: string | null; full_name: string; email: string }
+interface CandidateRow { id: string; full_name: string; email: string }
+
 export async function GET(req: NextRequest) {
-  try {
-    const supabase = createServerClient(true)
-    const { searchParams } = new URL(req.url)
+  const { searchParams } = new URL(req.url)
+  const companyId = searchParams.get('companyId') || undefined
+  const page = parseInt(searchParams.get('page') ?? '1')
+  const pageSize = parseInt(searchParams.get('pageSize') ?? '25')
 
-    const companyId = searchParams.get('companyId')
-    const status = searchParams.get('status')
-    const checkType = searchParams.get('checkType')
-    const employeeId = searchParams.get('employeeId')
-    const candidateId = searchParams.get('candidateId')
-    const expiringWithinDays = searchParams.get('expiringWithinDays')
-    const page = parseInt(searchParams.get('page') ?? '1')
-    const pageSize = parseInt(searchParams.get('pageSize') ?? '25')
+  const { data: checks, count, error } = await djangoGet<BackgroundCheckRow[]>('/background-checks/', {
+    company_id: companyId,
+    status: searchParams.get('status') || undefined,
+    check_type: searchParams.get('checkType') || undefined,
+    employee_id: searchParams.get('employeeId') || undefined,
+    candidate_id: searchParams.get('candidateId') || undefined,
+    expiring_within_days: searchParams.get('expiringWithinDays') || undefined,
+    page,
+    page_size: pageSize,
+  })
+  if (error) return NextResponse.json({ error }, { status: 500 })
 
-    // Build query with joins for subject info
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase.from('background_checks') as any)
-      .select(`
-        *,
-        employee:employee_profiles(
-          employee_number,
-          user:users!employee_profiles_user_id_fkey(full_name, email)
-        ),
-        candidate:candidates(full_name, email),
-        requested_by_user:users!background_checks_requested_by_fkey(full_name),
-        reviewed_by_user:users!background_checks_reviewed_by_fkey(full_name)
-      `, { count: 'exact' })
-      .eq('is_deleted', false)
-      .order('requested_at', { ascending: false })
+  const list = checks ?? []
+  const empIds = list.map((c) => c.employee_id).filter(Boolean) as string[]
+  const candIds = list.map((c) => c.candidate_id).filter(Boolean) as string[]
 
-    // Apply filters
-    if (companyId) {
-      query = query.eq('company_id', companyId)
-    }
-    if (status) {
-      query = query.eq('status', status)
-    }
-    if (checkType) {
-      query = query.eq('check_type', checkType)
-    }
-    if (employeeId) {
-      query = query.eq('employee_id', employeeId)
-    }
-    if (candidateId) {
-      query = query.eq('candidate_id', candidateId)
-    }
-    if (expiringWithinDays) {
-      const days = parseInt(expiringWithinDays)
-      const futureDate = new Date()
-      futureDate.setDate(futureDate.getDate() + days)
-      query = query
-        .not('expiry_date', 'is', null)
-        .lte('expiry_date', futureDate.toISOString().split('T')[0])
-        .gte('expiry_date', new Date().toISOString().split('T')[0])
-    }
+  const [{ data: employees }, { data: users }, { data: candidates }] = await Promise.all([
+    empIds.length ? djangoGet<EmployeeRow[]>('/all-employees/', { company_id: companyId, page_size: 1000 }) : Promise.resolve({ data: [], error: null, status: 200 }),
+    empIds.length ? djangoGet<UserRow[]>('/users/', { company_id: companyId }) : Promise.resolve({ data: [], error: null, status: 200 }),
+    candIds.length ? djangoGet<CandidateRow[]>('/candidates/', { page_size: 1000 }) : Promise.resolve({ data: [], error: null, status: 200 }),
+  ])
+  const empById = new Map((employees ?? []).map((e) => [e.id, e]))
+  const userByEmpId = new Map((users ?? []).filter((u) => u.employee_id).map((u) => [u.employee_id as string, u]))
+  const candById = new Map((candidates ?? []).map((c) => [c.id, c]))
 
-    // Pagination
-    const from = (page - 1) * pageSize
-    const to = from + pageSize - 1
-    query = query.range(from, to)
+  const data = list.map((c) => ({
+    ...c,
+    employee: c.employee_id ? {
+      employee_number: empById.get(c.employee_id)?.employee_number ?? '',
+      user: {
+        full_name: userByEmpId.get(c.employee_id)?.full_name ?? 'Unknown',
+        email: userByEmpId.get(c.employee_id)?.email ?? '',
+      },
+    } : null,
+    candidate: c.candidate_id ? {
+      full_name: candById.get(c.candidate_id)?.full_name ?? 'Unknown',
+      email: candById.get(c.candidate_id)?.email ?? '',
+    } : null,
+  }))
 
-    const { data, error, count } = await query
-
-    if (error) {
-      console.error('Background checks GET error:', error)
-      return NextResponse.json({ error: error.message, data: [] }, { status: 200 })
-    }
-
-    return NextResponse.json({
-      data,
-      count,
-      page,
-      pageSize,
-      totalPages: Math.ceil((count ?? 0) / pageSize),
-    })
-  } catch (err) {
-    console.error('Background checks GET route error:', err)
-    return NextResponse.json({ error: 'Internal server error', data: [] }, { status: 200 })
-  }
+  return NextResponse.json({ data, count: count ?? 0, page, pageSize, totalPages: Math.ceil((count ?? 0) / pageSize) })
 }
 
-/**
- * POST /api/background-checks
- * Create a new background check request
- */
 export async function POST(req: NextRequest) {
-  const limited = await checkRateLimit(req, 'moderate')
-  if (limited) return limited
-
-  try {
-    const supabase = createServerClient(true)
-    const body = await req.json()
-
-    // Get the session user for requested_by
-    const userId = await getSessionUserId()
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // Validate input
-    const parsed = createBackgroundCheckSchema.safeParse(body)
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: parsed.error.flatten() },
-        { status: 400 }
-      )
-    }
-
-    const { data: validData } = parsed
-
-    // Insert the background check
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.from('background_checks') as any)
-      .insert({
-        employee_id: validData.employee_id ?? null,
-        candidate_id: validData.candidate_id ?? null,
-        company_id: validData.company_id,
-        check_type: validData.check_type,
-        status: validData.document_url ? 'completed' : 'pending',
-        requested_by: userId,
-        requested_at: new Date().toISOString(),
-        document_url: validData.document_url ?? null,
-        document_uploaded_at: validData.document_url ? new Date().toISOString() : null,
-        clearance_date: validData.clearance_date ?? null,
-        expiry_date: validData.expiry_date ?? null,
-        notes: validData.notes ?? null,
-        provider_name: 'manual',
-        tenant_id: validData.company_id,
-      })
-      .select(`
-        *,
-        employee:employee_profiles(
-          employee_number,
-          user:users!employee_profiles_user_id_fkey(full_name, email)
-        ),
-        candidate:candidates(full_name, email)
-      `)
-      .single()
-
-    if (error) {
-      console.error('Background checks POST error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
-
-    return NextResponse.json({ data }, { status: 201 })
-  } catch (err) {
-    console.error('Background checks POST route error:', err)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
-  }
+  const body = await req.json()
+  const { data, error } = await djangoPost('/background-checks/', body)
+  if (error) return NextResponse.json({ error }, { status: 500 })
+  return NextResponse.json({ data }, { status: 201 })
 }

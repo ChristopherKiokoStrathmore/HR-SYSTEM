@@ -1,44 +1,39 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { djangoGet } from '@/lib/django-client'
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 interface RunRow {
   id: string
   period_month: number
   period_year: number
-  total_gross: number
-  total_deductions: number
-  total_net: number
+  total_gross: number | string
+  total_deductions: number | string
+  total_net: number | string
   status: string
 }
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const companyId = searchParams.get('companyId')
-  const supabase = createServerClient(true)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let psQuery = (supabase.from('payroll_runs') as any)
-    .select('id, period_month, period_year, total_gross, total_deductions, total_net, status')
-    .eq('is_deleted', false)
-  if (companyId) psQuery = psQuery.eq('company_id', companyId)
-  const { data, error } = await psQuery
-    .order('period_year', { ascending: false })
-    .order('period_month', { ascending: false })
-    .limit(12) as { data: RunRow[] | null; error: unknown }
+  const companyId = searchParams.get('companyId') ?? undefined
+
+  const { data, error } = await djangoGet('/payroll-runs/', {
+    company_id: companyId,
+    page_size: 12,
+    ordering: '-period_year,-period_month',
+  })
 
   if (error) return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 })
 
-  const runs = (data ?? []).reverse()
-  const trend = runs.map((r) => ({
+  const runs = ((data as RunRow[]) ?? []).reverse()
+  const trend = runs.map(r => ({
     month: `${MONTHS[r.period_month - 1]} ${String(r.period_year).slice(-2)}`,
-    gross: r.total_gross,
-    deductions: r.total_deductions,
-    net: r.total_net,
+    gross: Number(r.total_gross),
+    deductions: Number(r.total_deductions),
+    net: Number(r.total_net),
   }))
 
   const latest = runs[runs.length - 1] ?? null
-
   return NextResponse.json({ data: { trend, latest, runs } })
 }

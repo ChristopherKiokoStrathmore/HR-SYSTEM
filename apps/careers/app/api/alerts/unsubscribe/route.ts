@@ -1,16 +1,12 @@
 export const dynamic = 'force-dynamic'
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { NextRequest } from 'next/server'
+import { djangoGet } from '@/lib/django-client'
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token')
   if (!token) return new Response('Invalid unsubscribe link.', { status: 400 })
 
-  const supabase = createServerClient(true)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('job_alerts') as any)
-    .update({ is_active: false })
-    .eq('unsubscribe_token', token)
+  const { error } = await djangoGet('/careers/alerts/unsubscribe/', { token })
 
   if (error) return new Response('Could not unsubscribe. Please try again.', { status: 500 })
 

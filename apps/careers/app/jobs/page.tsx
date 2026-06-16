@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
-import { createServerClient } from '@hr/shared'
-import { JobsClient } from './jobs-client'
+import { djangoGet } from '@/lib/django-client'
+import { JobsClient, type JobItem } from './jobs-client'
 
 export const metadata: Metadata = {
   title: 'Job Centre | Sheer Logic',
@@ -9,14 +9,7 @@ export const metadata: Metadata = {
 }
 
 export default async function JobsPage() {
-  const supabase = createServerClient(true)
-
-  const { data } = await supabase
-    .from('job_postings')
-    .select('id, title, department, description, required_keywords, employment_type, closing_date, created_at, location_name, location_lat, location_lng, experience_level')
-    .eq('is_deleted', false)
-    .eq('status', 'open')
-    .order('created_at', { ascending: false })
+  const { data } = await djangoGet<JobItem[]>('/careers/jobs/')
 
   return <JobsClient jobs={data ?? []} />
 }

@@ -5,11 +5,10 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { Eye, EyeOff, Loader2, Mail, ArrowLeft, KeyRound } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { loginSchema, type LoginInput } from '@hr/shared'
-import { createBrowserClient } from '@hr/shared'
 
-type Mode = 'password' | 'otp-email' | 'otp-code'
+type Mode = 'password'
 
 function FloatingInput({
   id,
@@ -84,7 +83,7 @@ function FloatingInput({
 
 // ── Password login ─────────────────────────────────────────────────────────────
 
-function PasswordForm({ onSwitch }: { onSwitch: () => void }) {
+function PasswordForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
@@ -98,12 +97,13 @@ function PasswordForm({ onSwitch }: { onSwitch: () => void }) {
     setIsLoading(true)
     setError(null)
     try {
-      const supabase = createBrowserClient()
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email, password: data.password }),
       })
-      if (authError) { setError(authError.message); return }
+      const json = await res.json()
+      if (!res.ok) { setError(json.error ?? 'Login failed. Please try again.'); return }
       router.push('/')
       router.refresh()
     } catch {
@@ -134,162 +134,6 @@ function PasswordForm({ onSwitch }: { onSwitch: () => void }) {
         {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</> : 'Sign In'}
       </motion.button>
 
-      <button type="button" onClick={onSwitch}
-        className="w-full text-sm text-text-muted hover:text-accent transition-colors flex items-center justify-center gap-1.5 pt-1">
-        <KeyRound className="w-3.5 h-3.5" />
-        Sign in with email OTP instead
-      </button>
-    </form>
-  )
-}
-
-// ── OTP: step 1 — enter email ──────────────────────────────────────────────────
-
-function OtpEmailStep({
-  onSent,
-  onBack,
-}: {
-  onSent: (email: string) => void
-  onBack: () => void
-}) {
-  const [email, setEmail] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const shouldReduce = useReducedMotion()
-
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault()
-    if (!email.trim()) return
-    setIsLoading(true)
-    setError(null)
-    try {
-      const supabase = createBrowserClient()
-      const { error: authError } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
-        options: { shouldCreateUser: false },
-      })
-      if (authError) { setError(authError.message); return }
-      onSent(email.trim())
-    } catch {
-      setError('Failed to send code. Please try again.')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleSend} className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-text-body mb-1.5">Work email address</label>
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@company.com"
-          autoComplete="email"
-          required
-          className="w-full rounded-xl border-2 border-border px-4 py-3 text-sm focus:outline-none focus:border-accent transition-colors"
-        />
-      </div>
-
-      {error && (
-        <div className="rounded-xl bg-danger/8 border border-danger/20 px-4 py-3">
-          <p className="text-sm text-danger">{error}</p>
-        </div>
-      )}
-
-      <motion.button type="submit" disabled={isLoading || !email}
-        whileTap={shouldReduce ? {} : { scale: 0.97 }}
-        className="w-full h-12 rounded-xl font-semibold text-white text-sm flex items-center justify-center gap-2 disabled:opacity-70 focus:outline-none"
-        style={{ background: 'linear-gradient(135deg, #F47920 0%, #E8650A 100%)', boxShadow: '0 4px 16px rgba(244,121,32,0.30)' }}
-      >
-        {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending code...</> : <><Mail className="w-4 h-4" /> Send OTP Code</>}
-      </motion.button>
-
-      <button type="button" onClick={onBack}
-        className="w-full text-sm text-text-muted hover:text-text-body transition-colors flex items-center justify-center gap-1.5 pt-1">
-        <ArrowLeft className="w-3.5 h-3.5" />
-        Back to password login
-      </button>
-    </form>
-  )
-}
-
-// ── OTP: step 2 — enter code ───────────────────────────────────────────────────
-
-function OtpCodeStep({ email, onBack }: { email: string; onBack: () => void }) {
-  const [code, setCode] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
-  const shouldReduce = useReducedMotion()
-
-  async function handleVerify(e: React.FormEvent) {
-    e.preventDefault()
-    if (code.length < 6) return
-    setIsLoading(true)
-    setError(null)
-    try {
-      const supabase = createBrowserClient()
-      const { error: authError } = await supabase.auth.verifyOtp({
-        email,
-        token: code.trim(),
-        type: 'email',
-      })
-      if (authError) { setError('Invalid or expired code. Please try again.'); return }
-      router.push('/')
-      router.refresh()
-    } catch {
-      setError('Verification failed. Please try again.')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  return (
-    <form onSubmit={handleVerify} className="space-y-4">
-      <div className="rounded-xl bg-surface-alt border border-border px-4 py-3 flex items-center gap-2">
-        <Mail className="w-4 h-4 text-accent flex-shrink-0" />
-        <p className="text-sm text-text-body">
-          A 6-digit code was sent to <strong>{email}</strong>
-        </p>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-text-body mb-1.5">Enter 6-digit code</label>
-        <input
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          maxLength={6}
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-          placeholder="000000"
-          autoComplete="one-time-code"
-          required
-          className="w-full rounded-xl border-2 border-border px-4 py-3 text-2xl font-mono text-center tracking-[0.5em] focus:outline-none focus:border-accent transition-colors"
-        />
-      </div>
-
-      {error && (
-        <div className="rounded-xl bg-danger/8 border border-danger/20 px-4 py-3">
-          <p className="text-sm text-danger">{error}</p>
-        </div>
-      )}
-
-      <motion.button type="submit" disabled={isLoading || code.length < 6}
-        whileTap={shouldReduce ? {} : { scale: 0.97 }}
-        className="w-full h-12 rounded-xl font-semibold text-white text-sm flex items-center justify-center gap-2 disabled:opacity-70 focus:outline-none"
-        style={{ background: 'linear-gradient(135deg, #F47920 0%, #E8650A 100%)', boxShadow: '0 4px 16px rgba(244,121,32,0.30)' }}
-      >
-        {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Verifying...</> : 'Verify & Sign In'}
-      </motion.button>
-
-      <button type="button" onClick={onBack}
-        className="w-full text-sm text-text-muted hover:text-text-body transition-colors flex items-center justify-center gap-1.5 pt-1">
-        <ArrowLeft className="w-3.5 h-3.5" />
-        Use a different email
-      </button>
     </form>
   )
 }
@@ -297,44 +141,9 @@ function OtpCodeStep({ email, onBack }: { email: string; onBack: () => void }) {
 // ── Root export ────────────────────────────────────────────────────────────────
 
 export function LoginForm() {
-  const [mode, setMode] = useState<Mode>('password')
-  const [otpEmail, setOtpEmail] = useState('')
-  const shouldReduce = useReducedMotion()
-
-  const slideVariants = {
-    enter: (dir: number) => ({ opacity: 0, x: dir * 24 }),
-    center: { opacity: 1, x: 0 },
-    exit: (dir: number) => ({ opacity: 0, x: dir * -24 }),
-  }
-
-  const dir = mode === 'password' ? -1 : 1
-
   return (
     <div className="overflow-hidden">
-      <AnimatePresence mode="wait" custom={dir} initial={false}>
-        <motion.div
-          key={mode}
-          custom={dir}
-          variants={shouldReduce ? {} : slideVariants}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={{ duration: 0.2, ease: 'easeInOut' }}
-        >
-          {mode === 'password' && (
-            <PasswordForm onSwitch={() => setMode('otp-email')} />
-          )}
-          {mode === 'otp-email' && (
-            <OtpEmailStep
-              onSent={(email) => { setOtpEmail(email); setMode('otp-code') }}
-              onBack={() => setMode('password')}
-            />
-          )}
-          {mode === 'otp-code' && (
-            <OtpCodeStep email={otpEmail} onBack={() => setMode('otp-email')} />
-          )}
-        </motion.div>
-      </AnimatePresence>
+      <PasswordForm />
     </div>
   )
 }

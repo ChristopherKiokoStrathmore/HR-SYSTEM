@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { createBrowserClient } from '@hr/shared'
 import { t, type Language } from '@hr/i18n'
 import { useStore } from '@/lib/store'
 
@@ -42,9 +41,13 @@ export default function PwaLoginPage() {
     setError('')
     setLoading(true)
     try {
-      const supabase = createBrowserClient()
-      const { error: authErr } = await supabase.auth.signInWithPassword({ email, password })
-      if (authErr) throw authErr
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Sign in failed')
       router.push('/home')
       router.refresh()
     } catch (err: any) {
@@ -59,12 +62,13 @@ export default function PwaLoginPage() {
     setError('')
     setLoading(true)
     try {
-      const supabase = createBrowserClient()
-      const { error: authErr } = await supabase.auth.signInWithOtp({
-        email: otpInputEmail.trim(),
-        options: { shouldCreateUser: false },
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: otpInputEmail.trim() }),
       })
-      if (authErr) throw authErr
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Failed to send OTP')
       setOtpEmail(otpInputEmail.trim())
       setMode('otp-code')
     } catch (err: any) {
@@ -79,13 +83,13 @@ export default function PwaLoginPage() {
     setError('')
     setLoading(true)
     try {
-      const supabase = createBrowserClient()
-      const { error: authErr } = await supabase.auth.verifyOtp({
-        email: otpEmail,
-        token: code.trim(),
-        type: 'email',
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: otpEmail, code: code.trim() }),
       })
-      if (authErr) throw authErr
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? 'Invalid or expired code')
       router.push('/home')
       router.refresh()
     } catch {
