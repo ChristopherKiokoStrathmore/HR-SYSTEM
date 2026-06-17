@@ -1,51 +1,41 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { hrApi, HRApiError } from '@/lib/hr-api'
+
+interface DRFList<T> { count: number; results: T[] }
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createServerClient(true)
     const { searchParams } = new URL(req.url)
     const employeeId = searchParams.get('employeeId')
 
-    if (!employeeId) return NextResponse.json({ error: 'employeeId required', data: [] }, { status: 200 })
-
-    const { data, error } = await supabase
-      .from('medical_records')
-      .select('*')
-      .eq('employee_id', employeeId)
-      .eq('is_deleted', false)
-      .order('issued_date', { ascending: false })
-
-    if (error) {
-      console.error('Medical API error:', error)
-      return NextResponse.json({ error: error.message, data: [] }, { status: 200 })
+    if (!employeeId) {
+      return NextResponse.json({ error: 'employeeId required', data: [] }, { status: 200 })
     }
-    return NextResponse.json({ data })
+
+    const res = await hrApi<DRFList<unknown>>('/medical-records/', {
+      params: { employee_id: employeeId },
+    })
+    return NextResponse.json({ data: res.results })
   } catch (err) {
     console.error('Medical GET route error:', err)
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message, data: [] }, { status: 200 })
+    }
     return NextResponse.json({ error: 'Internal server error', data: [] }, { status: 200 })
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createServerClient(true)
     const body = await req.json()
-
-    const { data, error } = await supabase
-      .from('medical_records')
-      .insert(body)
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Medical POST error:', error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+    const data = await hrApi('/medical-records/', { method: 'POST', body })
     return NextResponse.json({ data }, { status: 201 })
   } catch (err) {
     console.error('Medical POST route error:', err)
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

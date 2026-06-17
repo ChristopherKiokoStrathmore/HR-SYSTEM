@@ -1,6 +1,6 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { hrApi, HRApiError } from '@/lib/hr-api'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { screenCv } from '@/lib/ai/screen-cv'
 
@@ -30,13 +30,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'jobPostingId and either cvText or fileBase64 required' }, { status: 400 })
     }
 
-    const supabase = createServerClient(true)
-
-    const { data: posting } = await supabase
-      .from('job_postings')
-      .select('title, description, required_keywords, nice_to_have_keywords, auto_reject_threshold')
-      .eq('id', jobPostingId)
-      .single<JobPostingRow>()
+    let posting: JobPostingRow | null = null
+    try {
+      posting = await hrApi<JobPostingRow>(`/job-postings/${jobPostingId}/`)
+    } catch (err) {
+      if (err instanceof HRApiError && err.status === 404) {
+        return NextResponse.json({ error: 'Job posting not found' }, { status: 404 })
+      }
+      throw err
+    }
 
     if (!posting) {
       return NextResponse.json({ error: 'Job posting not found' }, { status: 404 })
@@ -54,7 +56,7 @@ export async function POST(req: NextRequest) {
 
     if (!screening) {
       return NextResponse.json(
-        { error: 'AI screening unavailable â€” set GROQ_API_KEY or ANTHROPIC_API_KEY' },
+        { error: 'AI screening unavailable — set GROQ_API_KEY or ANTHROPIC_API_KEY' },
         { status: 503 },
       )
     }
@@ -63,20 +65,25 @@ export async function POST(req: NextRequest) {
     const autoRejected = aiResult.match_score < posting.auto_reject_threshold
 
     if (candidateId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.from('candidates') as any)
-        .update({
-          ai_score: aiResult.match_score,
-          ai_summary: aiResult.summary,
-          ai_extracted_skills: aiResult.skills,
-          ai_experience_years: aiResult.experience_years,
-          ai_education: aiResult.education,
-          current_stage: autoRejected ? 'rejected' : 'screened',
-          rejection_reason: autoRejected
-            ? `Auto-rejected: score ${aiResult.match_score} below threshold ${posting.auto_reject_threshold}`
-            : null,
+      try {
+        await hrApi<unknown>(`/candidates/${candidateId}/`, {
+          method: 'PATCH',
+          body: {
+            ai_score: aiResult.match_score,
+            ai_summary: aiResult.summary,
+            ai_extracted_skills: aiResult.skills,
+            ai_experience_years: aiResult.experience_years,
+            ai_education: aiResult.education,
+            current_stage: autoRejected ? 'rejected' : 'screened',
+            rejection_reason: autoRejected
+              ? `Auto-rejected: score ${aiResult.match_score} below threshold ${posting.auto_reject_threshold}`
+              : null,
+          },
         })
-        .eq('id', candidateId)
+      } catch (updateErr) {
+        console.error('CV screening: failed to update candidate:', updateErr)
+        // Non-fatal — still return the screening result
+      }
     }
 
     return NextResponse.json({
@@ -88,6 +95,9 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     console.error('CV screening error:', err)
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
     return NextResponse.json({ error: 'Failed to screen CV' }, { status: 500 })
   }
 }

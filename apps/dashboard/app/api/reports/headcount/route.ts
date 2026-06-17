@@ -1,6 +1,11 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { hrApi } from '@/lib/hr-api'
+
+interface DRFList<T> {
+  count: number
+  results: T[]
+}
 
 interface EmployeeRow {
   department: string | null
@@ -13,17 +18,18 @@ interface EmployeeRow {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const companyId = searchParams.get('companyId')
-  const supabase = createServerClient(true)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let hcQuery = (supabase.from('employee_profiles') as any)
-    .select('department, employment_type, employment_status, start_date, gender')
-    .eq('is_deleted', false)
-  if (companyId) hcQuery = hcQuery.eq('company_id', companyId)
-  const { data, error } = await hcQuery as { data: EmployeeRow[] | null; error: unknown }
 
-  if (error) return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 })
+  const params: Record<string, string | number> = { page_size: 500 }
+  if (companyId) params.company_id = companyId
 
-  const employees = data ?? []
+  const res = await hrApi<DRFList<EmployeeRow>>('/all-employees/', { params }).catch((err) => {
+    console.error('[headcount] fetch error:', err)
+    return null
+  })
+
+  if (!res) return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 })
+
+  const employees = res.results ?? []
   const total = employees.length
   const active = employees.filter((e) => e.employment_status === 'active').length
   const byDepartment: Record<string, number> = {}

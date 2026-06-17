@@ -1,29 +1,24 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { hrApi, HRApiError } from '@/lib/hr-api'
+
+interface DRFList<T> { count: number; results: T[] }
 
 export async function GET(req: NextRequest) {
   try {
-    const supabase = createServerClient(true)
     const { searchParams } = new URL(req.url)
+    const params: Record<string, string> = {}
     const companyId = searchParams.get('companyId')
+    if (companyId) params.company_id = companyId
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase.from('users') as any)
-      .select('id, full_name, email, role, avatar_url, phone, is_active, preferred_language, last_login_at, created_at, company_id')
-      .eq('is_deleted', false)
-      .order('full_name')
-
-    if (companyId) query = query.eq('company_id', companyId)
-
-    const { data, error } = await query
-    if (error) {
-      console.error('Users API error:', error)
-      return NextResponse.json({ error: error.message, data: [] }, { status: 200 })
-    }
-    return NextResponse.json({ data })
+    const res = await hrApi<DRFList<unknown>>('/users/', { params })
+    // Return flat array (not paginated) for compat with existing frontend usage
+    return NextResponse.json({ data: res.results })
   } catch (err) {
     console.error('Users GET route error:', err)
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message, data: [] }, { status: 200 })
+    }
     return NextResponse.json({ error: 'Internal server error', data: [] }, { status: 200 })
   }
 }

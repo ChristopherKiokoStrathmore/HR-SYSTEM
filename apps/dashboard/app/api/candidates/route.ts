@@ -1,43 +1,42 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { hrApi, HRApiError } from '@/lib/hr-api'
+
+interface DRFList<T> { count: number; results: T[] }
 
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient(true)
   const { searchParams } = new URL(req.url)
   const jobPostingId = searchParams.get('jobPostingId')
   const stage = searchParams.get('stage')
-  const search = searchParams.get('search') ?? ''
+  const search = searchParams.get('search')
 
-  let query = supabase
-    .from('candidates')
-    .select('*, job_posting:job_postings(title, department, company_id)')
-    .eq('is_deleted', false)
-    .order('created_at', { ascending: false })
+  const params: Record<string, string> = {}
+  if (jobPostingId) params.job_posting_id = jobPostingId
+  if (stage) params.current_stage = stage
+  if (search) params.search = search
 
-  if (jobPostingId) query = query.eq('job_posting_id', jobPostingId)
-  if (stage) query = query.eq('current_stage', stage)
-  if (search) query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`)
-
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
+  try {
+    const res = await hrApi<DRFList<unknown>>('/candidates/', { params })
+    return NextResponse.json({ data: res.results, count: res.count })
+  } catch (err) {
+    console.error('Candidates GET route error:', err)
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createServerClient(true)
-  const body = await req.json()
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from('candidates') as any)
-    .insert({
-      ai_extracted_skills: [],
-      ...body,
-      tenant_id: body.tenant_id,
-    })
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data }, { status: 201 })
+  try {
+    const body = await req.json()
+    const data = await hrApi<unknown>('/candidates/', { method: 'POST', body })
+    return NextResponse.json({ data }, { status: 201 })
+  } catch (err) {
+    console.error('Candidates POST route error:', err)
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

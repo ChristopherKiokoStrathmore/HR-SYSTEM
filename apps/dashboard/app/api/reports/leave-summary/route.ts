@@ -1,6 +1,11 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { hrApi } from '@/lib/hr-api'
+
+interface DRFList<T> {
+  count: number
+  results: T[]
+}
 
 interface LeaveRow {
   leave_type: string
@@ -11,17 +16,18 @@ interface LeaveRow {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const companyId = searchParams.get('companyId')
-  const supabase = createServerClient(true)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let lsQuery = (supabase.from('leaves') as any)
-    .select('leave_type, status, days_requested')
-    .eq('is_deleted', false)
-  if (companyId) lsQuery = lsQuery.eq('company_id', companyId)
-  const { data, error } = await lsQuery as { data: LeaveRow[] | null; error: unknown }
 
-  if (error) return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 })
+  const params: Record<string, string | number> = { page_size: 1000 }
+  if (companyId) params.company_id = companyId
 
-  const leaves = data ?? []
+  const res = await hrApi<DRFList<LeaveRow>>('/leave/', { params }).catch((err) => {
+    console.error('[leave-summary] fetch error:', err)
+    return null
+  })
+
+  if (!res) return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 })
+
+  const leaves = res.results ?? []
   const byType: Record<string, number> = {}
   const byStatus: Record<string, number> = {}
   let totalDays = 0
