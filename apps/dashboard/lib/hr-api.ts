@@ -1,35 +1,6 @@
-/**
- * HR-API Django Backend Client
- *
- * Utility for making requests to the Django HR-API backend.
- * Used for payroll operations and PesaPal payment integration.
- */
-
 const HR_API_URL = process.env.HR_API_URL || 'http://localhost:8000/api'
 const HR_API_TOKEN = process.env.HR_API_TOKEN || ''
 const HR_SERVICE_KEY = process.env.HR_SERVICE_KEY || ''
-
-/**
- * Identity propagation (RBAC): every proxied call forwards the session user's
- * id/email/role/company to Django via X-User-* headers so the backend can
- * enforce role-based access (PayrollHROnly, HasModulePermission). Once all
- * environments send these, Django's RBAC_STRICT can be enabled.
- * Role/company are read from the Supabase `users` table with the service-role
- * key and cached briefly to avoid a lookup per call.
- */
-
-async function identityHeaders(): Promise<Record<string, string>> {
-  try {
-    const { getSessionUserId, getSessionToken } = await import('./get-session-user')
-    const [userId, token] = await Promise.all([getSessionUserId(), getSessionToken()])
-    const headers: Record<string, string> = {}
-    if (userId) headers['X-User-Id'] = userId
-    if (token) headers['Authorization'] = `Token ${token}`
-    return headers
-  } catch {
-    return {}
-  }
-}
 
 export class HRApiError extends Error {
   constructor(
@@ -49,9 +20,6 @@ interface RequestOptions {
   params?: Record<string, string | number | boolean | undefined>
 }
 
-/**
- * Make a request to the HR-API Django backend
- */
 export async function hrApi<T = unknown>(
   endpoint: string,
   options: RequestOptions = {}
@@ -80,7 +48,6 @@ export async function hrApi<T = unknown>(
       Accept: 'application/json',
       ...(HR_SERVICE_KEY ? { 'X-Service-Key': HR_SERVICE_KEY } : {}),
       ...(HR_API_TOKEN ? { Authorization: `Token ${HR_API_TOKEN}` } : {}),
-      ...(await identityHeaders()),
       ...headers,
     },
   }
