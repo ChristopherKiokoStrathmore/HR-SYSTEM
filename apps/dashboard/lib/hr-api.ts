@@ -17,45 +17,14 @@ const HR_SERVICE_KEY = process.env.HR_SERVICE_KEY || ''
  * Role/company are read from the Supabase `users` table with the service-role
  * key and cached briefly to avoid a lookup per call.
  */
-const identityCache = new Map<string, { role: string; companyId: string | null; email: string; at: number }>()
-const IDENTITY_TTL_MS = 60_000
 
 async function identityHeaders(): Promise<Record<string, string>> {
   try {
     const { getSessionUserId } = await import('./get-session-user')
     const userId = await getSessionUserId()
     if (!userId) return {}
-
-    let cached = identityCache.get(userId)
-    if (!cached || Date.now() - cached.at > IDENTITY_TTL_MS) {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-      if (!supabaseUrl || !serviceKey) return { 'X-User-Id': userId }
-      const res = await fetch(
-        `${supabaseUrl}/rest/v1/users?id=eq.${userId}&select=role,company_id,email&limit=1`,
-        { headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` } }
-      )
-      if (!res.ok) return { 'X-User-Id': userId }
-      const rows = (await res.json()) as Array<{ role?: string; company_id?: string; email?: string }>
-      const row = rows[0]
-      if (!row) return { 'X-User-Id': userId }
-      cached = {
-        role: row.role ?? '',
-        companyId: row.company_id ?? null,
-        email: row.email ?? '',
-        at: Date.now(),
-      }
-      identityCache.set(userId, cached)
-    }
-
-    const headers: Record<string, string> = { 'X-User-Id': userId }
-    if (cached.role) headers['X-User-Role'] = cached.role
-    if (cached.email) headers['X-User-Email'] = cached.email
-    if (cached.companyId) headers['X-Company-Id'] = cached.companyId
-    return headers
+    return { 'X-User-Id': userId }
   } catch {
-    // Outside a request scope (build, scripts) or auth failure: omit headers;
-    // Django falls back to legacy service-key trust (audit-logged).
     return {}
   }
 }
