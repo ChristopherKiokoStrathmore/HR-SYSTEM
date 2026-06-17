@@ -95,8 +95,9 @@ export async function GET(req: NextRequest) {
 
   const supabase = createServerClient(true)
 
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) {
+  const { getSessionUserId } = await import('@/lib/get-session-user')
+  const userId = await getSessionUserId()
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
