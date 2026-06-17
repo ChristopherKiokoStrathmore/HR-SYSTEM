@@ -154,8 +154,8 @@ export function AttendanceClient() {
             time: r.check_in_time
               ? new Date(r.check_in_time).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
               : null,
-            status: r.status,
-            is_late: r.is_late,
+            status: r.status ?? 'unknown',
+            is_late: r.is_late ?? undefined,
           }))
           if (locs.length === 0) {
             return (
