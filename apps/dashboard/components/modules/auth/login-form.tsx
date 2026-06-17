@@ -96,7 +96,10 @@ export function LoginForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: data.email, password: data.password }),
       })
+      console.log('Login payload:', res)
+
       const result = await res.json()
+      console.log('Login response:', result)
       if (!res.ok) { setError(result.error || 'Login failed'); return }
       window.location.href = '/'
     } catch {
