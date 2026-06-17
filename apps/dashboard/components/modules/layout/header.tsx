@@ -2,7 +2,6 @@
 
 import { Bell, Search, Moon, Sun, LogOut, Building2 } from 'lucide-react'
 import { useStore } from '@/lib/store'
-import { createBrowserClient } from '@hr/shared'
 import { useRouter, usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
@@ -73,8 +72,7 @@ export function Header() {
   const router = useRouter()
 
   async function handleSignOut() {
-    const supabase = createBrowserClient()
-    await supabase.auth.signOut()
+    await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/login')
   }
 
