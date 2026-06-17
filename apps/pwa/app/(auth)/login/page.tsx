@@ -1,13 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { t, type Language } from '@hr/i18n'
 import { useStore } from '@/lib/store'
 
 export default function PwaLoginPage() {
-  const router = useRouter()
   const setLanguage = useStore((s) => s.setLanguage)
 
   const [lang, setLang] = useState<Language>('en')
@@ -37,8 +35,7 @@ export default function PwaLoginPage() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Sign in failed'); return }
-      router.push('/home')
-      router.refresh()
+      window.location.href = '/home'
     } catch {
       setError('Sign in failed. Please try again.')
     } finally {
