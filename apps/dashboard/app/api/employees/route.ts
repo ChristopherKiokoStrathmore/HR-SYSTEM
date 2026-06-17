@@ -31,16 +31,16 @@ async function enrichProfiles(profiles: ProfileRow[]) {
 }
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const page = searchParams.get('page') ?? '1'
-  const pageSize = searchParams.get('pageSize') ?? '25'
-  const search = searchParams.get('search') ?? ''
-  const companyId = searchParams.get('companyId')
-  const status = searchParams.get('status')
-  const department = searchParams.get('department')
-  const employmentType = searchParams.get('employmentType')
-
   try {
+    const { searchParams } = new URL(req.url)
+    const page = searchParams.get('page') ?? '1'
+    const pageSize = searchParams.get('pageSize') ?? '25'
+    const search = searchParams.get('search') ?? ''
+    const companyId = searchParams.get('companyId')
+    const status = searchParams.get('status')
+    const department = searchParams.get('department')
+    const employmentType = searchParams.get('employmentType')
+
     const params: Record<string, string> = { page, page_size: pageSize }
     if (search) params.search = search
     if (companyId) params.company_id = companyId
@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ data: enriched, count: res.count, page: parseInt(page), pageSize: parseInt(pageSize) })
   } catch (err) {
+    console.error('[employees] GET error:', err)
     if (err instanceof HRApiError) {
       return NextResponse.json({ error: err.message }, { status: err.status })
     }

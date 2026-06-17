@@ -14,36 +14,35 @@ interface LeaveRow {
 }
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const companyId = searchParams.get('companyId')
+  try {
+    const { searchParams } = new URL(req.url)
+    const companyId = searchParams.get('companyId')
 
-  const params: Record<string, string | number> = { page_size: 1000 }
-  if (companyId) params.company_id = companyId
+    const params: Record<string, string | number> = { page_size: 1000 }
+    if (companyId) params.company_id = companyId
 
-  const res = await hrApi<DRFList<LeaveRow>>('/leave/', { params }).catch((err) => {
-    console.error('[leave-summary] fetch error:', err)
-    return null
-  })
+    const res = await hrApi<DRFList<LeaveRow>>('/leave/', { params })
+    const leaves = res.results ?? []
+    const byType: Record<string, number> = {}
+    const byStatus: Record<string, number> = {}
+    let totalDays = 0
 
-  if (!res) return NextResponse.json({ error: 'Failed to fetch' }, { status: 500 })
+    for (const l of leaves) {
+      byType[l.leave_type] = (byType[l.leave_type] ?? 0) + l.days_requested
+      byStatus[l.status] = (byStatus[l.status] ?? 0) + 1
+      if (l.status === 'approved') totalDays += l.days_requested
+    }
 
-  const leaves = res.results ?? []
-  const byType: Record<string, number> = {}
-  const byStatus: Record<string, number> = {}
-  let totalDays = 0
-
-  for (const l of leaves) {
-    byType[l.leave_type] = (byType[l.leave_type] ?? 0) + l.days_requested
-    byStatus[l.status] = (byStatus[l.status] ?? 0) + 1
-    if (l.status === 'approved') totalDays += l.days_requested
+    return NextResponse.json({
+      data: {
+        totalRequests: leaves.length,
+        approvedDays: totalDays,
+        byType: Object.entries(byType).map(([name, value]) => ({ name, value })),
+        byStatus: Object.entries(byStatus).map(([name, value]) => ({ name, value })),
+      },
+    })
+  } catch (err) {
+    console.error('[leave-summary] error:', err)
+    return NextResponse.json({ error: 'Failed to fetch leave summary' }, { status: 500 })
   }
-
-  return NextResponse.json({
-    data: {
-      totalRequests: leaves.length,
-      approvedDays: totalDays,
-      byType: Object.entries(byType).map(([name, value]) => ({ name, value })),
-      byStatus: Object.entries(byStatus).map(([name, value]) => ({ name, value })),
-    },
-  })
 }

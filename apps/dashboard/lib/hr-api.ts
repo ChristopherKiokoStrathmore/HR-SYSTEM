@@ -91,7 +91,7 @@ export async function hrApi<T = unknown>(
 
   const response = await fetch(url, {
     ...fetchOptions,
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(8_000),
   })
 
   // Handle empty responses (204 No Content)
