@@ -3,14 +3,17 @@
 import { useQuery } from '@tanstack/react-query'
 import type { Attendance } from '@hr/shared'
 
-interface LocationRow {
+export interface LocationRow {
   id: string
   employee_id: string
   company_id: string
   date: string
-  latitude: number | null
-  longitude: number | null
-  [key: string]: unknown
+  employee_name: string | null
+  check_in_lat: number | null
+  check_in_lng: number | null
+  check_in_time: string | null
+  status: string | null
+  is_late: boolean | null
 }
 
 interface AttendanceWithEmployee extends Attendance {
