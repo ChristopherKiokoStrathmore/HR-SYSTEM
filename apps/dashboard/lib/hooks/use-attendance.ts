@@ -2,7 +2,16 @@
 
 import { useQuery } from '@tanstack/react-query'
 import type { Attendance } from '@hr/shared'
-import type { LocationRow } from '@/app/api/attendance/locations/route'
+
+interface LocationRow {
+  id: string
+  employee_id: string
+  company_id: string
+  date: string
+  latitude: number | null
+  longitude: number | null
+  [key: string]: unknown
+}
 
 interface AttendanceWithEmployee extends Attendance {
   employee?: {
