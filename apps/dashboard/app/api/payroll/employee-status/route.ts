@@ -35,21 +35,15 @@ interface DepartmentPaymentStatus {
   status: 'all_paid' | 'partial' | 'none_paid'
 }
 
-/**
- * GET /api/payroll/employee-status
- * Fetches all employees from Django and returns payroll-ready rows.
- * All payment_status values default to 'pending' (no payroll_records endpoint yet).
- */
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const companyId = searchParams.get('companyId')
-
-  const params: Record<string, string | number> = { page_size: 500 }
-  if (companyId) params.company_id = companyId
-
   try {
-    const res = await hrApi<DRFList<EmployeeProfile>>('/all-employees/', { params })
+    const { searchParams } = new URL(req.url)
+    const companyId = searchParams.get('companyId')
 
+    const params: Record<string, string | number> = { page_size: 500 }
+    if (companyId) params.company_id = companyId
+
+    const res = await hrApi<DRFList<EmployeeProfile>>('/all-employees/', { params })
     const rows = res.results ?? []
 
     const employeeSalaryRows: EmployeeSalaryRow[] = rows.map((p) => ({
@@ -64,7 +58,6 @@ export async function GET(req: NextRequest) {
       last_paid_at: null,
     }))
 
-    // Build department summary — all pending since we have no payroll_records data
     const deptMap = new Map<string, { total: number; paid: number; pending: number }>()
     for (const e of employeeSalaryRows) {
       const dept = e.department || 'Unspecified'
@@ -85,6 +78,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data: employeeSalaryRows, departments })
   } catch (err) {
     console.error('[payroll/employee-status] error:', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return NextResponse.json({ data: [], departments: [], error: String(err) }, { status: 500 })
   }
 }
