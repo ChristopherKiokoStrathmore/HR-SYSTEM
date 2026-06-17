@@ -20,7 +20,12 @@
         "AT_USERNAME",
         "AT_API_KEY",
         "AT_SENDER_ID",
-        "ALERT_NOTIFY_SECRET"
+        "ALERT_NOTIFY_SECRET",
+        "HR_API_URL",
+        "HR_API_TOKEN",
+        "HR_SERVICE_KEY",
+        "INSTASEND_PUBISHABLE_KEY",
+        "INSTASEND_SECRET_KEY"
       ]
     },
     "dev": {
