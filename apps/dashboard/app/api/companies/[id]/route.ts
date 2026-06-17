@@ -1,44 +1,40 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { hrApi, HRApiError } from '@/lib/hr-api'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const supabase = createServerClient(true)
-
-  const { data, error } = await supabase
-    .from('companies')
-    .select('*')
-    .eq('id', params.id)
-    .eq('is_deleted', false)
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 404 })
-  return NextResponse.json({ data })
+  try {
+    const data = await hrApi(`/companies/${params.id}/`)
+    return NextResponse.json({ data })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    return NextResponse.json({ error: 'Company not found' }, { status: 404 })
+  }
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const supabase = createServerClient(true)
-  const body = await req.json()
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from('companies') as any)
-    .update(body)
-    .eq('id', params.id)
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
+  try {
+    const body = await req.json()
+    const data = await hrApi(`/companies/${params.id}/`, { method: 'PUT', body })
+    return NextResponse.json({ data })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    return NextResponse.json({ error: 'Failed to update company' }, { status: 500 })
+  }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const supabase = createServerClient(true)
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('companies') as any)
-    .update({ is_deleted: true })
-    .eq('id', params.id)
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+  try {
+    await hrApi(`/companies/${params.id}/`, { method: 'DELETE' })
+    return NextResponse.json({ success: true })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    return NextResponse.json({ error: 'Failed to delete company' }, { status: 500 })
+  }
 }

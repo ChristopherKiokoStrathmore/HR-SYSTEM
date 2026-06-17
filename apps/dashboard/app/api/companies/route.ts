@@ -1,41 +1,41 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { hrApi, HRApiError } from '@/lib/hr-api'
+
+interface DRFCompanyList {
+  count: number
+  results: unknown[]
+}
 
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient(true)
   const { searchParams } = new URL(req.url)
-  const page = parseInt(searchParams.get('page') ?? '1')
-  const pageSize = parseInt(searchParams.get('pageSize') ?? '20')
+  const page = searchParams.get('page') ?? '1'
+  const pageSize = searchParams.get('pageSize') ?? '20'
   const search = searchParams.get('search') ?? ''
 
-  let query = supabase
-    .from('companies')
-    .select('*', { count: 'exact' })
-    .eq('is_deleted', false)
-    .order('name')
-    .range((page - 1) * pageSize, page * pageSize - 1)
+  try {
+    const params: Record<string, string> = { page, page_size: pageSize }
+    if (search) params.search = search
 
-  if (search) {
-    query = query.ilike('name', `%${search}%`)
+    const res = await hrApi<DRFCompanyList>('/companies/', { params })
+    return NextResponse.json({ data: res.results, count: res.count })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    return NextResponse.json({ error: 'Failed to fetch companies' }, { status: 500 })
   }
-
-  const { data, error, count } = await query
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data, count, page, pageSize })
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createServerClient(true)
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('companies')
-    .insert({ ...body, tenant_id: body.tenant_id ?? crypto.randomUUID() })
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data }, { status: 201 })
+  try {
+    const body = await req.json()
+    const data = await hrApi('/companies/', { method: 'POST', body })
+    return NextResponse.json({ data }, { status: 201 })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    return NextResponse.json({ error: 'Failed to create company' }, { status: 500 })
+  }
 }

@@ -20,10 +20,12 @@ const HR_SERVICE_KEY = process.env.HR_SERVICE_KEY || ''
 
 async function identityHeaders(): Promise<Record<string, string>> {
   try {
-    const { getSessionUserId } = await import('./get-session-user')
-    const userId = await getSessionUserId()
-    if (!userId) return {}
-    return { 'X-User-Id': userId }
+    const { getSessionUserId, getSessionToken } = await import('./get-session-user')
+    const [userId, token] = await Promise.all([getSessionUserId(), getSessionToken()])
+    const headers: Record<string, string> = {}
+    if (userId) headers['X-User-Id'] = userId
+    if (token) headers['Authorization'] = `Token ${token}`
+    return headers
   } catch {
     return {}
   }
