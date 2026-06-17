@@ -4,6 +4,10 @@ const publicRoutes = ['/login']
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // API routes handle their own auth — never gate them here
+  if (pathname.startsWith('/api/')) return NextResponse.next()
+
   const session = request.cookies.get('hr_session')?.value
   const isPublic = publicRoutes.some((r) => pathname.startsWith(r))
 
