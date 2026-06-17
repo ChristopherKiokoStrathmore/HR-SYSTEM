@@ -1,34 +1,39 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { hrApi, HRApiError } from '@/lib/hr-api'
+
+interface DRFList<T> { count: number; results: T[] }
 
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient(true)
-  const { searchParams } = new URL(req.url)
-  const employeeId = searchParams.get('employeeId')
+  try {
+    const { searchParams } = new URL(req.url)
+    const employeeId = searchParams.get('employeeId')
 
-  if (!employeeId) return NextResponse.json({ error: 'employeeId required' }, { status: 400 })
+    if (!employeeId) {
+      return NextResponse.json({ error: 'employeeId required' }, { status: 400 })
+    }
 
-  const { data, error } = await supabase
-    .from('performance_reviews')
-    .select('*, reviewer:users!reviewer_id(full_name)')
-    .eq('employee_id', employeeId)
-    .order('created_at', { ascending: false })
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
+    const res = await hrApi<DRFList<unknown>>('/performance-reviews/', {
+      params: { employee_id: employeeId },
+    })
+    return NextResponse.json({ data: res.results })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createServerClient(true)
-  const body = await req.json()
-
-  const { data, error } = await supabase
-    .from('performance_reviews')
-    .insert(body)
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data }, { status: 201 })
+  try {
+    const body = await req.json()
+    const data = await hrApi('/performance-reviews/', { method: 'POST', body })
+    return NextResponse.json({ data }, { status: 201 })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

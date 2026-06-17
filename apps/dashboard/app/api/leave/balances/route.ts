@@ -1,23 +1,28 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { hrApi, HRApiError } from '@/lib/hr-api'
+
+interface DRFList<T> { count: number; results: T[] }
 
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient(true)
-  const { searchParams } = new URL(req.url)
-  const employeeId = searchParams.get('employeeId')
+  try {
+    const { searchParams } = new URL(req.url)
+    const employeeId = searchParams.get('employeeId')
 
-  if (!employeeId) return NextResponse.json({ error: 'employeeId required' }, { status: 400 })
+    if (!employeeId) {
+      return NextResponse.json({ error: 'employeeId required' }, { status: 400 })
+    }
 
-  const year = searchParams.get('year') ?? new Date().getFullYear().toString()
+    const year = searchParams.get('year') ?? new Date().getFullYear().toString()
 
-  const { data, error } = await supabase
-    .from('leave_balances')
-    .select('*')
-    .eq('employee_id', employeeId)
-    .eq('year', parseInt(year, 10))
-    .order('leave_type')
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
+    const res = await hrApi<DRFList<unknown>>('/leave-balances/', {
+      params: { employee_id: employeeId, year },
+    })
+    return NextResponse.json({ data: res.results })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

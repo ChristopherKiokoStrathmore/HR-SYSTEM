@@ -1,39 +1,35 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { hrApi, HRApiError } from '@/lib/hr-api'
+
+interface DRFList<T> { count: number; results: T[] }
 
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient(true)
-  const { searchParams } = new URL(req.url)
-  const companyId = searchParams.get('companyId')
+  try {
+    const { searchParams } = new URL(req.url)
+    const params: Record<string, string> = {}
+    const companyId = searchParams.get('companyId')
+    if (companyId) params.company_id = companyId
 
-  let query = supabase
-    .from('training_sessions')
-    .select('*')
-    .eq('is_deleted', false)
-    .order('start_date', { ascending: false })
-
-  if (companyId) query = query.eq('company_id', companyId)
-
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
+    const res = await hrApi<DRFList<unknown>>('/training-sessions/', { params })
+    return NextResponse.json({ data: res.results })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createServerClient(true)
-  const body = await req.json()
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from('training_sessions') as any)
-    .insert({
-      ...body,
-      tenant_id: body.company_id,
-      is_mandatory: body.is_mandatory ?? false,
-    })
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data }, { status: 201 })
+  try {
+    const body = await req.json()
+    const data = await hrApi('/training-sessions/', { method: 'POST', body })
+    return NextResponse.json({ data }, { status: 201 })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

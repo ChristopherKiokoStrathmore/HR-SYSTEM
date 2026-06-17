@@ -1,73 +1,75 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { hrApi, HRApiError } from '@/lib/hr-api'
 import { sendLeaveApproved, sendLeaveRejected } from '@/lib/email'
 import { getSessionUserId } from '@/lib/get-session-user'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const supabase = createServerClient(true)
-  const { data, error } = await supabase
-    .from('leaves')
-    .select('*, employee:employee_profiles(employee_number, job_title, user:users!user_id(full_name, email))')
-    .eq('id', params.id)
-    .single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 404 })
-  return NextResponse.json({ data })
+  try {
+    const data = await hrApi(`/leave/${params.id}/`)
+    return NextResponse.json({ data })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const supabase = createServerClient(true)
-  const { action, rejection_reason } = (await req.json()) as {
-    action: 'approve' | 'reject'
-    rejection_reason?: string
-  }
-
-  const userId = await getSessionUserId()
-
-  const update =
-    action === 'approve'
-      ? { status: 'approved', approved_by: userId, approved_at: new Date().toISOString() }
-      : { status: 'rejected', rejection_reason: rejection_reason ?? 'Rejected by HR', approved_by: userId }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase.from('leaves') as any)
-    .update(update)
-    .eq('id', params.id)
-    .select(`
-      *,
-      employee:employee_profiles(
-        job_title,
-        user:users!user_id(full_name, email)
-      )
-    `)
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  // Send notification email — fire-and-forget, never block the response
-  const employeeEmail = data?.employee?.user?.email
-  const employeeName = data?.employee?.user?.full_name ?? 'Employee'
-  if (employeeEmail && process.env.RESEND_API_KEY) {
-    if (action === 'approve') {
-      sendLeaveApproved({
-        to: employeeEmail,
-        employeeName,
-        leaveType: data.leave_type,
-        startDate: data.start_date,
-        endDate: data.end_date,
-        daysRequested: data.days_requested,
-      }).catch(() => {})
-    } else {
-      sendLeaveRejected({
-        to: employeeEmail,
-        employeeName,
-        leaveType: data.leave_type,
-        startDate: data.start_date,
-        endDate: data.end_date,
-        rejectionReason: data.rejection_reason ?? 'Rejected by HR',
-      }).catch(() => {})
+  try {
+    const { action, rejection_reason } = (await req.json()) as {
+      action: 'approve' | 'reject'
+      rejection_reason?: string
     }
-  }
 
-  return NextResponse.json({ data })
+    // Keep for compat — not sent to Django but may be used by callers
+    await getSessionUserId()
+
+    let data: unknown
+    if (action === 'approve') {
+      data = await hrApi(`/leave/${params.id}/approve/`, { method: 'POST' })
+    } else {
+      data = await hrApi(`/leave/${params.id}/reject/`, {
+        method: 'POST',
+        body: { rejection_reason: rejection_reason ?? 'Rejected by HR' },
+      })
+    }
+
+    // Fetch the updated leave record to get employee email for notification
+    const leaveRecord = await hrApi<Record<string, unknown>>(`/leave/${params.id}/`)
+
+    // Send notification email — fire-and-forget, never block the response
+    const employeeEmail = (leaveRecord as { employee_email?: string })?.employee_email
+    const employeeName = (leaveRecord as { employee_name?: string })?.employee_name ?? 'Employee'
+
+    if (employeeEmail && process.env.RESEND_API_KEY) {
+      if (action === 'approve') {
+        sendLeaveApproved({
+          to: employeeEmail,
+          employeeName,
+          leaveType: leaveRecord.leave_type as string,
+          startDate: leaveRecord.start_date as string,
+          endDate: leaveRecord.end_date as string,
+          daysRequested: leaveRecord.days_requested as number,
+        }).catch(() => {})
+      } else {
+        sendLeaveRejected({
+          to: employeeEmail,
+          employeeName,
+          leaveType: leaveRecord.leave_type as string,
+          startDate: leaveRecord.start_date as string,
+          endDate: leaveRecord.end_date as string,
+          rejectionReason: (leaveRecord.rejection_reason as string) ?? 'Rejected by HR',
+        }).catch(() => {})
+      }
+    }
+
+    return NextResponse.json({ data })
+  } catch (err) {
+    if (err instanceof HRApiError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }

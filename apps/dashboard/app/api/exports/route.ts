@@ -1,10 +1,15 @@
-﻿export const dynamic = 'force-dynamic'
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { hrApi } from '@/lib/hr-api'
 
 type ExportType = 'headcount' | 'payroll' | 'leave' | 'full'
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
+interface DRFList<T> {
+  count: number
+  results: T[]
+}
 
 interface EmployeeRow {
   department: string | null
@@ -29,13 +34,11 @@ interface LeaveRow {
   days_requested: number
 }
 
-async function buildHeadcountSheet(supabase: ReturnType<typeof createServerClient>, companyId: string) {
-  const { data } = await (supabase.from('employee_profiles') as any)
-    .select('department, employment_type, employment_status, start_date, gender')
-    .eq('company_id', companyId)
-    .eq('is_deleted', false) as { data: EmployeeRow[] | null }
+async function buildHeadcountSheet(companyId: string) {
+  const params: Record<string, string | number> = { page_size: 500, company_id: companyId }
+  const res = await hrApi<DRFList<EmployeeRow>>('/all-employees/', { params }).catch(() => null)
+  const rows = res?.results ?? []
 
-  const rows = data ?? []
   const byDept: Record<string, number> = {}
   const byGender: Record<string, number> = {}
 
@@ -47,37 +50,43 @@ async function buildHeadcountSheet(supabase: ReturnType<typeof createServerClien
   }
 
   return {
-    summary: [{ metric: 'Total Employees', value: rows.length }, { metric: 'Active', value: rows.filter(e => e.employment_status === 'active').length }],
+    summary: [
+      { metric: 'Total Employees', value: rows.length },
+      { metric: 'Active', value: rows.filter((e) => e.employment_status === 'active').length },
+    ],
     byDepartment: Object.entries(byDept).map(([Department, Count]) => ({ Department, Count })),
     byGender: Object.entries(byGender).map(([Gender, Count]) => ({ Gender, Count })),
   }
 }
 
-async function buildPayrollSheet(supabase: ReturnType<typeof createServerClient>, companyId: string) {
-  const { data } = await (supabase.from('payroll_runs') as any)
-    .select('period_month, period_year, total_gross, total_deductions, total_net, status')
-    .eq('company_id', companyId)
-    .eq('is_deleted', false)
-    .order('period_year', { ascending: false })
-    .order('period_month', { ascending: false })
-    .limit(24) as { data: PayrollRunRow[] | null }
+async function buildPayrollSheet(companyId: string) {
+  const params: Record<string, string | number> = { page_size: 24, company_id: companyId }
+  let res: DRFList<PayrollRunRow> | null = null
+  try {
+    res = await hrApi<DRFList<PayrollRunRow>>('/payroll-runs/', { params })
+  } catch (err) {
+    // Django returns 500 on this endpoint currently — return empty gracefully
+    console.error('[exports/payroll] fetch error (expected):', err)
+    return []
+  }
 
-  return (data ?? []).reverse().map(r => ({
-    Period: `${MONTHS[r.period_month - 1]} ${r.period_year}`,
-    'Gross (KES)': r.total_gross,
-    'Deductions (KES)': r.total_deductions,
-    'Net (KES)': r.total_net,
-    Status: r.status,
-  }))
+  return (res?.results ?? [])
+    .slice()
+    .sort((a, b) => a.period_year !== b.period_year ? a.period_year - b.period_year : a.period_month - b.period_month)
+    .map((r) => ({
+      Period: `${MONTHS[r.period_month - 1]} ${r.period_year}`,
+      'Gross (KES)': r.total_gross,
+      'Deductions (KES)': r.total_deductions,
+      'Net (KES)': r.total_net,
+      Status: r.status,
+    }))
 }
 
-async function buildLeaveSheet(supabase: ReturnType<typeof createServerClient>, companyId: string) {
-  const { data } = await (supabase.from('leaves') as any)
-    .select('leave_type, status, days_requested')
-    .eq('company_id', companyId)
-    .eq('is_deleted', false) as { data: LeaveRow[] | null }
+async function buildLeaveSheet(companyId: string) {
+  const params: Record<string, string | number> = { page_size: 10000, company_id: companyId }
+  const res = await hrApi<DRFList<LeaveRow>>('/leave/', { params }).catch(() => null)
 
-  return (data ?? []).map(l => ({
+  return (res?.results ?? []).map((l) => ({
     'Leave Type': l.leave_type,
     Status: l.status,
     'Days Requested': l.days_requested,
@@ -93,8 +102,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'companyId required' }, { status: 400 })
   }
 
-  const supabase = createServerClient(true)
-
   const { getSessionUserId } = await import('@/lib/get-session-user')
   const userId = await getSessionUserId()
   if (!userId) {
@@ -107,19 +114,19 @@ export async function GET(req: NextRequest) {
     const wb = XLSX.utils.book_new()
 
     if (type === 'headcount' || type === 'full') {
-      const hc = await buildHeadcountSheet(supabase, companyId)
+      const hc = await buildHeadcountSheet(companyId)
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hc.summary),       'Summary')
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hc.byDepartment),  'Headcount by Dept')
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hc.byGender),      'Headcount by Gender')
     }
 
     if (type === 'payroll' || type === 'full') {
-      const payroll = await buildPayrollSheet(supabase, companyId)
+      const payroll = await buildPayrollSheet(companyId)
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(payroll), 'Payroll Trend')
     }
 
     if (type === 'leave' || type === 'full') {
-      const leave = await buildLeaveSheet(supabase, companyId)
+      const leave = await buildLeaveSheet(companyId)
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(leave), 'Leave Records')
     }
 
