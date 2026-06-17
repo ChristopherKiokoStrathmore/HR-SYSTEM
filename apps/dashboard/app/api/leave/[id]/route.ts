@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@hr/shared'
 import { sendLeaveApproved, sendLeaveRejected } from '@/lib/email'
+import { getSessionUserId } from '@/lib/get-session-user'
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createServerClient(true)
@@ -21,12 +22,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     rejection_reason?: string
   }
 
-  const { data: { session } } = await supabase.auth.getSession()
+  const userId = await getSessionUserId()
 
   const update =
     action === 'approve'
-      ? { status: 'approved', approved_by: session?.user.id, approved_at: new Date().toISOString() }
-      : { status: 'rejected', rejection_reason: rejection_reason ?? 'Rejected by HR', approved_by: session?.user.id }
+      ? { status: 'approved', approved_by: userId, approved_at: new Date().toISOString() }
+      : { status: 'rejected', rejection_reason: rejection_reason ?? 'Rejected by HR', approved_by: userId }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('leaves') as any)

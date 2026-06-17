@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@hr/shared'
+import { getSessionUserId } from '@/lib/get-session-user'
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createServerClient(true)
@@ -10,12 +11,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     rejection_reason?: string
   }
 
-  // Get current user for verified_by
-  const { data: { session } } = await supabase.auth.getSession()
+  const userId = await getSessionUserId()
 
   const update =
     action === 'verify'
-      ? { status: 'verified' as const, verified_by: session?.user.id ?? null, rejection_reason: null }
+      ? { status: 'verified' as const, verified_by: userId ?? null, rejection_reason: null }
       : { status: 'rejected' as const, rejection_reason: rejection_reason ?? 'Rejected by HR' }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
