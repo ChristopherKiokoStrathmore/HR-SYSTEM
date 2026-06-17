@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { motion, useReducedMotion } from 'framer-motion'
@@ -100,8 +99,7 @@ export function LoginForm() {
       })
       const result = await res.json()
       if (!res.ok) { setError(result.error || 'Login failed'); return }
-      router.push('/')
-      router.refresh()
+      window.location.href = '/'
     } catch {
       setError('An unexpected error occurred. Please try again.')
     } finally {
