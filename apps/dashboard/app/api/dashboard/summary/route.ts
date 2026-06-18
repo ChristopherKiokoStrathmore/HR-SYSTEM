@@ -7,9 +7,17 @@ interface DRFList<T> {
   results: T[]
 }
 
+interface UserRow {
+  id: string
+  full_name: string | null
+  email: string
+  avatar_url: string | null
+  phone: string | null
+}
+
 interface ContractRow {
   id: string
-  user: { full_name: string | null } | null
+  user: { full_name: string | null; email: string; avatar_url: string | null; phone: string | null } | null
   job_title: string
   end_date: string
 }
@@ -32,7 +40,7 @@ export async function GET(req: NextRequest) {
     const today = new Date().toISOString().split('T')[0]
     const in30  = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-    const [empRes, leaveRes, contractRes, pendingLeaveRes] = await Promise.all([
+    const [empRes, leaveRes, contractRes, pendingLeaveRes, usersRes] = await Promise.all([
       // Active employee count — page_size=1, only need the count
       hrApi<DRFList<unknown>>('/all-employees/', {
         params: { employment_status: 'active', page_size: 1 },
@@ -44,7 +52,7 @@ export async function GET(req: NextRequest) {
       }).catch((err) => { console.error('[summary] on-leave:', err); return null }),
 
       // Contracts expiring in the next 30 days
-      hrApi<DRFList<{ id: string; job_title: string; end_date: string }>>('/all-employees/', {
+      hrApi<DRFList<{ id: string; user_id: string; job_title: string; end_date: string }>>('/all-employees/', {
         params: {
           employment_status: 'active',
           end_date_after: today,
@@ -57,21 +65,36 @@ export async function GET(req: NextRequest) {
       hrApi<DRFList<{ id: string; leave_type: string; days_requested: number; start_date: string; end_date: string }>>('/leave/', {
         params: { status: 'pending', page_size: 10 },
       }).catch((err) => { console.error('[summary] pending-leave:', err); return null }),
+
+      // User profiles for name/email/avatar lookup
+      hrApi<DRFList<UserRow>>('/users/', {
+        params: { page_size: 200 },
+      }).catch((err) => { console.error('[summary] users:', err); return null }),
     ])
+
+    const userMap = new Map<string, UserRow>(
+      (usersRes?.results ?? []).map((u) => [u.id, u])
+    )
 
     if (process.env.NODE_ENV === 'development') {
       console.log('[summary] activeEmployees:', empRes?.count)
       console.log('[summary] onLeaveToday:', leaveRes?.results?.length)
       console.log('[summary] contractExpiries:', contractRes?.results?.length)
       console.log('[summary] pendingLeave:', pendingLeaveRes?.results?.length)
+      console.log('[summary] users fetched:', usersRes?.results?.length)
     }
 
-    const contractExpiries: ContractRow[] = (contractRes?.results ?? []).map((p) => ({
-      id: p.id,
-      job_title: p.job_title,
-      end_date: p.end_date,
-      user: { full_name: null },
-    }))
+    const contractExpiries: ContractRow[] = (contractRes?.results ?? []).map((p) => {
+      const u = userMap.get(p.user_id)
+      return {
+        id: p.id,
+        job_title: p.job_title,
+        end_date: p.end_date,
+        user: u
+          ? { full_name: u.full_name, email: u.email, avatar_url: u.avatar_url, phone: u.phone }
+          : { full_name: null, email: '', avatar_url: null, phone: null },
+      }
+    })
 
     const pendingLeave: PendingLeaveRow[] = (pendingLeaveRes?.results ?? []).map((l) => ({
       id: l.id,
