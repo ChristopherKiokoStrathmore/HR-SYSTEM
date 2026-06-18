@@ -3,6 +3,7 @@
 import { ErrorBoundary as ReactErrorBoundary } from 'react-error-boundary'
 import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { usePathname } from 'next/navigation'
 
 function ErrorFallback({
   error,
@@ -40,8 +41,9 @@ function ErrorFallback({
 }
 
 export function AppErrorBoundary({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname()
   return (
-    <ReactErrorBoundary FallbackComponent={ErrorFallback}>
+    <ReactErrorBoundary FallbackComponent={ErrorFallback} resetKeys={[pathname]}>
       {children}
     </ReactErrorBoundary>
   )
