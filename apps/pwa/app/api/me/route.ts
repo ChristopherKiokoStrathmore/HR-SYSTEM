@@ -1,38 +1,62 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
-import { createCookieClient } from '@/lib/supabase-server'
-import { createServiceClient } from '@/lib/supabase-server'
-import { resolveEmployeeContext, resolvePwaUserRecord } from '@/lib/employee-context'
+import { getSession } from '@/lib/session.server'
+import { getDb } from '@/lib/db.server'
 
 export async function GET() {
-  const supabase = await createCookieClient()
-  const service = createServiceClient()
-  const { data: { user }, error: authErr } = await supabase.auth.getUser()
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const resolvedUser = user ?? await resolvePwaUserRecord(service, null)
-  if (authErr && !resolvedUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!resolvedUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const fallbackUser = {
+    id: session.user_id,
+    full_name: session.full_name,
+    email: session.email,
+    avatar_url: null,
+    preferred_language: 'en',
+    phone: null,
+  }
 
-  // Use the same cookie client for data queries so auth.uid() is set
-  // and RLS policies evaluate correctly. The sb_secret_ key is not a JWT
-  // so a service-role client cannot bypass RLS with the new key format.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const authUser = resolvedUser as any as { id: string; email?: string | null }
-  const [{ data: profile }, { employee }] = await Promise.all([
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (service as any).from('users').select('*').eq('id', authUser.id).single() as Promise<{ data: Record<string, any> | null }>,
-    resolveEmployeeContext(service, authUser),
-  ])
+  const sql = getDb()
+  if (!sql) return NextResponse.json({ data: { user: fallbackUser, employee: null } })
 
-  const employeeWithCompany = employee
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ? await (service as any)
-      .from('employee_profiles')
-      .select('*, company:companies(name, logo_url)')
-      .eq('id', employee.id)
-      .maybeSingle()
-      .then(({ data }: { data: unknown }) => data)
-    : null
+  try {
+    const [users, employees] = await Promise.all([
+      sql`
+        SELECT id, full_name, email, avatar_url, preferred_language, phone
+        FROM users WHERE id = ${session.user_id} LIMIT 1
+      `,
+      sql`
+        SELECT ep.*, c.name AS company_name, c.logo_url AS company_logo_url
+        FROM employee_profiles ep
+        LEFT JOIN companies c ON c.id = ep.company_id
+        WHERE ep.user_id = ${session.user_id} AND ep.is_deleted = false
+        LIMIT 1
+      `,
+    ])
 
-  return NextResponse.json({ data: { user: profile, employee: employeeWithCompany } })
+    const user = users[0] ?? fallbackUser
+    const emp = employees[0] ?? null
+    const employee = emp
+      ? {
+          id: emp.id,
+          employee_number: emp.employee_number,
+          job_title: emp.job_title,
+          department: emp.department,
+          company_id: emp.company_id,
+          salary: emp.salary,
+          payment_method: emp.payment_method,
+          bank_name: emp.bank_name,
+          bank_account: emp.bank_account,
+          mpesa_number: emp.mpesa_number,
+          airtel_number: emp.airtel_number,
+          start_date: emp.start_date,
+          company: emp.company_name ? { name: emp.company_name, logo_url: emp.company_logo_url } : null,
+        }
+      : null
+
+    return NextResponse.json({ data: { user, employee } })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'DB error'
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }

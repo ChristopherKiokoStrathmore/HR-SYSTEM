@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const HR_API_URL = process.env.HR_API_URL || 'http://localhost:8000/api'
+const HR_API_URL = process.env.HR_API_URL || 'https://hrmanagementapi-production-dc59.up.railway.app/api'
 
 export async function POST(req: NextRequest) {
   const { email, password } = await req.json()

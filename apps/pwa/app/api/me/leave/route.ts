@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createCookieClient, createServiceClient } from '@/lib/supabase-server'
-import { resolveEmployeeContext } from '@/lib/employee-context'
+import { getSession } from '@/lib/session.server'
+import { getDb } from '@/lib/db.server'
 import { Resend } from 'resend'
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
@@ -9,86 +9,108 @@ const FROM = process.env.EMAIL_FROM ?? 'Sheer Logic HR <hr@sheerlogic.co.ke>'
 const APP_URL = process.env.NEXT_PUBLIC_DASHBOARD_URL ?? 'https://hr.sheerlogic.co.ke'
 
 export async function GET(req: NextRequest) {
-  const supa = await createCookieClient()
-  const service = createServiceClient()
-  const { data: { user } } = await supa.auth.getUser()
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { employee: emp } = await resolveEmployeeContext(service, user)
-  if (!emp) return NextResponse.json({ error: 'Not an employee account' }, { status: 403 })
+  const sql = getDb()
+  if (!sql) return NextResponse.json({ data: [] })
 
-  const { searchParams } = new URL(req.url)
-  const status = searchParams.get('status')
+  try {
+    const emp = await sql`
+      SELECT id FROM employee_profiles
+      WHERE user_id = ${session.user_id} AND is_deleted = false
+      LIMIT 1
+    `
+    if (!emp[0]) return NextResponse.json({ error: 'Not an employee account' }, { status: 403 })
 
-  let query = (supa.from('leaves') as any)
-    .select('*')
-    .eq('employee_id', emp.id)
-    .eq('is_deleted', false)
-    .order('created_at', { ascending: false })
-    .limit(50)
+    const status = new URL(req.url).searchParams.get('status')
 
-  if (status) query = query.eq('status', status)
+    const rows = status
+      ? await sql`
+          SELECT * FROM leaves
+          WHERE employee_id = ${emp[0].id}
+            AND is_deleted = false
+            AND status = ${status}
+          ORDER BY created_at DESC LIMIT 50
+        `
+      : await sql`
+          SELECT * FROM leaves
+          WHERE employee_id = ${emp[0].id}
+            AND is_deleted = false
+          ORDER BY created_at DESC LIMIT 50
+        `
 
-  const { data, error } = await query
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data })
+    return NextResponse.json({ data: rows })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'DB error'
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const supa = await createCookieClient()
-  const service = createServiceClient()
-  const { data: { user } } = await supa.auth.getUser()
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { employee: emp } = await resolveEmployeeContext(service, user)
-  if (!emp) return NextResponse.json({ error: 'Not an employee account' }, { status: 403 })
+  const sql = getDb()
+  if (!sql) return NextResponse.json({ error: 'Database unavailable' }, { status: 503 })
 
-  const body = await req.json()
-  const { data, error } = await (service.from('leaves') as any).insert({
-    ...body,
-    employee_id: emp.id,
-    company_id: emp.company_id,
-    tenant_id: emp.tenant_id,
-    status: 'pending',
-  }).select().single()
+  try {
+    const emp = await sql`
+      SELECT id, company_id FROM employee_profiles
+      WHERE user_id = ${session.user_id} AND is_deleted = false
+      LIMIT 1
+    `
+    if (!emp[0]) return NextResponse.json({ error: 'Not an employee account' }, { status: 403 })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const body = await req.json()
+    const empId = emp[0].id
+    const companyId = emp[0].company_id
 
-  // Notify HR admins — fire-and-forget, never blocks the response
-  if (resend && emp.company_id) {
-    ;(async () => {
-      try {
-        const { data: hrUsers } = await (service.from('users') as any)
-          .select('email')
-          .eq('company_id', emp.company_id)
-          .in('role', ['hr_admin', 'super_admin'])
-          .eq('is_deleted', false)
-          .limit(10)
+    const rows = await sql`
+      INSERT INTO leaves (employee_id, company_id, leave_type, start_date, end_date, days_requested, reason, status)
+      VALUES (${empId}, ${companyId}, ${body.leave_type}, ${body.start_date}, ${body.end_date}, ${body.days_requested}, ${body.reason}, 'pending')
+      RETURNING *
+    `
+    const data = rows[0]
 
-        const hrEmails: string[] = (hrUsers ?? []).map((u: any) => u.email).filter(Boolean)
-        if (!hrEmails.length) return
+    // Notify HR admins — fire-and-forget
+    if (resend && companyId) {
+      ;(async () => {
+        try {
+          const hrUsers = await sql`
+            SELECT email, full_name FROM users
+            WHERE company_id = ${companyId}
+              AND role IN ('hr_admin', 'super_admin')
+              AND is_deleted = false
+            LIMIT 10
+          `
+          const hrEmails = hrUsers.map((u: { email: string }) => u.email).filter(Boolean)
+          if (!hrEmails.length) return
 
-        const employeeName: string = (emp.user as any)?.full_name ?? 'Employee'
-        const employeeEmail: string = (emp.user as any)?.email ?? user?.email ?? ''
+          await resend.emails.send({
+            from: FROM,
+            to: hrEmails,
+            subject: `New leave request from ${session.full_name}`,
+            html: newLeaveHtml({
+              employeeName: session.full_name,
+              employeeEmail: session.email,
+              leaveType: body.leave_type,
+              startDate: body.start_date,
+              endDate: body.end_date,
+              daysRequested: body.days_requested,
+              reason: body.reason,
+              reviewUrl: `${APP_URL}/dashboard/leave`,
+            }),
+          })
+        } catch {}
+      })()
+    }
 
-        await resend.emails.send({
-          from: FROM,
-          to: hrEmails,
-          subject: `New leave request from ${employeeName}`,
-          html: newLeaveHtml({
-            employeeName,
-            employeeEmail,
-            leaveType: body.leave_type,
-            startDate: body.start_date,
-            endDate: body.end_date,
-            daysRequested: body.days_requested,
-            reason: body.reason,
-            reviewUrl: `${APP_URL}/dashboard/leave`,
-          }),
-        })
-      } catch {}
-    })()
+    return NextResponse.json({ data }, { status: 201 })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'DB error'
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
-
-  return NextResponse.json({ data }, { status: 201 })
 }
 
 function newLeaveHtml(opts: {

@@ -1,27 +1,39 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
-import { createCookieClient } from '@/lib/supabase-server'
+import { getSession } from '@/lib/session.server'
+import { getDb } from '@/lib/db.server'
 
 export async function GET() {
-  const supa = await createCookieClient()
-  const { data: { user } } = await supa.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: emp } = await (supa.from('employee_profiles') as any)
-    .select('company_id, department').eq('user_id', user.id).eq('is_deleted', false).single()
-  if (!emp) return NextResponse.json({ data: [] })
+  const sql = getDb()
+  if (!sql) return NextResponse.json({ data: [] })
 
-  const today = new Date().toISOString()
+  try {
+    const emp = await sql`
+      SELECT department FROM employee_profiles
+      WHERE user_id = ${session.user_id} AND is_deleted = false
+      LIMIT 1
+    `
 
-  const { data, error } = await (supa.from('announcements') as any)
-    .select('*')
-    .eq('company_id', emp.company_id)
-    .eq('is_deleted', false)
-    .or(`expires_at.is.null,expires_at.gte.${today}`)
-    .or(`department.is.null,department.eq.${emp.department}`)
-    .order('created_at', { ascending: false })
-    .limit(10)
+    const companyId = session.company_id
+    const department = emp[0]?.department ?? null
+    const now = new Date().toISOString()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data: data ?? [] })
+    const rows = await sql`
+      SELECT * FROM announcements
+      WHERE company_id = ${companyId}
+        AND is_deleted = false
+        AND (expires_at IS NULL OR expires_at >= ${now})
+        AND (department IS NULL ${department ? sql`OR department = ${department}` : sql``})
+      ORDER BY created_at DESC
+      LIMIT 10
+    `
+
+    return NextResponse.json({ data: rows })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'DB error'
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }
