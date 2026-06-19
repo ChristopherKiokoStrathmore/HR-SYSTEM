@@ -84,7 +84,8 @@ export async function POST(req: NextRequest) {
               AND is_deleted = false
             LIMIT 10
           `
-          const hrEmails = hrUsers.map((u: { email: string }) => u.email).filter(Boolean)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const hrEmails = (hrUsers as any[]).map((u: { email: string }) => u.email).filter(Boolean)
           if (!hrEmails.length) return
 
           await resend.emails.send({

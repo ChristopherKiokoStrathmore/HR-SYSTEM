@@ -47,12 +47,17 @@ async function proxy(req: NextRequest, params: { path: string[] }) {
         if ('employee_id' in json || ['overtime', 'leave-recalls'].includes(params.path[0])) {
           const sql = getDb()
           if (sql) {
-            const rows = await sql`
-              SELECT id, manager_id FROM employee_profiles
-              WHERE user_id = ${session.user_id} AND is_deleted = false
-              LIMIT 1
-            `.catch(() => [])
-            const emp = rows[0]
+            let emp: { id: string; manager_id: string | null } | undefined
+            try {
+              const rows = await sql`
+                SELECT id, manager_id FROM employee_profiles
+                WHERE user_id = ${session.user_id} AND is_deleted = false
+                LIMIT 1
+              `
+              emp = rows[0] as typeof emp
+            } catch {
+              emp = undefined
+            }
             if (emp) {
               if ('employee_id' in json) json.employee_id = emp.id
               if (emp.manager_id && !json.manager_id && ['overtime', 'leave-recalls'].includes(params.path[0])) {

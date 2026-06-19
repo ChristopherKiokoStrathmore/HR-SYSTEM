@@ -41,9 +41,10 @@ export async function GET() {
     `
 
     // Group events by Nairobi calendar date
-    const byDate = new Map<string, typeof events>()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const byDate = new Map<string, any[]>()
     for (const ev of events) {
-      const dateStr = toNairobiDate(new Date(ev.time))
+      const dateStr = toNairobiDate(new Date(ev.time as string))
       if (!byDate.has(dateStr)) byDate.set(dateStr, [])
       byDate.get(dateStr)!.push(ev)
     }
