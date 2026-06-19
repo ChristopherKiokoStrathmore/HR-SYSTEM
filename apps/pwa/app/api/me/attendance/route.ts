@@ -1,121 +1,149 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createCookieClient, createServiceClient } from '@/lib/supabase-server'
-import { resolveEmployeeContext } from '@/lib/employee-context'
+import { getSession } from '@/lib/session.server'
+import { getDb } from '@/lib/db.server'
 
-function toDateString(d: Date) {
-  // Use Africa/Nairobi (EAT = UTC+3) so shift_date reflects the employee's local business day,
-  // not the UTC calendar date — matters for check-ins between 21:00-00:00 EAT.
+function toNairobiDate(d: Date): string {
   return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' })
 }
 
-export async function GET(req: NextRequest) {
-  const supa = await createCookieClient()
-  const service = createServiceClient()
-  const { data: { user } } = await supa.auth.getUser()
+function todayStartNairobi(): Date {
+  const today = toNairobiDate(new Date())
+  // Africa/Nairobi is UTC+3
+  return new Date(today + 'T00:00:00+03:00')
+}
 
-  const { employee: emp } = await resolveEmployeeContext(service, user)
-  if (!emp) return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+export async function GET() {
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const today = toDateString(new Date())
-  const sevenDaysAgo = toDateString(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+  const sql = getDb()
+  const today = toNairobiDate(new Date())
+  if (!sql) return NextResponse.json({ data: [], today })
 
-  const { data, error } = await (service.from('attendance') as any)
-    .select('*')
-    .eq('employee_id', emp.id)
-    .gte('shift_date', sevenDaysAgo)
-    .lte('shift_date', today)
-    .order('shift_date', { ascending: false })
+  try {
+    const emp = await sql`
+      SELECT id FROM employee_profiles
+      WHERE user_id = ${session.user_id} AND is_deleted = false
+      LIMIT 1
+    `
+    if (!emp[0]) return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data: data ?? [], today })
+    const empId = emp[0].id
+    const since = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString()
+
+    const events = await sql`
+      SELECT id, time, event_type, lat, lng
+      FROM attendance_events
+      WHERE employee_id = ${empId}
+        AND time >= ${since}
+      ORDER BY time ASC
+    `
+
+    // Group events by Nairobi calendar date
+    const byDate = new Map<string, typeof events>()
+    for (const ev of events) {
+      const dateStr = toNairobiDate(new Date(ev.time))
+      if (!byDate.has(dateStr)) byDate.set(dateStr, [])
+      byDate.get(dateStr)!.push(ev)
+    }
+
+    const records = Array.from(byDate.entries())
+      .map(([date, evs]) => {
+        const clockIn = evs.find((e) => e.event_type === 'clock_in')
+        const clockOut = evs.find((e) => e.event_type === 'clock_out')
+        return {
+          id: (clockIn?.id ?? clockOut?.id ?? date) as string,
+          shift_date: date,
+          check_in_time: clockIn ? (clockIn.time as string) : null,
+          check_out_time: clockOut ? (clockOut.time as string) : null,
+          check_in_lat: clockIn?.lat ?? null,
+          check_in_lng: clockIn?.lng ?? null,
+          status: clockIn ? 'present' : 'absent',
+          is_late: false,
+          distance_covered_km: null,
+        }
+      })
+      .sort((a, b) => b.shift_date.localeCompare(a.shift_date))
+
+    return NextResponse.json({ data: records, today })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'DB error'
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {
-  const supa = await createCookieClient()
-  const service = createServiceClient()
-  const { data: { user } } = await supa.auth.getUser()
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { employee: emp } = await resolveEmployeeContext(service, user)
-  if (!emp) return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+  const sql = getDb()
+  if (!sql) return NextResponse.json({ error: 'Database unavailable' }, { status: 503 })
 
-  const body = await req.json()
-  const today = toDateString(new Date())
-  const now = new Date().toISOString()
-  const action = body.action as 'capture_location' | undefined
+  try {
+    const emp = await sql`
+      SELECT id, company_id FROM employee_profiles
+      WHERE user_id = ${session.user_id} AND is_deleted = false
+      LIMIT 1
+    `
+    if (!emp[0]) return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
 
-  const { data: existing } = await (service.from('attendance') as any)
-    .select('id, check_in_time, check_out_time, check_in_lat, check_in_lng')
-    .eq('employee_id', emp.id)
-    .eq('shift_date', today)
-    .single()
+    const empId = emp[0].id
+    const companyId = emp[0].company_id
+    const body = await req.json()
+    const start = todayStartNairobi().toISOString()
+    const now = new Date().toISOString()
 
-  // Already fully complete — don't allow another action today
-  if (existing?.check_in_time && existing?.check_out_time) {
-    return NextResponse.json(
-      { error: 'Attendance already completed for today', action: 'already_done' },
-      { status: 409 }
-    )
-  }
+    const todayEvents = await sql`
+      SELECT id, time, event_type, lat, lng
+      FROM attendance_events
+      WHERE employee_id = ${empId}
+        AND time >= ${start}
+      ORDER BY time ASC
+    `
 
-  const isCheckIn = !existing?.check_in_time
-  const workHours = !isCheckIn && existing?.check_in_time
-    ? (new Date(now).getTime() - new Date(existing.check_in_time).getTime()) / (1000 * 60 * 60)
-    : null
+    const clockIn = todayEvents.find((e) => e.event_type === 'clock_in')
+    const clockOut = todayEvents.find((e) => e.event_type === 'clock_out')
 
-  if (action === 'capture_location') {
-    if (!existing?.check_in_time) {
-      return NextResponse.json({ error: 'No check-in exists for today' }, { status: 409 })
+    if (clockIn && clockOut) {
+      return NextResponse.json(
+        { error: 'Attendance already completed for today', action: 'already_done' },
+        { status: 409 }
+      )
     }
 
-    const lat = body.lat ?? null
-    const lng = body.lng ?? null
-
-    if (lat == null || lng == null) {
-      return NextResponse.json({ error: 'GPS coordinates are required to capture location' }, { status: 400 })
+    if (body.action === 'capture_location') {
+      if (!clockIn) {
+        return NextResponse.json({ error: 'No check-in exists for today' }, { status: 409 })
+      }
+      if (body.lat == null || body.lng == null) {
+        return NextResponse.json({ error: 'GPS coordinates required' }, { status: 400 })
+      }
+      await sql`
+        UPDATE attendance_events SET lat = ${body.lat}, lng = ${body.lng}
+        WHERE id = ${clockIn.id}
+      `
+      return NextResponse.json({ action: 'captured_location', workHours: null })
     }
 
-    const { data, error } = await (service.from('attendance') as any)
-      .update({
-        check_in_lat: lat,
-        check_in_lng: lng,
-        gps_path: [{ lat, lng, timestamp: existing.check_in_time ?? now }],
-      })
-      .eq('id', existing.id)
-      .select()
-      .single()
+    if (!clockIn) {
+      await sql`
+        INSERT INTO attendance_events (employee_id, company_id, event_type, time, lat, lng, source_app)
+        VALUES (${empId}, ${companyId}, 'clock_in', ${now}, ${body.lat ?? null}, ${body.lng ?? null}, 'pwa')
+      `
+      return NextResponse.json({ action: 'checked_in', workHours: null })
+    }
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ data, action: 'captured_location', workHours: null })
+    // Check out
+    const workHours =
+      (new Date(now).getTime() - new Date(clockIn.time as string).getTime()) / (1000 * 60 * 60)
+    await sql`
+      INSERT INTO attendance_events (employee_id, company_id, event_type, time, lat, lng, source_app)
+      VALUES (${empId}, ${companyId}, 'clock_out', ${now}, ${body.lat ?? null}, ${body.lng ?? null}, 'pwa')
+    `
+    return NextResponse.json({ action: 'checked_out', workHours })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'DB error'
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
-
-  const record: Record<string, unknown> = {
-    employee_id: emp.id,
-    company_id: emp.company_id,
-    tenant_id: emp.tenant_id,
-    shift_date: today,
-    status: 'present',
-    is_late: false,
-    is_early_departure: false,
-  }
-
-  if (isCheckIn) {
-    record.check_in_time = now
-    record.check_in_lat = body.lat ?? null
-    record.check_in_lng = body.lng ?? null
-    record.gps_path = body.lat ? [{ lat: body.lat, lng: body.lng, timestamp: now }] : null
-  } else {
-    record.check_out_time = now
-    record.check_out_lat = body.lat ?? null
-    record.check_out_lng = body.lng ?? null
-    record.distance_covered_km = body.distanceKm ?? null
-  }
-
-  const { data, error } = await (service.from('attendance') as any)
-    .upsert(record, { onConflict: 'employee_id,shift_date' })
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data, action: isCheckIn ? 'checked_in' : 'checked_out', workHours })
 }

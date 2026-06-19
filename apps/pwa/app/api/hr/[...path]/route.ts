@@ -1,22 +1,16 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createCookieClient, createServiceClient } from '@/lib/supabase-server'
-import { resolvePwaUserRecord, resolveEmployeeContext } from '@/lib/employee-context'
+import { getSession } from '@/lib/session.server'
+import { getDb } from '@/lib/db.server'
 
-/**
- * PWA proxy to the Django HR-API (overtime, leave recalls, attendance
- * check-in/pings). Forwards the session user's identity headers so Django
- * enforces RBAC — employees see their own data, managers their queues, and
- * payroll/geofence-dashboard endpoints stay server-side denied.
- */
-const HR_API_URL = process.env.HR_API_URL || 'http://localhost:8000/api'
+const HR_API_URL = process.env.HR_API_URL || 'https://hrmanagementapi-production-dc59.up.railway.app/api'
 const HR_SERVICE_KEY = process.env.HR_SERVICE_KEY || ''
 
 const ALLOWED_PREFIXES = [
   'overtime',
   'leave-recalls',
   'reimbursements',
-  'attendance', // check-in/, ping/, rate is HQ-scoped server-side
+  'attendance',
   'certificates',
 ]
 
@@ -25,14 +19,8 @@ async function proxy(req: NextRequest, params: { path: string[] }) {
     return NextResponse.json({ error: 'Unknown HR API path' }, { status: 404 })
   }
 
-  const supa = await createCookieClient()
-  const service = createServiceClient()
-  const { data: { user } } = await supa.auth.getUser()
-  const record = await resolvePwaUserRecord(service, user)
-  if (!record) {
-    return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
-  }
-  const { employee } = await resolveEmployeeContext(service, user)
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
 
   const path = params.path.join('/')
   const search = new URL(req.url).search
@@ -42,26 +30,36 @@ async function proxy(req: NextRequest, params: { path: string[] }) {
     'Content-Type': 'application/json',
     Accept: 'application/json',
     ...(HR_SERVICE_KEY ? { 'X-Service-Key': HR_SERVICE_KEY } : {}),
-    'X-User-Id': String(record.id),
-    ...(record.role ? { 'X-User-Role': String(record.role) } : {}),
-    ...(record.email ? { 'X-User-Email': String(record.email) } : {}),
-    ...(record.company_id ? { 'X-Company-Id': String(record.company_id) } : {}),
+    'X-User-Id': session.user_id,
+    'X-User-Role': session.role,
+    'X-User-Email': session.email,
+    'X-Company-Id': session.company_id,
   }
 
   let body: string | undefined
   if (req.method !== 'GET') {
     try {
       const json = await req.json()
-      // Stamp the caller's employee/company/manager ids so the PWA can't act
-      // for others, and manager notifications (SMS/email one-tap) fire.
-      if (employee && json && typeof json === 'object') {
-        if ('employee_id' in json) {
-          json.employee_id = employee.id
-        }
-        json.company_id = json.company_id ?? employee.company_id
-        if (employee.manager_id && !json.manager_id &&
-            ['overtime', 'leave-recalls'].includes(params.path[0])) {
-          json.manager_id = employee.manager_id
+      if (json && typeof json === 'object') {
+        json.company_id = json.company_id ?? session.company_id
+
+        // Stamp employee id if we can look it up from the DB
+        if ('employee_id' in json || ['overtime', 'leave-recalls'].includes(params.path[0])) {
+          const sql = getDb()
+          if (sql) {
+            const rows = await sql`
+              SELECT id, manager_id FROM employee_profiles
+              WHERE user_id = ${session.user_id} AND is_deleted = false
+              LIMIT 1
+            `.catch(() => [])
+            const emp = rows[0]
+            if (emp) {
+              if ('employee_id' in json) json.employee_id = emp.id
+              if (emp.manager_id && !json.manager_id && ['overtime', 'leave-recalls'].includes(params.path[0])) {
+                json.manager_id = emp.manager_id
+              }
+            }
+          }
         }
       }
       body = JSON.stringify(json)

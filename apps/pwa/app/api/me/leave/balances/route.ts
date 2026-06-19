@@ -1,24 +1,35 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createCookieClient } from '@/lib/supabase-server'
+import { getSession } from '@/lib/session.server'
+import { getDb } from '@/lib/db.server'
 
 export async function GET(req: NextRequest) {
-  const supa = await createCookieClient()
-  const { data: { user } } = await supa.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const session = await getSession()
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { data: emp } = await (supa.from('employee_profiles') as any)
-    .select('id').eq('user_id', user.id).eq('is_deleted', false).single()
-  if (!emp) return NextResponse.json({ error: 'Not an employee account' }, { status: 403 })
+  const sql = getDb()
+  if (!sql) return NextResponse.json({ data: [] })
 
-  const year = new URL(req.url).searchParams.get('year') ?? new Date().getFullYear().toString()
+  try {
+    const emp = await sql`
+      SELECT id FROM employee_profiles
+      WHERE user_id = ${session.user_id} AND is_deleted = false
+      LIMIT 1
+    `
+    if (!emp[0]) return NextResponse.json({ error: 'Not an employee account' }, { status: 403 })
 
-  const { data, error } = await (supa.from('leave_balances') as any)
-    .select('*')
-    .eq('employee_id', emp.id)
-    .eq('year', parseInt(year))
-    .eq('is_deleted', false)
+    const year = parseInt(new URL(req.url).searchParams.get('year') ?? String(new Date().getFullYear()))
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data: data ?? [] })
+    const rows = await sql`
+      SELECT * FROM leave_balances
+      WHERE employee_id = ${emp[0].id}
+        AND year = ${year}
+        AND is_deleted = false
+    `
+
+    return NextResponse.json({ data: rows })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'DB error'
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }
