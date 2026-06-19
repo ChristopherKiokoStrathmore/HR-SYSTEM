@@ -130,8 +130,8 @@ export async function POST(req: NextRequest) {
 
     if (!clockIn) {
       await sql`
-        INSERT INTO attendance_events (employee_id, company_id, event_type, time, lat, lng, device_id, source_app)
-        VALUES (${empId}, ${companyId}, 'clock_in', ${now}, ${body.lat ?? null}, ${body.lng ?? null}, ${deviceId}, 'pwa')
+        INSERT INTO attendance_events (employee_id, company_id, event_type, time, lat, lng, device_id, out_of_zone_reason, source_app)
+        VALUES (${empId}, ${companyId}, 'clock_in', ${now}, ${body.lat ?? null}, ${body.lng ?? null}, ${deviceId}, '', 'pwa')
       `
       return NextResponse.json({ action: 'checked_in', workHours: null })
     }
@@ -140,8 +140,8 @@ export async function POST(req: NextRequest) {
     const workHours =
       (new Date(now).getTime() - new Date(clockIn.time as string).getTime()) / (1000 * 60 * 60)
     await sql`
-      INSERT INTO attendance_events (employee_id, company_id, event_type, time, lat, lng, device_id, source_app)
-      VALUES (${empId}, ${companyId}, 'clock_out', ${now}, ${body.lat ?? null}, ${body.lng ?? null}, ${deviceId}, 'pwa')
+      INSERT INTO attendance_events (employee_id, company_id, event_type, time, lat, lng, device_id, out_of_zone_reason, source_app)
+      VALUES (${empId}, ${companyId}, 'clock_out', ${now}, ${body.lat ?? null}, ${body.lng ?? null}, ${deviceId}, '', 'pwa')
     `
     return NextResponse.json({ action: 'checked_out', workHours })
   } catch (e: unknown) {
