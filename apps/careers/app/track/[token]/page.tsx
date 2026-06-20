@@ -1,13 +1,12 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createServerClient } from '@hr/shared'
+import { getDb } from '@/lib/db.server'
 import { CheckCircle2, Clock, ArrowLeft, Briefcase, Mail, Phone } from 'lucide-react'
 import { TrackerTokenSaver } from '../../../components/tracker-token-saver'
 
 export const metadata: Metadata = { title: 'Application Tracker | Sheer Logic Job Centre' }
 
-// Pipeline stages in order
 const STAGES = [
   {
     key:         'applied',
@@ -54,32 +53,44 @@ function formatDate(iso: string) {
 }
 
 export default async function TrackPage({ params }: { params: { token: string } }) {
-  const supabase = createServerClient(true)
+  const sql = getDb()
+  const rows = await sql`
+    SELECT
+      c.id, c.full_name, c.email, c.phone, c.current_stage, c.created_at,
+      jp.id          AS job_id,
+      jp.title       AS job_title,
+      jp.department  AS job_department,
+      jp.location_name AS job_location_name,
+      jp.employment_type AS job_employment_type,
+      jp.closing_date AS job_closing_date
+    FROM candidates c
+    LEFT JOIN job_postings jp ON jp.id = c.job_posting_id
+    WHERE c.tracking_token = ${params.token}
+  `
 
-  const { data } = await supabase
-    .from('candidates')
-    .select(`
-      id, full_name, email, phone, current_stage, created_at,
-      job_postings ( id, title, department, location_name, employment_type, closing_date )
-    `)
-    .eq('tracking_token', params.token)
-    .single<{
-      id: string
-      full_name: string
-      email: string
-      phone: string | null
-      current_stage: string
-      created_at: string
-      job_postings: { id: string; title: string; department: string | null; location_name: string | null; employment_type: string; closing_date: string | null } | null
-    }>()
+  if (!rows.length) notFound()
 
-  if (!data) notFound()
+  const row = rows[0]
+  const data = {
+    id:            row.id as string,
+    full_name:     row.full_name as string,
+    email:         row.email as string,
+    phone:         row.phone as string | null,
+    current_stage: row.current_stage as string,
+    created_at:    row.created_at as string,
+  }
+  const job = row.job_id ? {
+    id:              row.job_id as string,
+    title:           row.job_title as string,
+    department:      row.job_department as string | null,
+    location_name:   row.job_location_name as string | null,
+    employment_type: row.job_employment_type as string,
+    closing_date:    row.job_closing_date as string | null,
+  } : null
 
-  const currentStage = data.current_stage as string
+  const currentStage = data.current_stage
   const isRejected   = currentStage === 'rejected'
   const activeIdx    = isRejected ? -1 : (STAGE_INDEX[currentStage] ?? 1)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const job: any     = data.job_postings
 
   const currentStageDef = isRejected
     ? { label: 'Unsuccessful', description: "Thank you for your interest in this position. After careful consideration, we won't be moving forward with your application at this time. We encourage you to browse our other open positions." }
@@ -111,7 +122,6 @@ export default async function TrackPage({ params }: { params: { token: string } 
               </p>
             )}
           </div>
-          {/* Status badge */}
           <span className={`text-xs font-bold px-3 py-1.5 rounded-full border flex-shrink-0 ${
             isRejected           ? 'bg-red-50 text-red-600 border-red-200'
             : currentStage === 'hired' ? 'bg-green-50 text-green-700 border-green-200'
@@ -128,12 +138,12 @@ export default async function TrackPage({ params }: { params: { token: string } 
         </div>
       </div>
 
-      {/* ── Stage stepper ── */}
+      {/* Stage stepper */}
       {!isRejected && (
         <div className="card p-7 space-y-6">
           <h2 className="text-sm font-bold text-text-primary">Application Progress</h2>
 
-          {/* Horizontal on md+, vertical on mobile */}
+          {/* Horizontal on md+ */}
           <div className="hidden md:flex items-start">
             {STAGES.map((stage, i) => {
               const isDone    = i < activeIdx || (currentStage === 'hired' && i === activeIdx)
@@ -142,7 +152,6 @@ export default async function TrackPage({ params }: { params: { token: string } 
               return (
                 <div key={stage.key} className="flex items-start flex-1 min-w-0">
                   <div className="flex flex-col items-center gap-1.5 flex-1">
-                    {/* Circle */}
                     <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 font-bold text-sm transition-all ${
                       isDone    ? 'bg-green-500 text-white shadow-sm'
                       : isCurrent ? 'bg-accent text-white ring-4 ring-accent/20 shadow-md'
@@ -150,14 +159,12 @@ export default async function TrackPage({ params }: { params: { token: string } 
                     }`}>
                       {isDone ? <CheckCircle2 className="w-4.5 h-4.5" /> : i + 1}
                     </div>
-                    {/* Label */}
                     <span className={`text-[11px] font-semibold text-center leading-tight ${
                       isDone ? 'text-green-600' : isCurrent ? 'text-accent' : 'text-text-muted'
                     }`}>
                       {stage.label}
                     </span>
                   </div>
-                  {/* Connector */}
                   {i < STAGES.length - 1 && (
                     <div className={`h-0.5 flex-1 mt-4 mx-1 transition-colors ${(isDone || currentStage === 'hired') ? 'bg-green-300' : 'bg-border'}`} />
                   )}

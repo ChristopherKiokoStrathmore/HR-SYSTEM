@@ -1,18 +1,9 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { getDb } from '@/lib/db.server'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { sendApplicationConfirmation } from '@/lib/notifications/application-email'
 import { screenCv } from '@/lib/ai/screen-cv'
-
-interface JobRow {
-  title: string
-  description: string
-  required_keywords: string[]
-  nice_to_have_keywords: string[]
-  auto_reject_threshold: number
-  company_id: string
-}
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const limited = await checkRateLimit(req)
@@ -36,7 +27,6 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 })
     }
 
-    // Kenya DPA 2019: explicit consent is required before processing applicant data
     if (data_consent !== true) {
       return NextResponse.json(
         { error: 'Data processing consent is required to apply' },
@@ -44,29 +34,25 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       )
     }
 
-    const supabase = createServerClient(true)
+    const sql = getDb()
 
-    const { data: posting } = await supabase
-      .from('job_postings')
-      .select('title, description, required_keywords, nice_to_have_keywords, auto_reject_threshold, company_id')
-      .eq('id', params.id)
-      .eq('is_deleted', false)
-      .eq('status', 'open')
-      .single<JobRow>()
-
-    if (!posting) {
+    // Fetch the job posting
+    const postingRows = await sql`
+      SELECT title, description, required_keywords, nice_to_have_keywords, auto_reject_threshold, company_id
+      FROM job_postings
+      WHERE id = ${params.id} AND is_deleted = false AND status = 'open'
+    `
+    if (!postingRows.length) {
       return NextResponse.json({ error: 'This position is no longer accepting applications' }, { status: 404 })
     }
+    const posting = postingRows[0]
 
     // Duplicate check
-    const { data: existing } = await supabase
-      .from('candidates')
-      .select('id')
-      .eq('job_posting_id', params.id)
-      .eq('email', email.toLowerCase().trim())
-      .maybeSingle()
-
-    if (existing) {
+    const existing = await sql`
+      SELECT id FROM candidates
+      WHERE job_posting_id = ${params.id} AND email = ${email.toLowerCase().trim()}
+    `
+    if (existing.length) {
       return NextResponse.json(
         { error: 'You have already applied for this position with this email address' },
         { status: 409 },
@@ -75,52 +61,34 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     // Create candidate
     const trackingToken = crypto.randomUUID()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: candidate, error: insertError } = await (supabase.from('candidates') as any)
-      .insert({
-        job_posting_id: params.id,
-        tenant_id: posting.company_id,
-        full_name: full_name.trim(),
-        email: email.toLowerCase().trim(),
-        phone: phone?.trim() ?? null,
-        cv_url: '',
-        cv_text: cvText ?? null,
-        notes: cover_note?.trim() ?? null,
-        current_stage: 'screened',
-        ai_extracted_skills: [],
-        tracking_token: trackingToken,
-        source: 'portal',
-      })
-      .select('id, tracking_token')
-      .single()
+    const inserted = await sql`
+      INSERT INTO candidates (
+        job_posting_id, tenant_id, full_name, email, phone, cv_url, cv_text, notes,
+        current_stage, ai_extracted_skills, tracking_token, source,
+        data_consent, consent_at, data_retention_months
+      ) VALUES (
+        ${params.id}, ${posting.company_id}, ${full_name.trim()}, ${email.toLowerCase().trim()},
+        ${phone?.trim() ?? null}, ${''}, ${cvText ?? null}, ${cover_note?.trim() ?? null},
+        ${'screened'}, ${sql.array([] as string[])}, ${trackingToken}, ${'portal'},
+        ${true}, ${new Date().toISOString()}, ${data_retention_months ?? 12}
+      )
+      RETURNING id, tracking_token
+    `
 
-    if (insertError) {
-      console.error('Candidate insert error:', insertError)
+    if (!inserted.length) {
       return NextResponse.json({ error: 'Failed to submit application. Please try again.' }, { status: 500 })
     }
 
-    // Record consent metadata (columns added by sql/sheerlogic_extensions.sql;
-    // non-fatal until that migration is applied to Supabase).
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: consentError } = await (supabase.from('candidates') as any)
-      .update({
-        data_consent: true,
-        consent_at: new Date().toISOString(),
-        data_retention_months: data_retention_months ?? 12,
-      })
-      .eq('id', candidate.id)
-    if (consentError) {
-      console.warn('Consent columns not yet in candidates table:', consentError.message)
-    }
+    const candidate = inserted[0]
 
-    // AI screening is awaited here so the score is persisted before the request ends.
+    // AI screening (non-fatal)
     if (cvText || fileBase64) {
       try {
         const screening = await screenCv({
-          jobTitle: posting.title,
-          jobDescription: posting.description,
-          requiredKeywords: posting.required_keywords,
-          niceToHaveKeywords: posting.nice_to_have_keywords,
+          jobTitle: posting.title as string,
+          jobDescription: posting.description as string,
+          requiredKeywords: posting.required_keywords as string[],
+          niceToHaveKeywords: posting.nice_to_have_keywords as string[],
           cvText,
           fileBase64,
           mimeType,
@@ -128,34 +96,31 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
         if (screening) {
           const { result: aiResult } = screening
-          const autoRejected = aiResult.match_score < posting.auto_reject_threshold
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (supabase.from('candidates') as any)
-            .update({
-              ai_score: aiResult.match_score,
-              ai_summary: aiResult.summary,
-              ai_extracted_skills: aiResult.skills,
-              ai_experience_years: aiResult.experience_years,
-              ai_education: aiResult.education,
-              current_stage: autoRejected ? 'rejected' : 'screened',
-              rejection_reason: autoRejected
-                ? `Auto-rejected: score ${aiResult.match_score} below threshold ${posting.auto_reject_threshold}`
-                : null,
-            })
-            .eq('id', candidate.id)
+          const autoRejected = aiResult.match_score < (posting.auto_reject_threshold as number)
+          await sql`
+            UPDATE candidates SET
+              ai_score              = ${aiResult.match_score},
+              ai_summary            = ${aiResult.summary},
+              ai_extracted_skills   = ${sql.array(aiResult.skills)},
+              ai_experience_years   = ${aiResult.experience_years},
+              ai_education          = ${aiResult.education},
+              current_stage         = ${autoRejected ? 'rejected' : 'screened'},
+              rejection_reason      = ${autoRejected ? `Auto-rejected: score ${aiResult.match_score} below threshold ${posting.auto_reject_threshold}` : null}
+            WHERE id = ${candidate.id}
+          `
         }
       } catch (err) {
         console.error('AI screening failed (non-fatal):', err)
       }
     }
 
-    // Send confirmation email with tracking link (non-blocking)
+    // Send confirmation email (non-blocking)
     sendApplicationConfirmation({
       candidateName:  full_name.trim(),
       candidateEmail: email.toLowerCase().trim(),
-      jobTitle:       posting.title,
+      jobTitle:       posting.title as string,
       jobId:          params.id,
-      trackingToken:  candidate.tracking_token,
+      trackingToken:  candidate.tracking_token as string,
     })
 
     return NextResponse.json({ success: true, tracking_token: candidate.tracking_token })
