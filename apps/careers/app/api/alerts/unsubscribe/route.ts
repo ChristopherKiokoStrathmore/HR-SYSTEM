@@ -1,18 +1,17 @@
 export const dynamic = 'force-dynamic'
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { NextRequest } from 'next/server'
+import { getDb } from '@/lib/db.server'
 
 export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('token')
   if (!token) return new Response('Invalid unsubscribe link.', { status: 400 })
 
-  const supabase = createServerClient(true)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase.from('job_alerts') as any)
-    .update({ is_active: false })
-    .eq('unsubscribe_token', token)
-
-  if (error) return new Response('Could not unsubscribe. Please try again.', { status: 500 })
+  try {
+    const sql = getDb()
+    await sql`UPDATE job_alerts SET is_active = false WHERE unsubscribe_token = ${token}`
+  } catch {
+    return new Response('Could not unsubscribe. Please try again.', { status: 500 })
+  }
 
   return new Response(
     `<!doctype html><html><head><meta charset="utf-8"><title>Unsubscribed</title>

@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@hr/shared'
+import { getDb } from '@/lib/db.server'
 import { z } from 'zod'
 
 const schema = z.object({
@@ -21,33 +21,26 @@ const schema = z.object({
 export async function POST(req: NextRequest) {
   try {
     const body = schema.parse(await req.json())
-    const supabase = createServerClient(true)
+    const sql = getDb()
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from('job_alerts') as any).insert({
-      name:              body.name ?? null,
-      email:             body.email,
-      phone:             body.phone ?? null,
-      keywords:          body.keywords,
-      categories:        body.categories,
-      job_types:         body.job_types,
-      experience_levels: body.experience_levels,
-      location_name:     body.location_name ?? null,
-      location_lat:      body.location_lat ?? null,
-      location_lng:      body.location_lng ?? null,
-      radius_km:         body.radius_km,
-      frequency:         body.frequency,
-    })
-
-    if (error) {
-      console.error('[alert/subscribe]', error)
-      return NextResponse.json({ error: 'Could not save alert.' }, { status: 500 })
-    }
+    await sql`
+      INSERT INTO job_alerts (
+        name, email, phone, keywords, categories, job_types, experience_levels,
+        location_name, location_lat, location_lng, radius_km, frequency
+      ) VALUES (
+        ${body.name ?? null}, ${body.email}, ${body.phone ?? null},
+        ${sql.array(body.keywords)}, ${sql.array(body.categories)},
+        ${sql.array(body.job_types)}, ${sql.array(body.experience_levels)},
+        ${body.location_name ?? null}, ${body.location_lat ?? null},
+        ${body.location_lng ?? null}, ${body.radius_km}, ${body.frequency}
+      )
+    `
 
     return NextResponse.json({ success: true })
   } catch (err) {
     if (err instanceof z.ZodError)
       return NextResponse.json({ error: err.errors[0].message }, { status: 400 })
-    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
+    console.error('[alert/subscribe]', err)
+    return NextResponse.json({ error: 'Could not save alert.' }, { status: 500 })
   }
 }

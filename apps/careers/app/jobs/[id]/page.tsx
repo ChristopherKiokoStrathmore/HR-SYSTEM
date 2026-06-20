@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createServerClient } from '@hr/shared'
+import { getDb } from '@/lib/db.server'
 import { ArrowLeft, Briefcase, Clock, CheckCircle2, Star, Building2 } from 'lucide-react'
 import { ShareButton } from './share-button'
 import { ApplyForm } from './apply-form'
@@ -38,34 +38,35 @@ function daysUntil(iso: string | null) {
 }
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const supabase = createServerClient(true)
-  const { data } = await supabase
-    .from('job_postings')
-    .select('title, department, description')
-    .eq('id', params.id)
-    .eq('is_deleted', false)
-    .eq('status', 'open')
-    .single<Pick<JobRow, 'title' | 'department' | 'description'>>()
-  if (!data) return { title: 'Position not found' }
-  const dept = data.department ? ` · ${data.department}` : ''
-  return {
-    title: `${data.title}${dept} | Sheer Logic Job Centre`,
-    description: data.description.replace(/\n/g, ' ').slice(0, 160),
+  try {
+    const sql = getDb()
+    const rows = await sql`
+      SELECT title, department, description FROM job_postings
+      WHERE id = ${params.id} AND is_deleted = false AND status = 'open'
+    `
+    if (!rows.length) return { title: 'Position not found' }
+    const data = rows[0]
+    const dept = data.department ? ` · ${data.department}` : ''
+    return {
+      title: `${data.title}${dept} | Sheer Logic Job Centre`,
+      description: (data.description as string).replace(/\n/g, ' ').slice(0, 160),
+    }
+  } catch {
+    return { title: 'Position not found' }
   }
 }
 
 export default async function JobDetailPage({ params }: { params: { id: string } }) {
-  const supabase = createServerClient(true)
+  const sql = getDb()
+  const rows = await sql`
+    SELECT id, title, department, description, required_keywords, nice_to_have_keywords,
+           employment_type, closing_date
+    FROM job_postings
+    WHERE id = ${params.id} AND is_deleted = false AND status = 'open'
+  `
 
-  const { data: job } = await supabase
-    .from('job_postings')
-    .select('id, title, department, description, required_keywords, nice_to_have_keywords, employment_type, closing_date')
-    .eq('id', params.id)
-    .eq('is_deleted', false)
-    .eq('status', 'open')
-    .single<JobRow>()
-
-  if (!job) notFound()
+  if (!rows.length) notFound()
+  const job = rows[0] as unknown as JobRow
 
   const closing = formatDate(job.closing_date)
   const days = daysUntil(job.closing_date)
