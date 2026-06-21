@@ -122,6 +122,12 @@ export function PayrollRunDetailClient({ runId }: { runId: string }) {
   const records = run?.records ?? []
   const pendingRecords = records.filter(r => r.payment_status === 'pending')
 
+  // Sign-then-disburse: money can only be released once the employer has
+  // e-signed the run (status reaches 'approved' via the DocuSeal quorum).
+  const canDisburse = ['approved', 'processing', 'completed', 'paid'].includes(
+    String(run?.status)
+  )
+
   // Calculate totals for selected
   const selectedRecords = records.filter(r => selectedIds.has(r.id))
   const selectedTotal = selectedRecords.reduce((sum, r) => sum + r.net_salary, 0)
@@ -258,10 +264,12 @@ export function PayrollRunDetailClient({ runId }: { runId: string }) {
           </button>
           <button
             onClick={() => setDisburseModal(true)}
-            className="btn-primary text-sm flex items-center gap-2"
+            disabled={!canDisburse}
+            title={canDisburse ? undefined : 'Disabled until the employer signs the payroll via DocuSeal'}
+            className="btn-primary text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <CreditCard className="w-4 h-4" />
-            Disburse Selected
+            Release Payment
           </button>
         </div>
       )}

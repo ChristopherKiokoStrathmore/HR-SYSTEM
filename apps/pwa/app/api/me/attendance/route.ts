@@ -83,11 +83,19 @@ export async function POST(req: NextRequest) {
 
   try {
     const emp = await sql`
-      SELECT id, company_id FROM employee_profiles
+      SELECT id, company_id, worker_class FROM employee_profiles
       WHERE user_id = ${session.user_id} AND is_deleted = false
       LIMIT 1
     `
     if (!emp[0]) return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+
+    // Only blue-collar workers clock in/out. White-collar (and any other) are rejected.
+    if (emp[0].worker_class !== 'blue_collar') {
+      return NextResponse.json(
+        { error: 'Check-in is only available to blue-collar workers' },
+        { status: 403 }
+      )
+    }
 
     const empId = emp[0].id
     const companyId = emp[0].company_id

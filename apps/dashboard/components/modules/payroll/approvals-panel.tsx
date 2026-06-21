@@ -126,7 +126,7 @@ export function ApprovalsPanel({ runId, status }: { runId: string; status: strin
           <button onClick={() => workflow.mutate('submit')} disabled={workflow.isPending}
                   className="btn-primary flex items-center gap-2 text-sm">
             {workflow.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            Submit for Approval
+            Send to Employer for Signing
           </button>
         )}
         {status === 'pending_approval' && (
