@@ -15,9 +15,10 @@ import { formatDate, isExpiringSoon, isExpired } from '@hr/shared'
 import type { BackgroundCheckWithSubject, BackgroundCheckType, BackgroundCheckStatus } from '@hr/shared'
 import {
   ShieldCheck, Plus, AlertTriangle, CheckCircle, XCircle,
-  Clock, FileSearch, Loader2, Flag, Eye, HelpCircle,
+  Clock, FileSearch, Loader2, Flag, Eye, HelpCircle, Send,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useRequestValidation } from '@/lib/hooks/use-background-checks'
 import {
   BackgroundCheckTutorial,
   useTutorialState,
@@ -362,11 +363,94 @@ function ReviewCheckModal({
   )
 }
 
+function ValidateCheckModal({
+  open, check, onClose,
+}: {
+  open: boolean
+  check: BackgroundCheckWithSubject | null
+  onClose: () => void
+}) {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const requestValidation = useRequestValidation()
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!check) return
+    if (!email) {
+      toast.error('Validation body email is required')
+      return
+    }
+    try {
+      await requestValidation.mutateAsync({
+        id: check.id,
+        validationBodyName: name,
+        validationBodyEmail: email,
+      })
+      toast.success('Sent to validation body for signing')
+      setName('')
+      setEmail('')
+      onClose()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send validation request')
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Send to Validation Body" size="md">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <p className="text-sm text-text-muted">
+          Sends a Sheer Logic-branded, signable request to the validation body. They sign,
+          confirm whether the subject is clean, and leave comments — the result is recorded
+          back here automatically.
+        </p>
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">
+            Validation body name
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Directorate of Criminal Investigations"
+            className="input w-full"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">
+            Validation body email <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            placeholder="validator@example.go.ke"
+            className="input w-full"
+          />
+        </div>
+        <div className="flex gap-3 pt-2">
+          <button type="button" onClick={onClose} className="btn-ghost flex-1">Cancel</button>
+          <button
+            type="submit"
+            disabled={requestValidation.isPending}
+            className="btn-primary flex-1 flex items-center justify-center gap-2"
+          >
+            {requestValidation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            Send for signing
+          </button>
+        </div>
+      </form>
+    </Modal>
+  )
+}
+
 function CheckRow({
-  check, onReview,
+  check, onReview, onValidate,
 }: {
   check: BackgroundCheckWithSubject
   onReview: () => void
+  onValidate: () => void
 }) {
   const config = STATUS_CONFIG[check.status]
   const StatusIcon = config.icon
@@ -406,6 +490,17 @@ function CheckRow({
       {isExp && <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />}
       {isSoon && <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />}
 
+      {/* Send to validation body — pending/in_progress checks */}
+      {['pending', 'in_progress'].includes(check.status) && (
+        <button
+          onClick={onValidate}
+          className="text-xs px-3 py-1.5 rounded-lg border border-border text-text-primary hover:bg-surface-alt transition-colors flex items-center gap-1.5"
+        >
+          <Send className="w-3.5 h-3.5" />
+          Send to validator
+        </button>
+      )}
+
       {/* Review button for pending/in_progress/completed checks */}
       {['pending', 'in_progress', 'completed'].includes(check.status) && (
         <button
@@ -423,6 +518,7 @@ export function BackgroundChecksClient() {
   const activeCompanyId = useStore(s => s.activeCompanyId)
   const [addModal, setAddModal] = useState(false)
   const [reviewCheck, setReviewCheck] = useState<BackgroundCheckWithSubject | null>(null)
+  const [validateCheck, setValidateCheck] = useState<BackgroundCheckWithSubject | null>(null)
   const [statusFilter, setStatusFilter] = useState<BackgroundCheckStatus | ''>('')
 
   // Tutorial state
@@ -597,6 +693,7 @@ export function BackgroundChecksClient() {
                 key={check.id}
                 check={check}
                 onReview={() => setReviewCheck(check)}
+                onValidate={() => setValidateCheck(check)}
               />
             ))}
           </div>
@@ -614,6 +711,11 @@ export function BackgroundChecksClient() {
         open={!!reviewCheck}
         check={reviewCheck}
         onClose={() => setReviewCheck(null)}
+      />
+      <ValidateCheckModal
+        open={!!validateCheck}
+        check={validateCheck}
+        onClose={() => setValidateCheck(null)}
       />
 
       {/* Tutorial */}

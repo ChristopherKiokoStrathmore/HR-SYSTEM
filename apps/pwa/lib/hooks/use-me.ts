@@ -17,6 +17,7 @@ export interface MeData {
     job_title: string
     department: string | null
     company_id: string
+    worker_class: 'white_collar' | 'blue_collar'
     salary: number
     payment_method: 'bank' | 'mpesa' | 'airtel'
     bank_name: string | null

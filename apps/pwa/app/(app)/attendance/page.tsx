@@ -7,6 +7,7 @@ import anime from 'animejs'
 import { toast } from 'sonner'
 import ReactConfetti from 'react-confetti'
 import { useAttendance, useCheckInOut, type AttendanceRecord } from '@/lib/hooks/use-attendance-pwa'
+import { useMe } from '@/lib/hooks/use-me'
 import { useStore } from '@/lib/store'
 import { t } from '@hr/i18n'
 
@@ -50,6 +51,7 @@ const statItem = {
 export default function AttendancePage() {
   const lang = useStore((s) => s.language)
   const shouldReduce = useReducedMotion()
+  const { data: me, isLoading: meLoading } = useMe()
   const { data, isLoading } = useAttendance()
   const checkInOut = useCheckInOut()
   const [currentTime, setCurrentTime] = useState('')
@@ -157,6 +159,29 @@ export default function AttendancePage() {
     : isCheckedIn
       ? { background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)', boxShadow: '0 8px 32px rgba(239,68,68,0.4), inset 0 1px 1px rgba(255,255,255,0.2)' }
       : { background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)', boxShadow: '0 8px 32px rgba(34,197,94,0.4), inset 0 1px 1px rgba(255,255,255,0.2)' }
+
+  // Check-in/out is only for blue-collar workers; white-collar staff don't clock in.
+  const isBlueCollar = me?.employee?.worker_class === 'blue_collar'
+
+  if (!meLoading && me && !isBlueCollar) {
+    return (
+      <div className="px-4 pt-6 space-y-6 pb-4">
+        <motion.h1
+          className="text-2xl font-black text-text-primary tracking-tight"
+          initial={shouldReduce ? false : { opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {t(lang, 'nav.attendance')}
+        </motion.h1>
+        <div className="rounded-2xl bg-white text-center py-12 px-6" style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+          <CheckCircle className="w-10 h-10 mx-auto mb-3 text-text-muted opacity-60" />
+          <p className="text-base font-semibold text-text-primary">Check-in isn’t required for your role</p>
+          <p className="text-sm text-text-muted mt-1">Attendance clock-in is for blue-collar staff only.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="px-4 pt-6 space-y-6 pb-4">

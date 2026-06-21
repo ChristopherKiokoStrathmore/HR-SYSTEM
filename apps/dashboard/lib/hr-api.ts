@@ -1,6 +1,43 @@
+import { cookies } from 'next/headers'
+
 const HR_API_URL = process.env.HR_API_URL || 'http://localhost:8000/api'
 const HR_API_TOKEN = process.env.HR_API_TOKEN || ''
 const HR_SERVICE_KEY = process.env.HR_SERVICE_KEY || ''
+
+// Normalize legacy role slugs to the canonical RBAC chain understood by the
+// Django backend (apps/core/permissions.py). Granular internal/deployed roles
+// pass through unchanged.
+function normalizeRole(role: string): string {
+  switch (role) {
+    case 'hr_admin':
+      return 'hr'
+    default:
+      return role
+  }
+}
+
+/**
+ * Read the hr_session cookie and produce the X-User-* identity headers the
+ * Django RBAC layer expects. Runs only in a request scope (route handlers);
+ * returns {} otherwise so non-request callers degrade gracefully.
+ */
+async function identityHeaders(): Promise<Record<string, string>> {
+  try {
+    const store = await cookies()
+    const raw = store.get('hr_session')?.value
+    if (!raw) return {}
+    const data = JSON.parse(raw.includes('%') ? decodeURIComponent(raw) : raw)
+    const headers: Record<string, string> = {}
+    if (data?.user_id) headers['X-User-Id'] = String(data.user_id)
+    if (data?.role) headers['X-User-Role'] = normalizeRole(String(data.role))
+    if (data?.email) headers['X-User-Email'] = String(data.email)
+    if (data?.company_id) headers['X-Company-Id'] = String(data.company_id)
+    if (data?.tenant_id) headers['X-Tenant-Id'] = String(data.tenant_id)
+    return headers
+  } catch {
+    return {}
+  }
+}
 
 export class HRApiError extends Error {
   constructor(
@@ -41,6 +78,8 @@ export async function hrApi<T = unknown>(
     }
   }
 
+  const identity = await identityHeaders()
+
   const fetchOptions: RequestInit = {
     method,
     headers: {
@@ -48,6 +87,7 @@ export async function hrApi<T = unknown>(
       Accept: 'application/json',
       ...(HR_SERVICE_KEY ? { 'X-Service-Key': HR_SERVICE_KEY } : {}),
       ...(HR_API_TOKEN ? { Authorization: `Token ${HR_API_TOKEN}` } : {}),
+      ...identity,
       ...headers,
     },
   }

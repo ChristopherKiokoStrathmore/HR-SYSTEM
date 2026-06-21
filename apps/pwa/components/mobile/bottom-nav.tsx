@@ -5,12 +5,13 @@ import { usePathname } from 'next/navigation'
 import { Home, Calendar, Clock, FileText, User, ClipboardCheck } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useStore } from '@/lib/store'
+import { useMe } from '@/lib/hooks/use-me'
 import { t } from '@hr/i18n'
 
 const navItems = [
   { href: '/home',       key: 'nav.home',       icon: Home },
   { href: '/leave',      key: 'nav.leave',      icon: Calendar },
-  { href: '/attendance', key: 'nav.attendance',  icon: Clock },
+  { href: '/attendance', key: 'nav.attendance',  icon: Clock, blueCollarOnly: true },
   { href: '/approvals',  key: 'nav.approvals',   icon: ClipboardCheck },
   { href: '/payslip',   key: 'nav.payslip',     icon: FileText },
   { href: '/profile',   key: 'nav.profile',     icon: User },
@@ -20,12 +21,15 @@ export function BottomNav() {
   const pathname = usePathname()
   const lang = useStore((s) => s.language)
   const shouldReduce = useReducedMotion()
+  const { data: me } = useMe()
+  const isBlueCollar = me?.employee?.worker_class === 'blue_collar'
+  const visibleItems = navItems.filter((item) => !item.blueCollarOnly || isBlueCollar)
 
   return (
     <nav className="shrink-0 z-50"
          style={{ paddingBottom: 'env(safe-area-inset-bottom)', background: '#FFFFFF', boxShadow: '0 -1px 0 rgba(0,0,0,0.06), 0 -4px 16px rgba(0,0,0,0.06)' }}>
       <div className="flex items-center justify-around h-[68px] px-2 relative">
-        {navItems.map(({ href, key, icon: Icon }) => {
+        {visibleItems.map(({ href, key, icon: Icon }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link key={href} href={href} className="flex-1 flex flex-col items-center justify-center gap-0.5 relative py-2 group">

@@ -205,7 +205,10 @@ export function EmployeeSalaryTable({
                   </button>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">
-                  Employee
+                  Employee ID
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">
+                  Employee Name
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">
                   Department
@@ -221,7 +224,7 @@ export function EmployeeSalaryTable({
             <tbody className="divide-y divide-border">
               {filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-12 text-center text-text-muted">
+                  <td colSpan={6} className="px-4 py-12 text-center text-text-muted">
                     <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p>No employees found</p>
                     {search && (
@@ -260,15 +263,15 @@ export function EmployeeSalaryTable({
                           <span className="w-5 h-5 block" />
                         )}
                       </td>
+                      <td className="px-4 py-3 font-mono text-sm text-text-body">
+                        {emp.employee_number || (
+                          <span className="text-text-muted italic">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
-                        <div>
-                          <p className="font-medium text-text-primary">
-                            {emp.employee_name}
-                          </p>
-                          <p className="text-xs text-text-muted">
-                            {emp.employee_number}
-                          </p>
-                        </div>
+                        <p className="font-medium text-text-primary">
+                          {emp.employee_name}
+                        </p>
                       </td>
                       <td className="px-4 py-3 text-text-body">
                         {emp.department || (

@@ -181,6 +181,42 @@ export function useUpdateBackgroundCheckStatus() {
 }
 
 /**
+ * Send a background check to a validation body for signing (DocuSeal).
+ */
+export function useRequestValidation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      id,
+      validationBodyName,
+      validationBodyEmail,
+    }: {
+      id: string
+      validationBodyName?: string
+      validationBodyEmail: string
+    }) => {
+      const res = await fetch(`/api/background-checks/${id}/request-validation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          validation_body_name: validationBodyName,
+          validation_body_email: validationBodyEmail,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Failed to send validation request')
+      }
+      return res.json() as Promise<{ data: { status: string; signing_url?: string } }>
+    },
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['background-checks'] })
+      qc.invalidateQueries({ queryKey: ['background-check', variables.id] })
+    },
+  })
+}
+
+/**
  * Delete (soft) a background check
  */
 export function useDeleteBackgroundCheck() {

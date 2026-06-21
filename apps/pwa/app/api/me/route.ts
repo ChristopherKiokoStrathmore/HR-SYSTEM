@@ -43,6 +43,7 @@ export async function GET() {
           job_title: emp.job_title,
           department: emp.department,
           company_id: emp.company_id,
+          worker_class: emp.worker_class ?? 'white_collar',
           salary: emp.salary,
           payment_method: emp.payment_method,
           bank_name: emp.bank_name,

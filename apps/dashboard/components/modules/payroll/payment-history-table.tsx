@@ -75,7 +75,10 @@ export function PaymentHistoryTable({
                   Date
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">
-                  Employee
+                  Employee ID
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">
+                  Employee Name
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-text-muted uppercase tracking-wide">
                   Department
@@ -97,7 +100,7 @@ export function PaymentHistoryTable({
             <tbody className="divide-y divide-border">
               {filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-text-muted">
+                  <td colSpan={8} className="px-4 py-12 text-center text-text-muted">
                     <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p>No payment history found</p>
                     {search && (
@@ -126,15 +129,15 @@ export function PaymentHistoryTable({
                             })
                           : '-'}
                       </td>
+                      <td className="px-4 py-3 font-mono text-sm text-text-body">
+                        {rec.employee_number || (
+                          <span className="text-text-muted italic">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
-                        <div>
-                          <p className="font-medium text-text-primary">
-                            {rec.employee_name}
-                          </p>
-                          <p className="text-xs text-text-muted">
-                            {rec.employee_number}
-                          </p>
-                        </div>
+                        <p className="font-medium text-text-primary">
+                          {rec.employee_name}
+                        </p>
                       </td>
                       <td className="px-4 py-3 text-sm text-text-body">
                         {rec.department || (
