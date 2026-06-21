@@ -98,7 +98,10 @@ export async function hrApi<T = unknown>(
 
   const response = await fetch(url, {
     ...fetchOptions,
-    signal: AbortSignal.timeout(8_000),
+    // 15s (was 8s): the Railway backend cold-starts when idle, and the dashboard
+    // fires ~10 parallel requests on load — an 8s abort turned every cold-start
+    // request into a 500. 15s rides out a typical cold boot.
+    signal: AbortSignal.timeout(15_000),
   })
 
   // Handle empty responses (204 No Content)
