@@ -5,9 +5,13 @@ import { useStore } from '@/lib/store'
 import { useRouter, usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
+import { useCurrentUser, canSwitchCompanies } from '@/lib/hooks/use-current-user'
 
 function CompanySwitcher() {
   const { activeCompanyId, setActiveCompanyId } = useStore()
+  const { data: session } = useCurrentUser()
+  const canSwitch = canSwitchCompanies(session?.user?.role)
+
   const { data } = useQuery({
     queryKey: ['companies-list'],
     queryFn: () => fetch('/api/companies?pageSize=50').then(r => r.json()),
@@ -15,23 +19,31 @@ function CompanySwitcher() {
   })
   const companies: { id: string; name: string }[] = data?.data ?? []
 
-  // Auto-select the first company, or reset a stale persisted ID that no longer exists
+  // Reconcile the persisted selection:
+  //  - cross-company roles may keep "All Companies" (null) — never auto-snap them
+  //    back to a single company; only clear a *stale* id that no longer exists.
+  //  - everyone else must stay scoped to a concrete company.
   useEffect(() => {
     if (companies.length === 0) return
     const ids = companies.map((c) => c.id)
-    if (!activeCompanyId || !ids.includes(activeCompanyId)) {
+    if (activeCompanyId && !ids.includes(activeCompanyId)) {
+      setActiveCompanyId(canSwitch ? null : companies[0].id)
+      return
+    }
+    if (!canSwitch && !activeCompanyId) {
       setActiveCompanyId(companies[0].id)
     }
-  }, [companies, activeCompanyId, setActiveCompanyId])
+  }, [companies, activeCompanyId, canSwitch, setActiveCompanyId])
 
-  if (companies.length < 2) return null
+  // Only company admins / super admins can switch companies or view all.
+  if (!canSwitch || companies.length === 0) return null
   return (
     <div className="flex items-center gap-1.5 rounded-xl border border-border bg-surface-alt px-2.5 py-1.5">
       <Building2 className="w-3.5 h-3.5 text-text-muted flex-shrink-0" />
       <select
         value={activeCompanyId ?? ''}
         onChange={e => setActiveCompanyId(e.target.value || null)}
-        className="bg-transparent text-xs text-text-body font-medium focus:outline-none cursor-pointer pr-1 max-w-[140px] truncate"
+        className="bg-transparent text-xs text-text-body font-medium focus:outline-none cursor-pointer pr-1 max-w-[160px] truncate"
       >
         <option value="">All Companies</option>
         {companies.map(c => (
