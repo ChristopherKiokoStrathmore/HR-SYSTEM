@@ -144,7 +144,7 @@ export function EmployeeSalaryTable({
             disabled={pendingEmployees.length === 0}
             className="btn-secondary text-sm"
           >
-            Pay all pending
+            Send all for approval
           </button>
           {departmentFilter && (
             <button
@@ -153,7 +153,7 @@ export function EmployeeSalaryTable({
               disabled={pendingDepartmentEmployees.length === 0}
               className="btn-secondary text-sm"
             >
-              Pay {departmentFilter}
+              Send {departmentFilter} for approval
             </button>
           )}
           {selectedIds.size > 0 && (
@@ -163,7 +163,7 @@ export function EmployeeSalaryTable({
               className="btn-primary text-sm flex items-center gap-2"
             >
               <CreditCard className="w-4 h-4" />
-              Pay Selected
+              Send for approval
             </button>
           )}
         </div>
