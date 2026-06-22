@@ -2,91 +2,83 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { hrApi } from '@/lib/hr-api'
 
-interface DRFList<T> {
-  count: number
-  results: T[]
-}
-
-interface EmployeeProfile {
-  id: string
-  user_id: string | null
-  employee_number: string
-  salary: string | null
-  department: string | null
-  payment_method: string | null
-}
-
-interface UserRow {
-  id: string
-  full_name: string
-}
-
-interface EmployeeSalaryRow {
+interface RichEmployee {
   id: string
   employee_id: string
   employee_name: string | null
   employee_number: string
   department: string | null
-  salary: number
-  payment_status: 'pending'
-  payment_method: 'bank' | 'mpesa' | 'airtel'
-  last_paid_at: null
+  salary: number | string
+  payment_status: string
+  payment_method: string
+  last_paid_at: string | null
+  gross_salary?: number | string
+  paye?: number | string
+  nssf?: number | string
+  nhif?: number | string
+  helb?: number | string
+  other_deductions?: number | string
+  total_deductions?: number | string
+  net_salary?: number | string
 }
 
-interface DepartmentPaymentStatus {
+interface RichDept {
   department: string
-  totalEmployees: number
-  paidCount: number
-  pendingCount: number
-  status: 'all_paid' | 'partial' | 'none_paid'
+  total_employees: number
+  paid_count: number
+  pending_count: number
+  status: string
 }
+
+const num = (v: unknown): number =>
+  typeof v === 'number' ? v : parseFloat(String(v ?? '0')) || 0
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const companyId = searchParams.get('companyId')
 
-    const params: Record<string, string | number> = { page_size: 500 }
+    const params: Record<string, string> = {}
     if (companyId) params.company_id = companyId
 
-    const res = await hrApi<DRFList<EmployeeProfile>>('/all-employees/', { params })
-    const rows = res.results ?? []
+    // The Django endpoint resolves employee names (by employee_id) and computes
+    // each employee's statutory breakdown for the current month, so we surface
+    // gross / PAYE / NSSF / NHIF / HELB / net directly.
+    const res = await hrApi<{ data: RichEmployee[]; departments: RichDept[] }>(
+      '/employee-payroll-status/with_payment_status/',
+      { params }
+    )
 
-    // Names live on the users table (employee_profiles only has user_id), so
-    // resolve user_id → full_name to populate the Employee Name column.
-    const usersRes = await hrApi<DRFList<UserRow>>('/users/', { params: { page_size: 500 } })
-    const nameMap = new Map((usersRes.results ?? []).map((u) => [u.id, u.full_name]))
-
-    const employeeSalaryRows: EmployeeSalaryRow[] = rows.map((p) => ({
+    const data = (res.data ?? []).map((p) => ({
       id: p.id,
-      employee_id: p.id,
-      employee_name: (p.user_id ? nameMap.get(p.user_id) : null) ?? null,
+      employee_id: p.employee_id,
+      employee_name: p.employee_name ?? null,
       employee_number: p.employee_number,
       department: p.department ?? null,
-      salary: parseFloat(p.salary ?? '0'),
-      payment_status: 'pending' as const,
+      salary: num(p.salary),
+      gross_salary: num(p.gross_salary ?? p.salary),
+      paye: num(p.paye),
+      nssf: num(p.nssf),
+      nhif: num(p.nhif),
+      helb: num(p.helb),
+      other_deductions: num(p.other_deductions),
+      total_deductions: num(p.total_deductions),
+      net_salary: num(p.net_salary ?? p.salary),
+      payment_status:
+        (p.payment_status as 'pending' | 'processing' | 'paid' | 'failed') || 'pending',
       payment_method: (p.payment_method as 'bank' | 'mpesa' | 'airtel') || 'bank',
-      last_paid_at: null,
+      last_paid_at: p.last_paid_at ?? null,
     }))
 
-    const deptMap = new Map<string, { total: number; paid: number; pending: number }>()
-    for (const e of employeeSalaryRows) {
-      const dept = e.department || 'Unspecified'
-      const cur = deptMap.get(dept) ?? { total: 0, paid: 0, pending: 0 }
-      cur.total += 1
-      cur.pending += 1
-      deptMap.set(dept, cur)
-    }
-
-    const departments: DepartmentPaymentStatus[] = Array.from(deptMap.entries()).map(([department, v]) => ({
-      department,
-      totalEmployees: v.total,
-      paidCount: v.paid,
-      pendingCount: v.pending,
-      status: v.paid === v.total ? 'all_paid' : v.paid === 0 ? 'none_paid' : 'partial',
+    const departments = (res.departments ?? []).map((d) => ({
+      department: d.department,
+      totalEmployees: d.total_employees,
+      paidCount: d.paid_count,
+      pendingCount: d.pending_count,
+      status: (d.status as 'all_paid' | 'partial' | 'none_paid') ?? 'none_paid',
     }))
 
-    return NextResponse.json({ data: employeeSalaryRows, departments })
+    return NextResponse.json({ data, departments })
   } catch (err) {
     console.error('[payroll/employee-status] error:', err)
     return NextResponse.json({ data: [], departments: [], error: String(err) }, { status: 500 })

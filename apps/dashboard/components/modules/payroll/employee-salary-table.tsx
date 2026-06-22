@@ -214,7 +214,22 @@ export function EmployeeSalaryTable({
                   Department
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wide">
-                  Salary
+                  Gross
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wide">
+                  PAYE
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wide">
+                  NSSF
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wide">
+                  NHIF
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wide">
+                  HELB
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wide">
+                  Net Pay
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold text-text-muted uppercase tracking-wide">
                   Status
@@ -224,7 +239,7 @@ export function EmployeeSalaryTable({
             <tbody className="divide-y divide-border">
               {filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-text-muted">
+                  <td colSpan={11} className="px-4 py-12 text-center text-text-muted">
                     <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p>No employees found</p>
                     {search && (
@@ -278,8 +293,23 @@ export function EmployeeSalaryTable({
                           <span className="text-text-muted italic">Unassigned</span>
                         )}
                       </td>
+                      <td className="px-4 py-3 text-right font-mono text-text-primary">
+                        {formatKES(emp.gross_salary ?? emp.salary)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-red-600">
+                        {formatKES(emp.paye ?? 0)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-red-600">
+                        {formatKES(emp.nssf ?? 0)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-red-600">
+                        {formatKES(emp.nhif ?? 0)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-red-600">
+                        {formatKES(emp.helb ?? 0)}
+                      </td>
                       <td className="px-4 py-3 text-right font-mono font-medium text-text-primary">
-                        {formatKES(emp.salary)}
+                        {formatKES(emp.net_salary ?? emp.salary)}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <StatusBadge status={emp.payment_status} />

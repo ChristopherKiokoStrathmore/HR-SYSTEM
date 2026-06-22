@@ -80,6 +80,15 @@ export interface EmployeeSalaryRow {
   employee_number: string
   department: string | null
   salary: number
+  // Current-month statutory breakdown (computed by the backend).
+  gross_salary?: number
+  paye?: number
+  nssf?: number
+  nhif?: number
+  helb?: number
+  other_deductions?: number
+  total_deductions?: number
+  net_salary?: number
   payment_status: 'pending' | 'processing' | 'paid' | 'failed'
   payment_method: 'bank' | 'mpesa' | 'airtel'
   last_paid_at: string | null
