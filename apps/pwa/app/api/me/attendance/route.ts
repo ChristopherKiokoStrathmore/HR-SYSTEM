@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSession } from '@/lib/session.server'
 import { getDb } from '@/lib/db.server'
 
+const HR_API_URL     = (process.env.HR_API_URL     ?? '').replace(/\/$/, '')
+const HR_SERVICE_KEY = process.env.HR_SERVICE_KEY  ?? ''
+
 function toNairobiDate(d: Date): string {
   return d.toLocaleDateString('en-CA', { timeZone: 'Africa/Nairobi' })
 }
@@ -12,6 +15,11 @@ function todayStartNairobi(): Date {
   // Africa/Nairobi is UTC+3
   return new Date(today + 'T00:00:00+03:00')
 }
+
+// Both naming conventions exist: older direct-writes used clock_in/clock_out;
+// Django uses check_in/check_out. Accept both so history shows correctly.
+const CHECK_IN_TYPES  = ['clock_in',  'check_in']
+const CHECK_OUT_TYPES = ['clock_out', 'check_out']
 
 export async function GET() {
   const session = await getSession()
@@ -37,10 +45,10 @@ export async function GET() {
       FROM attendance_events
       WHERE employee_id = ${empId}
         AND time >= ${since}
+        AND event_type = ANY(${sql.array([...CHECK_IN_TYPES, ...CHECK_OUT_TYPES])})
       ORDER BY time ASC
     `
 
-    // Group events by Nairobi calendar date
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const byDate = new Map<string, any[]>()
     for (const ev of events) {
@@ -51,17 +59,17 @@ export async function GET() {
 
     const records = Array.from(byDate.entries())
       .map(([date, evs]) => {
-        const clockIn = evs.find((e) => e.event_type === 'clock_in')
-        const clockOut = evs.find((e) => e.event_type === 'clock_out')
+        const clockIn  = evs.find((e) => CHECK_IN_TYPES.includes(e.event_type  as string))
+        const clockOut = evs.find((e) => CHECK_OUT_TYPES.includes(e.event_type as string))
         return {
-          id: (clockIn?.id ?? clockOut?.id ?? date) as string,
-          shift_date: date,
-          check_in_time: clockIn ? (clockIn.time as string) : null,
-          check_out_time: clockOut ? (clockOut.time as string) : null,
-          check_in_lat: clockIn?.lat ?? null,
-          check_in_lng: clockIn?.lng ?? null,
-          status: clockIn ? 'present' : 'absent',
-          is_late: false,
+          id:              (clockIn?.id ?? clockOut?.id ?? date) as string,
+          shift_date:      date,
+          check_in_time:   clockIn  ? (clockIn.time  as string) : null,
+          check_out_time:  clockOut ? (clockOut.time as string) : null,
+          check_in_lat:    clockIn?.lat  ?? null,
+          check_in_lng:    clockIn?.lng  ?? null,
+          status:          clockIn ? 'present' : 'absent',
+          is_late:         false,
           distance_covered_km: null,
         }
       })
@@ -89,39 +97,40 @@ export async function POST(req: NextRequest) {
     `
     if (!emp[0]) return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
 
-    // Only blue-collar workers clock in/out. White-collar (and any other) are rejected.
     if (emp[0].worker_class !== 'blue_collar') {
       return NextResponse.json(
         { error: 'Check-in is only available to blue-collar workers' },
-        { status: 403 }
+        { status: 403 },
       )
     }
 
-    const empId = emp[0].id
+    const empId     = emp[0].id
     const companyId = emp[0].company_id
-    const body = await req.json()
-    const start = todayStartNairobi().toISOString()
-    const now = new Date().toISOString()
-    const deviceId = (req.headers.get('user-agent') ?? 'pwa-web').slice(0, 200)
+    const body      = await req.json()
+    const start     = todayStartNairobi().toISOString()
+    const now       = new Date().toISOString()
+    const deviceId  = (req.headers.get('user-agent') ?? 'pwa-web').slice(0, 200)
 
     const todayEvents = await sql`
       SELECT id, time, event_type, lat, lng
       FROM attendance_events
       WHERE employee_id = ${empId}
         AND time >= ${start}
+        AND event_type = ANY(${sql.array([...CHECK_IN_TYPES, ...CHECK_OUT_TYPES])})
       ORDER BY time ASC
     `
 
-    const clockIn = todayEvents.find((e) => e.event_type === 'clock_in')
-    const clockOut = todayEvents.find((e) => e.event_type === 'clock_out')
+    const clockIn  = todayEvents.find((e) => CHECK_IN_TYPES.includes(e.event_type  as string))
+    const clockOut = todayEvents.find((e) => CHECK_OUT_TYPES.includes(e.event_type as string))
 
     if (clockIn && clockOut) {
       return NextResponse.json(
         { error: 'Attendance already completed for today', action: 'already_done' },
-        { status: 409 }
+        { status: 409 },
       )
     }
 
+    // capture_location does not involve face verification — handle directly.
     if (body.action === 'capture_location') {
       if (!clockIn) {
         return NextResponse.json({ error: 'No check-in exists for today' }, { status: 409 })
@@ -136,22 +145,59 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ action: 'captured_location', workHours: null })
     }
 
-    if (!clockIn) {
-      await sql`
-        INSERT INTO attendance_events (employee_id, company_id, event_type, time, lat, lng, device_id, out_of_zone_reason, source_app)
-        VALUES (${empId}, ${companyId}, 'clock_in', ${now}, ${body.lat ?? null}, ${body.lng ?? null}, ${deviceId}, '', 'pwa')
-      `
-      return NextResponse.json({ action: 'checked_in', workHours: null })
+    // Proxy check-in / check-out to Django.
+    // Django owns SmileID face verification, geofence evaluation, and DB write.
+    const eventType = clockIn ? 'check_out' : 'check_in'
+
+    const djangoRes = await fetch(`${HR_API_URL}/attendance/check-in/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'X-Service-Key': HR_SERVICE_KEY,
+        'X-User-Id':     session.user_id,
+        'X-Company-Id':  String(companyId),
+      },
+      body: JSON.stringify({
+        employee_id:  empId,
+        company_id:   companyId,
+        event_type:   eventType,
+        selfie_b64:   body.selfie_b64 ?? '',
+        lat:          body.lat   ?? null,
+        lng:          body.lng   ?? null,
+        device_id:    deviceId,
+      }),
+      signal: AbortSignal.timeout(90_000),
+    })
+
+    if (djangoRes.status === 403) {
+      const err = await djangoRes.json().catch(() => ({}))
+      return NextResponse.json(
+        { error: (err as { error?: string }).error ?? 'Face not recognised. Please try again in good lighting.' },
+        { status: 403 },
+      )
     }
 
-    // Check out
-    const workHours =
-      (new Date(now).getTime() - new Date(clockIn.time as string).getTime()) / (1000 * 60 * 60)
-    await sql`
-      INSERT INTO attendance_events (employee_id, company_id, event_type, time, lat, lng, device_id, out_of_zone_reason, source_app)
-      VALUES (${empId}, ${companyId}, 'clock_out', ${now}, ${body.lat ?? null}, ${body.lng ?? null}, ${deviceId}, '', 'pwa')
-    `
-    return NextResponse.json({ action: 'checked_out', workHours })
+    if (!djangoRes.ok) {
+      return NextResponse.json(
+        { error: 'Could not reach face-recognition service. Try again shortly.' },
+        { status: 502 },
+      )
+    }
+
+    const djangoData = await djangoRes.json() as {
+      ok: boolean
+      event_type: string
+      face_verified: boolean | null
+    }
+
+    if (eventType === 'check_out') {
+      const workHours = clockIn
+        ? (new Date(now).getTime() - new Date(clockIn.time as string).getTime()) / (1000 * 60 * 60)
+        : null
+      return NextResponse.json({ action: 'checked_out', workHours, faceVerified: djangoData.face_verified })
+    }
+
+    return NextResponse.json({ action: 'checked_in', workHours: null, faceVerified: djangoData.face_verified })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'DB error'
     return NextResponse.json({ error: msg }, { status: 500 })

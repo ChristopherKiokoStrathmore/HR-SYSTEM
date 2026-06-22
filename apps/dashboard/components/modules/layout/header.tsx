@@ -1,11 +1,12 @@
 'use client'
 
-import { Bell, Search, Moon, Sun, LogOut, Building2 } from 'lucide-react'
+import { Bell, Search, Moon, Sun, LogOut, Building2, Share2, MessageCircle, Mail, MessageSquare, X } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import { useRouter, usePathname } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useCurrentUser, canSwitchCompanies } from '@/lib/hooks/use-current-user'
+import { toast } from '@/lib/toast'
 
 function CompanySwitcher() {
   const { activeCompanyId, setActiveCompanyId } = useStore()
@@ -79,6 +80,100 @@ function Breadcrumbs() {
   )
 }
 
+function ShareButton() {
+  const pathname = usePathname()
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    if (open) document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+
+  const pageTitle = () => {
+    const segs = pathname.split('/').filter(Boolean)
+    return segs.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' › ')
+  }
+
+  const pageUrl = typeof window !== 'undefined' ? window.location.href : ''
+  const text = `Sheer Logic HR — ${pageTitle()}\n${pageUrl}`
+  const encodedText = encodeURIComponent(text)
+
+  const channels = [
+    {
+      label: 'WhatsApp',
+      icon: <MessageCircle className="w-4 h-4" />,
+      color: 'text-green-600 hover:bg-green-50',
+      href: `https://wa.me/?text=${encodedText}`,
+    },
+    {
+      label: 'Email',
+      icon: <Mail className="w-4 h-4" />,
+      color: 'text-blue-600 hover:bg-blue-50',
+      href: `mailto:?subject=${encodeURIComponent(`Sheer Logic HR — ${pageTitle()}`)}&body=${encodedText}`,
+    },
+    {
+      label: 'SMS',
+      icon: <MessageSquare className="w-4 h-4" />,
+      color: 'text-purple-600 hover:bg-purple-50',
+      href: `sms:?body=${encodedText}`,
+    },
+  ]
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(pageUrl).then(() => toast.success('Link copied'))
+    setOpen(false)
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="p-2 rounded-xl text-text-muted hover:text-text-body hover:bg-surface-alt transition-colors"
+        title="Share this page"
+      >
+        <Share2 className="w-4 h-4" />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-48 bg-surface border border-border rounded-2xl shadow-lg z-50 overflow-hidden py-1">
+          <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+            <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Share page</span>
+            <button onClick={() => setOpen(false)} className="text-text-muted hover:text-text-body">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          {channels.map(ch => (
+            <a
+              key={ch.label}
+              href={ch.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setOpen(false)}
+              className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${ch.color}`}
+            >
+              {ch.icon}
+              {ch.label}
+            </a>
+          ))}
+          <div className="border-t border-border mt-1">
+            <button
+              onClick={copyLink}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium text-text-body hover:bg-surface-alt transition-colors"
+            >
+              <Share2 className="w-4 h-4 text-text-muted" />
+              Copy link
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Header() {
   const { darkMode, toggleDarkMode } = useStore()
   const router = useRouter()
@@ -108,6 +203,8 @@ export function Header() {
       {/* Right: actions */}
       <div className="flex items-center gap-2">
         <CompanySwitcher />
+        {/* Share */}
+        <ShareButton />
         {/* Dark mode */}
         <button
           onClick={toggleDarkMode}
