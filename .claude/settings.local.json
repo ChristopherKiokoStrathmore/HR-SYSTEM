@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep *)",
+      "Bash(git fetch *)",
+      "Bash(git -c http.sslVerify=false fetch origin)",
+      "Bash(git -c http.sslVerify=false rebase origin/main)",
+      "Bash(git -c http.sslVerify=false push origin HEAD:main)",
+      "Bash(npx tsc *)",
+      "Bash(git push *)",
+      "Bash(git config *)"
+    ]
+  }
+}
