@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   useEmployeesWithPaymentStatus,
   usePaymentHistory,
@@ -17,6 +18,7 @@ import {
   DollarSign,
   CheckCircle,
   AlertCircle,
+  FileSignature,
 } from 'lucide-react'
 
 // Import new components
@@ -25,15 +27,18 @@ import { DepartmentBadges } from './department-badges'
 import { EmployeeSalaryTable } from './employee-salary-table'
 import { PaymentHistoryTable } from './payment-history-table'
 import { PayEmployeesModal } from './pay-employees-modal'
+import { PayrollApprovalsList } from './payroll-approvals-list'
 
 const TABS = [
   { id: 'employees', label: 'Pay Employees', icon: Users },
+  { id: 'approvals', label: 'Approvals & Disbursement', icon: FileSignature },
   { id: 'history', label: 'Payment History', icon: Clock },
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
 
 export function PayrollClient() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<TabId>('employees')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [departmentFilter, setDepartmentFilter] = useState<string | null>(null)
@@ -146,8 +151,16 @@ export function PayrollClient() {
       })
 
       if (result.success) {
-        toast.success(result.message || `Payment initiated for ${result.paidCount} employees via ${paymentMethod.toUpperCase()}`)
+        toast.success(result.message || 'Payroll sent to the employer for signing')
         clearSelection()
+        setPayModalOpen(false)
+        // Take the user straight to the run so they can watch the signing status
+        // and release payment once the employer has signed.
+        if (result.runId) {
+          router.push(`/payroll/${result.runId}`)
+        } else {
+          setActiveTab('approvals')
+        }
       }
     } catch (err) {
       toast.error('Payment failed', String(err))
@@ -259,6 +272,8 @@ export function PayrollClient() {
           onPayAll={handlePayAll}
           onPayDepartment={handlePayDepartment}
         />
+      ) : activeTab === 'approvals' ? (
+        <PayrollApprovalsList companyId={activeCompanyId} />
       ) : (
         <PaymentHistoryTable records={historyRecords} isLoading={historyLoading} />
       )}

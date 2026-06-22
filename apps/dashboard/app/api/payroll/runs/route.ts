@@ -12,12 +12,19 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const companyId = searchParams.get('companyId')
 
-    const data = await hrApiGet<Array<Record<string, unknown>>>('/payroll-runs/', {
+    const raw = await hrApiGet<
+      { results?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>
+    >('/payroll-runs/', {
       company_id: companyId || undefined,
     })
 
+    // DRF returns paginated {"count": N, "results": [...]} — unwrap it.
+    const runs = Array.isArray(raw)
+      ? raw
+      : ((raw as { results?: Array<Record<string, unknown>> }).results ?? [])
+
     // Add derived fields for UI compatibility
-    const enrichedData = (Array.isArray(data) ? data : []).map(run => {
+    const enrichedData = runs.map(run => {
       const periodStart = run.period_start as string
       const date = periodStart ? new Date(periodStart) : new Date()
 

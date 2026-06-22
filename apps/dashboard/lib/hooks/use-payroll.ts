@@ -362,8 +362,10 @@ export function usePayEmployees() {
       if (!res.ok) throw new Error((await res.json()).error)
       return res.json() as Promise<{
         success: boolean
-        paidCount: number
-        failedCount: number
+        submittedForSigning?: boolean
+        runId?: string
+        paidCount?: number
+        failedCount?: number
         paymentMethod: PaymentMethodType
         reference: string
         batchId?: string

@@ -61,7 +61,7 @@ export function PayEmployeesModal({
       await onConfirm(selectedMethod)
       setResult({
         success: true,
-        message: `Successfully initiated payment for ${selectedCount} employee${selectedCount !== 1 ? 's' : ''} via ${PAYMENT_SOURCES.find(s => s.method === selectedMethod)?.name || selectedMethod}`,
+        message: `Payroll for ${selectedCount} employee${selectedCount !== 1 ? 's' : ''} sent to the employer for signing. Funds are released after they approve.`,
       })
     } catch (err) {
       setResult({
@@ -84,7 +84,7 @@ export function PayEmployeesModal({
   // Show result view
   if (result) {
     return (
-      <Modal open={open} onClose={handleClose} title="Payment Result" size="sm">
+      <Modal open={open} onClose={handleClose} title="Sent for Approval" size="sm">
         <div className="space-y-4">
           <div
             className={cn(
@@ -116,7 +116,7 @@ export function PayEmployeesModal({
   }
 
   return (
-    <Modal open={open} onClose={handleClose} title="Confirm Payment" size="md">
+    <Modal open={open} onClose={handleClose} title="Send Payroll for Employer Approval" size="md">
       <div className="space-y-5">
         {/* Payment summary */}
         <div className="space-y-3">
@@ -222,10 +222,10 @@ export function PayEmployeesModal({
             )}
           >
             <p className="font-medium mb-1">
-              Payment via {currentSource.name}
+              Disbursement rail: {currentSource.name}
             </p>
             <p className="opacity-80">
-              Funds will be disbursed through{' '}
+              After the employer signs, funds will be disbursed through{' '}
               {currentSource.method === 'mpesa'
                 ? 'IntaSend M-Pesa B2C'
                 : currentSource.method === 'bank'
@@ -236,10 +236,10 @@ export function PayEmployeesModal({
           </div>
         )}
 
-        {/* Warning */}
+        {/* Info */}
         <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800">
-          Please confirm that you want to proceed with this payment. This action
-          will initiate transfers to the selected employees.
+          This generates the payroll PDF and sends it to the employer to e-sign and approve.
+          No money moves until they sign — you then release payment from the run.
         </div>
 
         {/* Actions */}
@@ -267,12 +267,12 @@ export function PayEmployeesModal({
             {isPending ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Processing...
+                Sending...
               </>
             ) : (
               <>
                 <CreditCard className="w-4 h-4" />
-                Pay {formatKES(totalAmount)}
+                Send for signing
               </>
             )}
           </button>
