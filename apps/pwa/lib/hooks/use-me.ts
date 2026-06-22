@@ -66,3 +66,22 @@ export function useUpdatePaymentMethod() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
   })
 }
+
+export function useUploadProfilePicture() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (image_b64: string) => {
+      const res = await fetch('/api/me/profile-picture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_b64 }),
+      })
+      if (!res.ok) {
+        const { error } = await res.json()
+        throw new Error(error || 'Failed to upload profile picture')
+      }
+      return res.json() as Promise<{ ok: boolean; avatar_url: string }>
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
+  })
+}

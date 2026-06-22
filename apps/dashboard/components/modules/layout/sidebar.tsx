@@ -11,7 +11,6 @@ import {
   Clock,
   DollarSign,
   TrendingUp,
-  Stethoscope,
   ShieldCheck,
   BarChart3,
   Settings,
@@ -21,7 +20,6 @@ import {
   Sun,
   Gavel,
   DoorOpen,
-  Award,
   MapPin,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -39,10 +37,8 @@ const navItems = [
   { href: '/performance', label: 'Performance', icon: TrendingUp },
   { href: '/payroll', label: 'Payroll', icon: DollarSign },
   { href: '/leave', label: 'Leave', icon: Calendar },
-  { href: '/medical', label: 'Medical', icon: Stethoscope },
   { href: '/disciplinary', label: 'Disciplinary', icon: Gavel },
   { href: '/exits', label: 'Exits', icon: DoorOpen },
-  { href: '/certificates', label: 'Certificates', icon: Award },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
@@ -140,31 +136,38 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Dark mode toggle — pill style */}
+      {/* Dark mode toggle */}
       <div className="px-3 pb-3">
         <button
           onClick={toggleDarkMode}
-          title={darkMode ? 'Light mode' : 'Dark mode'}
+          title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
           className={cn(
-            'w-full flex items-center rounded-xl transition-colors duration-200 hover:bg-white/[0.08]',
-            sidebarCollapsed
-              ? 'justify-center p-2.5'
-              : 'justify-between px-3 py-2'
+            'w-full flex items-center rounded-xl transition-all duration-200 hover:bg-white/[0.08]',
+            sidebarCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2'
           )}
         >
           {sidebarCollapsed ? (
-            darkMode ? (
-              <Sun className="w-4 h-4 text-white/60" />
-            ) : (
-              <Moon className="w-4 h-4 text-white/60" />
-            )
+            darkMode
+              ? <Sun className="w-4 h-4 text-amber-300" />
+              : <Moon className="w-4 h-4 text-white/60" />
           ) : (
             <>
-              <div className="flex items-center gap-2 text-white/60 text-xs font-medium">
-                <Sun className="w-3.5 h-3.5" />
+              <div className="flex items-center gap-2 text-white/70 text-xs font-medium">
+                {darkMode
+                  ? <Sun className="w-3.5 h-3.5 text-amber-300" />
+                  : <Moon className="w-3.5 h-3.5" />}
                 <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>
               </div>
-              <Moon className="w-3.5 h-3.5 text-white/40" />
+              {/* Toggle pill */}
+              <div className={cn(
+                'relative w-9 h-5 rounded-full transition-colors duration-300',
+                darkMode ? 'bg-amber-400' : 'bg-white/20'
+              )}>
+                <span className={cn(
+                  'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-300',
+                  darkMode ? 'translate-x-4' : 'translate-x-0.5'
+                )} />
+              </div>
             </>
           )}
         </button>

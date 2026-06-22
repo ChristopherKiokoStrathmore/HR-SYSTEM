@@ -4,10 +4,10 @@ import { Providers } from './providers'
 
 export const metadata: Metadata = {
   title: {
-    default: 'Sheer Logic HR System',
-    template: '%s | Sheer Logic HR',
+    default: '⚡ Sheer Logic HR',
+    template: '%s · Sheer Logic HR',
   },
-  description: 'HR Lifecycle Management System by Sheer Logic Management Consultants',
+  description: 'Smart Workforce Management Platform by Sheer Logic Management Consultants',
   icons: {
     icon: [
       { url: '/favicon.png', type: 'image/png' },

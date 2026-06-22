@@ -9,7 +9,7 @@ import { SkeletonTable } from '@/components/ui/skeleton'
 import { Modal } from '@/components/ui/modal'
 import { toast } from '@/lib/toast'
 import { useStore } from '@/lib/store'
-import { DoorOpen, Plus, CheckCircle2, Circle, Calculator, Loader2 } from 'lucide-react'
+import { DoorOpen, Plus, CheckCircle2, Circle, Calculator, Loader2, ClipboardCheck, Printer, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const KINDS: Record<string, string> = {
@@ -32,11 +32,14 @@ interface ClearanceItem {
   id: string
   item: string
   is_cleared: boolean
+  cleared_by?: string | null
+  cleared_at?: string | null
 }
 
 interface EmployeeExit {
   id: string
   employee_id: string
+  employee?: { user?: { full_name?: string }; employee_number?: string; job_title?: string; department?: string }
   kind: string
   status: string
   reason: string
@@ -45,6 +48,153 @@ interface EmployeeExit {
   final_dues: Record<string, string>
   final_dues_total: string | null
   clearance_items: ClearanceItem[]
+}
+
+const CLEARANCE_SECTIONS = [
+  { key: 'it', label: 'IT & Systems', icon: '💻', items: ['Return laptop/equipment', 'Revoke system access', 'Email handover', 'Cloud accounts deactivated'] },
+  { key: 'finance', label: 'Finance', icon: '💰', items: ['Outstanding advances settled', 'Company card returned', 'Final dues computed', 'Payroll updated'] },
+  { key: 'admin', label: 'Administration', icon: '🏢', items: ['Access badge returned', 'Office keys returned', 'Car/vehicle returned', 'Company property logged'] },
+  { key: 'hr', label: 'Human Resources', icon: '👥', items: ['Exit interview completed', 'Leave balance reconciled', 'Benefit cancellations processed', 'References agreed'] },
+  { key: 'manager', label: 'Line Manager', icon: '📋', items: ['Handover document signed', 'Client/project handover done', 'Pending tasks documented', 'Team knowledge transfer'] },
+]
+
+function ClearanceFormModal({ exit, onClose }: { exit: EmployeeExit | null; onClose: () => void }) {
+  const qc = useQueryClient()
+  const [signerName, setSignerName] = useState('')
+
+  if (!exit) return null
+
+  const cleared = exit.clearance_items?.filter(i => i.is_cleared).length ?? 0
+  const total = exit.clearance_items?.length ?? 0
+  const pct = total > 0 ? Math.round((cleared / total) * 100) : 0
+  const employeeName = exit.employee?.user?.full_name ?? 'Employee'
+
+  const clearItem = useMutation({
+    mutationFn: async (itemId: string) => {
+      const res = await fetch(`/api/hr/exits/${exit.id}/clear_item`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_id: itemId, cleared_by: signerName || 'HR Admin' }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Failed')
+      return res.json()
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['exits'] }),
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  function handlePrint() {
+    const title = document.title
+    document.title = `Clearance Form — ${employeeName}`
+    window.print()
+    document.title = title
+  }
+
+  return (
+    <Modal open={!!exit} onClose={onClose} title="Digital Clearance Form" size="lg">
+      <div className="space-y-5 print:space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between print:hidden">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <ClipboardCheck className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-text-primary">{employeeName}</p>
+              <p className="text-xs text-text-muted">{KINDS[exit.kind]} · Last day: {exit.last_working_day ?? 'TBD'}</p>
+            </div>
+          </div>
+          <button onClick={handlePrint} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border text-xs font-medium text-text-muted hover:bg-surface-alt transition-colors">
+            <Printer className="w-4 h-4" /> Print / Save PDF
+          </button>
+        </div>
+
+        {/* Progress bar */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-medium text-text-muted">Clearance Progress</p>
+            <span className={cn('text-sm font-bold', pct === 100 ? 'text-green-600' : pct > 60 ? 'text-amber-600' : 'text-red-500')}>
+              {cleared}/{total} · {pct}%
+            </span>
+          </div>
+          <div className="h-2.5 rounded-full bg-border overflow-hidden">
+            <div
+              className={cn('h-full rounded-full transition-all duration-500', pct === 100 ? 'bg-green-500' : pct > 60 ? 'bg-amber-400' : 'bg-red-400')}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Signer name */}
+        <div className="flex items-center gap-3 p-3 bg-surface-alt rounded-xl print:hidden">
+          <User className="w-4 h-4 text-text-muted flex-shrink-0" />
+          <input
+            className="input flex-1 text-sm"
+            placeholder="Your name (signs off each cleared item)…"
+            value={signerName}
+            onChange={e => setSignerName(e.target.value)}
+          />
+        </div>
+
+        {/* Clearance sections */}
+        <div className="space-y-3">
+          {CLEARANCE_SECTIONS.map(section => {
+            const sectionItems = exit.clearance_items?.filter(i =>
+              section.items.some(si => i.item.toLowerCase().includes(si.split(' ')[0].toLowerCase()))
+            ) ?? []
+
+            return (
+              <div key={section.key} className="border border-border rounded-xl overflow-hidden">
+                <div className="px-4 py-3 bg-surface-alt flex items-center gap-2">
+                  <span className="text-base">{section.icon}</span>
+                  <p className="text-sm font-semibold text-text-primary">{section.label}</p>
+                  <span className="ml-auto text-xs text-text-muted">
+                    {sectionItems.filter(i => i.is_cleared).length}/{sectionItems.length || section.items.length} cleared
+                  </span>
+                </div>
+                <div className="divide-y divide-border">
+                  {(sectionItems.length > 0 ? sectionItems : exit.clearance_items?.slice(0, 4) ?? []).map(item => (
+                    <div key={item.id} className="flex items-center gap-3 px-4 py-3">
+                      <button
+                        disabled={item.is_cleared || clearItem.isPending}
+                        onClick={() => clearItem.mutate(item.id)}
+                        className="flex-shrink-0 disabled:cursor-default"
+                      >
+                        {item.is_cleared
+                          ? <CheckCircle2 className="w-5 h-5 text-green-600" />
+                          : <Circle className="w-5 h-5 text-border hover:text-accent transition-colors" />
+                        }
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn('text-sm', item.is_cleared ? 'text-text-muted line-through' : 'text-text-body')}>{item.item}</p>
+                        {item.is_cleared && item.cleared_by && (
+                          <p className="text-xs text-green-600 mt-0.5">✓ Cleared by {item.cleared_by}{item.cleared_at ? ` · ${new Date(item.cleared_at).toLocaleDateString('en-KE')}` : ''}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+
+          {/* Any uncategorised items */}
+          {exit.clearance_items?.length === 0 && (
+            <div className="card text-center py-8 text-text-muted text-sm">
+              No clearance items — items are created automatically when an exit is initiated.
+            </div>
+          )}
+        </div>
+
+        {pct === 100 && (
+          <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+            <p className="text-sm text-green-800 font-medium">All clearance items completed. Employee exit is fully processed.</p>
+          </div>
+        )}
+      </div>
+    </Modal>
+  )
 }
 
 const exitSchema = z.object({
@@ -204,6 +354,7 @@ export function ExitsClient() {
   const [modal, setModal] = useState(false)
   const [duesFor, setDuesFor] = useState<EmployeeExit | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [clearanceFor, setClearanceFor] = useState<EmployeeExit | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['exits', activeCompanyId],
@@ -261,9 +412,12 @@ export function ExitsClient() {
                   <div className="flex items-center gap-4 cursor-pointer"
                        onClick={() => setExpanded(expanded === exit.id ? null : exit.id)}>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-text-primary">{KINDS[exit.kind] ?? exit.kind}</p>
+                      <p className="text-sm font-medium text-text-primary">
+                        {exit.employee?.user?.full_name ?? 'Employee'} — {KINDS[exit.kind] ?? exit.kind}
+                      </p>
                       <p className="text-xs text-text-muted">
-                        Clearance {cleared}/{total}
+                        {exit.employee?.job_title}{exit.employee?.department ? ` · ${exit.employee.department}` : ''}
+                        {' · '}Clearance {cleared}/{total}
                         {exit.last_working_day && ` · last day ${exit.last_working_day}`}
                         {exit.final_dues_total && ` · final dues KES ${Number(exit.final_dues_total).toLocaleString()}`}
                       </p>
@@ -271,6 +425,12 @@ export function ExitsClient() {
                     <span className={cn('text-xs px-2 py-0.5 rounded-full border', STATUS_STYLES[exit.status] ?? '')}>
                       {exit.status.replace('_', ' ')}
                     </span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setClearanceFor(exit) }}
+                      className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      <ClipboardCheck className="w-3.5 h-3.5" /> Clearance
+                    </button>
                     {exit.status === 'final_dues' && !exit.final_dues_total && (
                       <button onClick={(e) => { e.stopPropagation(); setDuesFor(exit) }}
                               className="btn-ghost text-xs flex items-center gap-1">
@@ -304,6 +464,7 @@ export function ExitsClient() {
 
       <InitiateExitModal open={modal} companyId={activeCompanyId} onClose={() => setModal(false)} />
       <FinalDuesModal exit={duesFor} onClose={() => setDuesFor(null)} />
+      <ClearanceFormModal exit={clearanceFor} onClose={() => setClearanceFor(null)} />
     </div>
   )
 }

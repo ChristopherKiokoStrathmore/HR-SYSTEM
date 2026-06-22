@@ -10,8 +10,8 @@ setup('authenticate as employee (David)', async ({ page }) => {
   await page.goto('/login')
   await expect(page.locator('#email')).toBeVisible({ timeout: 20_000 })
 
-  await page.locator('#email').fill(process.env.PWA_EMAIL ?? 'david@demo.co.ke')
-  await page.locator('#password').fill(process.env.PWA_PASSWORD ?? 'Demo1234!')
+  await page.locator('#email').fill(process.env.PWA_EMAIL ?? 'grace.wanjiku@sheerlogic.co.ke')
+  await page.locator('#password').fill(process.env.PWA_PASSWORD ?? 'Emp@2026!')
   await page.locator('button[type="submit"]').click()
 
   // PWA redirects to /home after successful login

@@ -99,8 +99,24 @@ export function ApplyForm({ jobId, jobTitle }: Props) {
         return
       }
       if (data.tracking_token) {
-        setTracking(data.tracking_token)
-        sessionStorage.setItem('sl_tracker_token', data.tracking_token)
+        const tok = data.tracking_token as string
+        setTracking(tok)
+        // Persist in localStorage (for TrackerButton) and cookie (for My Applications page)
+        try {
+          const existing = JSON.parse(localStorage.getItem('sl_applications') ?? '[]') as string[]
+          if (!existing.includes(tok)) {
+            existing.unshift(tok)
+            localStorage.setItem('sl_applications', JSON.stringify(existing.slice(0, 20)))
+          }
+          // Also save legacy single-token key for backward compatibility
+          localStorage.setItem('sl_tracker_token', tok)
+          // Persist in server cookie so My Applications works across localStorage clears
+          fetch('/api/track/cookie', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: tok }),
+          }).catch(() => {})
+        } catch { /* storage unavailable */ }
         window.dispatchEvent(new Event('sl-tracker-saved'))
       }
       setSubEmail(values.email)

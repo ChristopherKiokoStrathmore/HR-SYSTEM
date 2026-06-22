@@ -3,7 +3,7 @@ import { PWA_URL, appUrl, signIn } from './uat-helpers'
 
 test.describe('UAT: PWA employee profile', () => {
   test('employee can use the mobile home and core journeys', async ({ page }) => {
-    await signIn(page, appUrl(PWA_URL, '/login'), 'david@demo.co.ke', 'Demo1234!')
+    await signIn(page, appUrl(PWA_URL, '/login'), 'grace.wanjiku@sheerlogic.co.ke', 'Emp@2026!')
     await expect(page).toHaveURL(/\/home$/)
 
     await expect(page.locator('a[href="/leave"]').first()).toBeVisible({ timeout: 20_000 })
@@ -26,6 +26,6 @@ test.describe('UAT: PWA employee profile', () => {
     await expect(page.getByRole('heading', { name: /leave/i })).toBeVisible({ timeout: 20_000 })
 
     await page.goto(appUrl(PWA_URL, '/profile'))
-    await expect(page.getByRole('heading', { name: /profile/i })).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText('Personal Details')).toBeVisible({ timeout: 20_000 })
   })
 })

@@ -138,7 +138,7 @@ export interface Candidate extends BaseRecord {
   rejection_reason: string | null
   notes: string | null
   tracking_token: string | null
-  source: 'portal' | 'manual'
+  source: 'portal' | 'manual' | 'careers_site'
 }
 
 export interface Attendance extends BaseRecord {

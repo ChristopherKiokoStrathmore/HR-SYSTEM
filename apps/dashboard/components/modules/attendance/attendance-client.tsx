@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic'
 import { useAttendanceSummary, useAttendanceLocations } from '@/lib/hooks/use-attendance'
 import { SkeletonTable } from '@/components/ui/skeleton'
 import { useStore } from '@/lib/store'
-import { Calendar, MapPin, Users, Clock, AlertCircle, RefreshCw, Navigation } from 'lucide-react'
+import { Calendar, MapPin, Users, Clock, AlertCircle, RefreshCw, Navigation, Printer, CheckCircle2, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { CheckInLocation } from './check-in-map'
 
@@ -55,7 +55,16 @@ export function AttendanceClient() {
 
   const records = data?.data ?? []
   const stats = data?.stats ?? { present: 0, absent: 0, late: 0, total: 0 }
-  const attendanceRate = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0
+  const checkedIn = stats.present + stats.late
+  const absent = stats.total > 0 ? stats.total - checkedIn : stats.absent
+  const attendanceRate = stats.total > 0 ? Math.round((checkedIn / stats.total) * 100) : 0
+
+  function handleShareReport() {
+    const title = document.title
+    document.title = `Attendance Report — ${formatDisplayDate(date)}`
+    window.print()
+    document.title = title
+  }
 
   return (
     <div className="space-y-6">
@@ -65,7 +74,7 @@ export function AttendanceClient() {
           <h1 className="text-2xl font-bold text-text-primary">Attendance</h1>
           <p className="text-sm text-text-muted mt-0.5">{formatDisplayDate(date)}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Calendar className="w-4 h-4 text-text-muted" />
           <input
             type="date"
@@ -76,12 +85,20 @@ export function AttendanceClient() {
           />
           <button
             type="button"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-2 text-xs font-medium text-text-primary transition-colors hover:bg-surface-alt"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-medium text-text-primary transition-colors hover:bg-surface-alt"
             onClick={() => refetch()}
             disabled={isFetching}
           >
             <RefreshCw className={cn('w-3.5 h-3.5', isFetching && 'animate-spin')} />
             Refresh
+          </button>
+          <button
+            type="button"
+            onClick={handleShareReport}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-light"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            Share Report
           </button>
         </div>
       </div>
@@ -89,10 +106,10 @@ export function AttendanceClient() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Present', value: stats.present, color: 'text-green-600', bg: 'bg-green-50', icon: Users },
-          { label: 'Absent', value: stats.absent, color: 'text-red-600', bg: 'bg-red-50', icon: AlertCircle },
+          { label: 'Present', value: stats.present, color: 'text-green-600', bg: 'bg-green-50', icon: CheckCircle2 },
           { label: 'Late Arrivals', value: stats.late, color: 'text-amber-600', bg: 'bg-amber-50', icon: Clock },
-          { label: 'Attendance Rate', value: `${attendanceRate}%`, color: 'text-primary', bg: 'bg-primary/5', icon: Users },
+          { label: 'Absent', value: absent, color: 'text-red-600', bg: 'bg-red-50', icon: XCircle },
+          { label: "Today's Rate", value: `${attendanceRate}%`, color: 'text-primary', bg: 'bg-primary/5', icon: Users },
         ].map(({ label, value, color, bg, icon: Icon }) => (
           <div key={label} className="card flex items-center gap-3">
             <div className={cn('w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0', bg)}>
@@ -106,31 +123,29 @@ export function AttendanceClient() {
         ))}
       </div>
 
-      {/* Attendance rate bar */}
+      {/* Today's attendance rate bar */}
       <div className="card">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-semibold text-text-primary">Attendance Rate</p>
+          <div>
+            <p className="text-sm font-semibold text-text-primary">Today's Attendance Rate</p>
+            <p className="text-xs text-text-muted mt-0.5">{stats.present} on time · {stats.late} late · {absent} absent · {stats.total} total</p>
+          </div>
           <span className={cn(
-            'text-sm font-bold',
+            'text-2xl font-bold',
             attendanceRate >= 90 ? 'text-green-600' :
             attendanceRate >= 75 ? 'text-amber-600' : 'text-red-600'
           )}>
             {attendanceRate}%
           </span>
         </div>
-        <div className="h-3 rounded-full bg-border overflow-hidden">
-          <div
-            className={cn(
-              'h-full rounded-full transition-all duration-500',
-              attendanceRate >= 90 ? 'bg-green-500' :
-              attendanceRate >= 75 ? 'bg-amber-500' : 'bg-red-500'
-            )}
-            style={{ width: `${attendanceRate}%` }}
-          />
+        <div className="h-3 rounded-full bg-border overflow-hidden flex">
+          <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${stats.total > 0 ? (stats.present / stats.total) * 100 : 0}%` }} />
+          <div className="h-full bg-amber-400 transition-all duration-500" style={{ width: `${stats.total > 0 ? (stats.late / stats.total) * 100 : 0}%` }} />
         </div>
-        <div className="flex justify-between text-xs text-text-muted mt-1">
-          <span>{stats.present} present</span>
-          <span>{stats.absent} absent</span>
+        <div className="flex items-center gap-4 text-xs text-text-muted mt-2">
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500 inline-block" />On time</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />Late</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-border inline-block" />Absent</span>
         </div>
       </div>
 
@@ -173,9 +188,12 @@ export function AttendanceClient() {
       </div>
 
       {/* Records table */}
-      <div className="card p-0 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
+      <div className="card p-0 overflow-hidden print:shadow-none">
+        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
           <h3 className="text-sm font-semibold text-text-primary">Today's Records</h3>
+          {records.length > 0 && (
+            <span className="text-xs text-text-muted">{records.length} employee{records.length !== 1 ? 's' : ''}</span>
+          )}
         </div>
 
         {isLoading ? (
@@ -186,61 +204,95 @@ export function AttendanceClient() {
             <p className="text-text-muted text-sm">No attendance records for {formatDisplayDate(date)}.</p>
           </div>
         ) : (
-          <div className="divide-y divide-border">
-            {records.map((rec) => {
-              const name = rec.employee?.user?.full_name ?? '—'
-              const checkIn = rec.check_in_time
-                ? new Date(rec.check_in_time).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
-                : null
-              const checkOut = rec.check_out_time
-                ? new Date(rec.check_out_time).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
-                : null
+          <>
+            {/* Table header */}
+            <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1.5fr] gap-4 px-4 py-2 bg-surface-alt text-xs font-semibold text-text-muted uppercase tracking-wide">
+              <span>Employee</span>
+              <span>Check In</span>
+              <span>Check Out</span>
+              <span>Status</span>
+              <span>Reason / Notes</span>
+            </div>
+            <div className="divide-y divide-border">
+              {records.map((rec) => {
+                const name = rec.employee?.user?.full_name ?? '—'
+                const checkIn = rec.check_in_time
+                  ? new Date(rec.check_in_time).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
+                  : null
+                const checkOut = rec.check_out_time
+                  ? new Date(rec.check_out_time).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
+                  : null
+                const notes = (rec as unknown as Record<string, unknown>).notes as string | undefined
 
-              return (
-                <div key={rec.id} className="flex items-center gap-4 px-4 py-3">
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">
-                    {getInitials(name)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text-primary">{name}</p>
-                    <p className="text-xs text-text-muted">
-                      {rec.employee?.job_title}
-                      {rec.employee?.department && <> · {rec.employee.department}</>}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-3 text-xs text-text-muted">
+                return (
+                  <div key={rec.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_1.5fr] gap-2 md:gap-4 px-4 py-3 items-center">
+                    {/* Employee */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">
+                        {getInitials(name)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-text-primary truncate">{name}</p>
+                        <p className="text-xs text-text-muted truncate">
+                          {rec.employee?.job_title}
+                          {rec.employee?.department && <> · {rec.employee.department}</>}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Check in */}
+                    <div className="text-sm">
                       {checkIn ? (
-                        <span className={rec.is_late ? 'text-amber-600 font-medium' : ''}>
-                          In: {checkIn}{rec.is_late ? ' (late)' : ''}
-                        </span>
+                        <div>
+                          <span className={cn('font-medium', rec.is_late ? 'text-amber-600' : 'text-green-600')}>
+                            {checkIn}
+                          </span>
+                          {rec.is_late && <span className="ml-1 text-xs text-amber-500">(late)</span>}
+                          {rec.check_in_lat != null && rec.check_in_lng != null && (
+                            <span className="ml-1 text-green-500 text-xs" title="GPS check-in"><Navigation className="w-3 h-3 inline" /></span>
+                          )}
+                        </div>
                       ) : (
-                        <span className="text-text-muted">Not checked in</span>
+                        <span className="text-text-muted text-xs">—</span>
                       )}
-                      {checkOut && <span>Out: {checkOut}</span>}
+                    </div>
+
+                    {/* Check out */}
+                    <div className="text-sm">
+                      {checkOut ? (
+                        <span className="text-text-body font-medium">{checkOut}</span>
+                      ) : (
+                        <span className="text-text-muted text-xs">—</span>
+                      )}
+                    </div>
+
+                    {/* Status */}
+                    <div>
+                      <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium', getStatusMeta(rec.status).className)}>
+                        {getStatusMeta(rec.status).label}
+                      </span>
+                    </div>
+
+                    {/* Reason / Notes */}
+                    <div className="text-xs text-text-muted italic">
+                      {notes ? (
+                        <span className="text-text-body not-italic">{notes}</span>
+                      ) : rec.status === 'absent' ? (
+                        <span className="text-red-400">No reason provided</span>
+                      ) : (
+                        <span>—</span>
+                      )}
                       {rec.distance_covered_km != null && rec.distance_covered_km > 0 && (
-                        <span className="flex items-center gap-0.5">
-                          <MapPin className="w-3 h-3" />{rec.distance_covered_km.toFixed(1)} km
+                        <span className="ml-2 not-italic text-text-muted">
+                          <MapPin className="w-3 h-3 inline mr-0.5" />{rec.distance_covered_km.toFixed(1)} km
                         </span>
                       )}
-                      {rec.check_in_lat != null && rec.check_in_lng != null ? (
-                        <span className="flex items-center gap-0.5 text-green-600" title="GPS location captured">
-                          <Navigation className="w-3 h-3" /> GPS
-                        </span>
-                      ) : checkIn ? (
-                        <span className="flex items-center gap-0.5 text-text-muted/50" title="No GPS — check in via PWA for location tracking">
-                          <Navigation className="w-3 h-3" />
-                        </span>
-                      ) : null}
                     </div>
                   </div>
-                  <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium', getStatusMeta(rec.status).className)}>
-                    {getStatusMeta(rec.status).label}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          </>
         )}
       </div>
     </div>

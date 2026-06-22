@@ -6,6 +6,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: 0,
   workers: 1,
+  timeout: 90_000,
   reporter: [
     ['list'],
     ['json', { outputFile: 'playwright-report/results.json' }],

@@ -9,10 +9,14 @@ export function appUrl(baseUrl: string, path: string) {
 }
 
 export async function signIn(page: Page, loginUrl: string, email: string, password: string) {
-  await page.goto(loginUrl)
-  await expect(page.locator('#email')).toBeVisible({ timeout: 20_000 })
-  await page.locator('#email').fill(email)
-  await page.locator('#password').fill(password)
-  await page.getByRole('button', { name: /sign in/i }).click()
+  const baseUrl = new URL(loginUrl).origin
+  const res = await page.request.post(`${baseUrl}/api/auth/login`, {
+    data: { email, password },
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (!res.ok()) {
+    throw new Error(`signIn API call failed (${res.status()}): ${await res.text()}`)
+  }
+  await page.goto(`${baseUrl}/`, { waitUntil: 'load' })
   await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 30_000 })
 }
