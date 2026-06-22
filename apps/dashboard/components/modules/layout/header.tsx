@@ -27,14 +27,19 @@ function CompanySwitcher() {
   useEffect(() => {
     if (companies.length === 0) return
     const ids = companies.map((c) => c.id)
+    // Single-company users must be scoped to THEIR OWN company (from the
+    // session), not the first one in the alphabetical list — otherwise payroll
+    // and other lists query a company they have no access to and come back empty.
+    const homeId = session?.user?.company_id
+    const fallback = homeId && ids.includes(homeId) ? homeId : companies[0].id
     if (activeCompanyId && !ids.includes(activeCompanyId)) {
-      setActiveCompanyId(canSwitch ? null : companies[0].id)
+      setActiveCompanyId(canSwitch ? null : fallback)
       return
     }
     if (!canSwitch && !activeCompanyId) {
-      setActiveCompanyId(companies[0].id)
+      setActiveCompanyId(fallback)
     }
-  }, [companies, activeCompanyId, canSwitch, setActiveCompanyId])
+  }, [companies, activeCompanyId, canSwitch, setActiveCompanyId, session?.user?.company_id])
 
   // Only company admins / super admins can switch companies or view all.
   if (!canSwitch || companies.length === 0) return null
