@@ -452,7 +452,10 @@ function CheckRow({
   onReview: () => void
   onValidate: () => void
 }) {
-  const config = STATUS_CONFIG[check.status]
+  // Fall back to the 'pending' style for any unmapped/missing status so an
+  // unexpected value (e.g. a legacy or newly added status) never crashes the
+  // tab with "Cannot read properties of undefined (reading 'icon')".
+  const config = STATUS_CONFIG[check.status] ?? STATUS_CONFIG.pending
   const StatusIcon = config.icon
   const isExp = check.expiry_date ? isExpired(check.expiry_date) : false
   const isSoon = check.expiry_date ? isExpiringSoon(check.expiry_date, 30) && !isExp : false
