@@ -27,10 +27,14 @@ export function useAttendance() {
   })
 }
 
+type CheckInPayload =
+  | { lat?: number; lng?: number; selfie_b64?: string }
+  | { action: 'capture_location'; lat: number; lng: number }
+
 export function useCheckInOut() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (payload: { lat?: number; lng?: number; distanceKm?: number; action?: 'capture_location' }) => {
+    mutationFn: async (payload: CheckInPayload) => {
       const res = await fetch('/api/me/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -38,13 +42,12 @@ export function useCheckInOut() {
       })
       const json = await res.json()
       if (!res.ok) {
-        // 409 already_done means the client had stale data — refetch so UI syncs
         if (json.action === 'already_done') {
           qc.invalidateQueries({ queryKey: ['me', 'attendance'] })
         }
         throw new Error(json.error)
       }
-      return json as { action: 'checked_in' | 'checked_out'; workHours: number | null }
+      return json as { action: 'checked_in' | 'checked_out' | 'captured_location'; workHours: number | null; faceVerified?: boolean }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['me', 'attendance'] }),
   })

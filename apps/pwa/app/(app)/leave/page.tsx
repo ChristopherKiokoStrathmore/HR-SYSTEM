@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { X, ChevronDown } from 'lucide-react'
+import { X, ChevronDown, XCircle, Loader2 } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Drawer } from 'vaul'
 import { toast } from 'sonner'
@@ -14,6 +14,7 @@ import { useLeaveBalances, useLeaveRequests, useRequestLeave } from '@/lib/hooks
 import { useStore } from '@/lib/store'
 import { t } from '@hr/i18n'
 import { LottieEmpty } from '@/components/mobile/lottie-empty'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 const LEAVE_TYPES = ['annual', 'sick', 'maternity', 'paternity', 'study', 'compassionate', 'unpaid', 'adoption', 'family'] as const
 
@@ -48,6 +49,19 @@ export default function LeavePage() {
   const { data: balances } = useLeaveBalances()
   const { data: requests } = useLeaveRequests()
   const requestLeave = useRequestLeave()
+  const qc = useQueryClient()
+
+  const cancelLeave = useMutation({
+    mutationFn: async (id: string) => {
+      const r = await fetch(`/api/me/leave/${id}/cancel`, { method: 'POST' })
+      if (!r.ok) throw new Error('Failed to cancel')
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['leave-requests'] })
+      toast.success('Leave request cancelled')
+    },
+    onError: () => toast.error('Could not cancel — please try again'),
+  })
 
   const { register, handleSubmit, watch, reset, formState: { errors } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -151,8 +165,8 @@ export default function LeavePage() {
                   className="rounded-2xl bg-white p-4"
                   style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}
                 >
-                  <div className="flex items-start justify-between">
-                    <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
                       <p className="font-semibold text-text-primary">{t(lang, `leave_types.${req.leave_type}`)}</p>
                       <p className="text-sm text-text-muted mt-0.5">
                         {req.start_date} → {req.end_date} · {req.days_requested} {req.days_requested !== 1 ? t(lang, 'leave.working_days') : t(lang, 'leave.working_day')}
@@ -161,12 +175,26 @@ export default function LeavePage() {
                         <p className="text-xs text-danger mt-1">{req.rejection_reason}</p>
                       )}
                     </div>
-                    <span
-                      className="text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide whitespace-nowrap ml-2"
-                      style={{ background: colors.bg, color: colors.text }}
-                    >
-                      {t(lang, `status.${req.status}`) ?? req.status}
-                    </span>
+                    <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                      <span
+                        className="text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wide whitespace-nowrap"
+                        style={{ background: colors.bg, color: colors.text }}
+                      >
+                        {t(lang, `status.${req.status}`) ?? req.status}
+                      </span>
+                      {req.status === 'pending' && (
+                        <button
+                          onClick={() => cancelLeave.mutate(req.id)}
+                          disabled={cancelLeave.isPending}
+                          className="flex items-center gap-1 text-[11px] text-danger/80 hover:text-danger transition-colors"
+                        >
+                          {cancelLeave.isPending
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : <XCircle className="w-3 h-3" />}
+                          Cancel
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               )
