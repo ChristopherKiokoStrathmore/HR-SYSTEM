@@ -2,12 +2,14 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, SlidersHorizontal } from 'lucide-react'
+import { Plus, Search, SlidersHorizontal, Coins } from 'lucide-react'
 import { useEmployees } from '@/lib/hooks/use-employees'
+import { useRbac } from '@/lib/hooks/use-current-user'
 import { DataTable, type Column } from '@/components/ui/data-table'
 import { StatusBadge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import { CreateEmployeeModal } from './create-employee-modal'
+import { AllowanceDeductionModal } from './allowance-deduction-modal'
 import { formatDate, formatKES } from '@hr/shared'
 import type { EmployeeWithUser } from '@hr/shared'
 
@@ -18,6 +20,8 @@ export function EmployeeListClient() {
   const [statusFilter, setStatusFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [allowanceOpen, setAllowanceOpen] = useState(false)
+  const { can } = useRbac()
 
   const { data, isLoading } = useEmployees({
     search,
@@ -131,9 +135,21 @@ export function EmployeeListClient() {
           <option value="casual">Casual</option>
         </select>
 
+        {can('employee.manage') && (
+          <button
+            onClick={() => setAllowanceOpen(true)}
+            className="btn-ghost flex items-center gap-2 h-9 text-sm px-4 ml-auto border border-border"
+          >
+            <Coins className="w-4 h-4" />
+            Allowances &amp; Deductions
+          </button>
+        )}
         <button
           onClick={() => setModalOpen(true)}
-          className="btn-primary flex items-center gap-2 h-9 text-sm px-4 ml-auto"
+          className={
+            'btn-primary flex items-center gap-2 h-9 text-sm px-4 ' +
+            (can('employee.manage') ? '' : 'ml-auto')
+          }
         >
           <Plus className="w-4 h-4" />
           Add Employee
@@ -155,6 +171,7 @@ export function EmployeeListClient() {
       />
 
       <CreateEmployeeModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <AllowanceDeductionModal open={allowanceOpen} onClose={() => setAllowanceOpen(false)} />
     </div>
   )
 }
