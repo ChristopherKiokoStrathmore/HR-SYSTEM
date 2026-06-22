@@ -57,6 +57,7 @@ export function useRequestLeave() {
       end_date: string
       days_requested: number
       reason: string
+      supporting_doc_url?: string
     }) => {
       const res = await fetch('/api/me/leave', {
         method: 'POST',

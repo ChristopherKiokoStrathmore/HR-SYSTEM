@@ -31,6 +31,14 @@ type CheckInPayload =
   | { lat?: number; lng?: number; selfie_b64?: string }
   | { action: 'capture_location'; lat: number; lng: number }
 
+export interface CheckInResult {
+  action: 'checked_in' | 'checked_out' | 'captured_location'
+  workHours: number | null
+  faceVerified?: boolean
+  violation_id?: string | null
+  reason_required?: boolean
+}
+
 export function useCheckInOut() {
   const qc = useQueryClient()
   return useMutation({
@@ -47,8 +55,22 @@ export function useCheckInOut() {
         }
         throw new Error(json.error)
       }
-      return json as { action: 'checked_in' | 'checked_out' | 'captured_location'; workHours: number | null; faceVerified?: boolean }
+      return json as CheckInResult
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['me', 'attendance'] }),
+  })
+}
+
+export function useSubmitViolationReason() {
+  return useMutation({
+    mutationFn: async ({ violationId, reason }: { violationId: string; reason: string }) => {
+      const res = await fetch('/api/me/attendance/violation-reason', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ violation_id: violationId, reason }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Failed to submit reason')
+      return res.json()
+    },
   })
 }
