@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { hrApi, HRApiError } from '@/lib/hr-api'
 
 interface DRFList<T> { count: number; results: T[] }
-interface UserRow { id: string; full_name: string; email: string; avatar_url: string | null; phone: string | null; preferred_language: string }
+interface UserRow { id: string; full_name: string; email: string; avatar_url: string | null; phone: string | null; preferred_language: string; employee_id: string | null }
 interface CompanyRow { id: string; name: string; logo_url: string | null }
 interface ProfileRow { id: string; user_id: string; company_id: string; manager_id: string | null; [key: string]: unknown }
 
@@ -21,10 +21,15 @@ async function enrichProfiles(profiles: ProfileRow[]) {
 
   const userMap = Object.fromEntries((usersRes.results ?? []).map(u => [u.id, u]))
   const companyMap = Object.fromEntries((companiesRes.results ?? []).map(c => [c.id, c]))
+  // Employee names live on AppUser linked by employee_id == profile.id; the
+  // user_id link is unreliable, so resolve by employee_id first.
+  const userByEmployeeId = Object.fromEntries(
+    (usersRes.results ?? []).filter(u => u.employee_id).map(u => [u.employee_id as string, u])
+  )
 
   return profiles.map(p => ({
     ...p,
-    user: p.user_id ? userMap[p.user_id] ?? null : null,
+    user: userByEmployeeId[p.id] ?? (p.user_id ? userMap[p.user_id] ?? null : null),
     company: p.company_id ? companyMap[p.company_id] ?? null : null,
     manager: p.manager_id ? { full_name: userMap[p.manager_id]?.full_name ?? null } : null,
   }))
