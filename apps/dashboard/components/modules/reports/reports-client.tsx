@@ -6,7 +6,7 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
-import { Download, Users, DollarSign, Calendar, TrendingUp } from 'lucide-react'
+import { Download, Users, DollarSign, Calendar, TrendingUp, FileText, Printer } from 'lucide-react'
 
 const COLORS = ['#1A2E5A', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4']
 
@@ -55,6 +55,13 @@ async function exportExcel(companyId?: string | null) {
   XLSX.writeFile(wb, 'hr-report.xlsx')
 }
 
+function exportPDF() {
+  const title = document.title
+  document.title = `Sheer Logic HR Report — ${new Date().toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' })}`
+  window.print()
+  document.title = title
+}
+
 export function ReportsClient() {
   const companyId = useStore((s) => s.activeCompanyId)
 
@@ -79,15 +86,27 @@ export function ReportsClient() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-text-primary">Reports & Analytics</h1>
-        <button
-          onClick={() => exportExcel(companyId)}
-          className="btn-outline flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          Export Excel
-        </button>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">Reports & Analytics</h1>
+          <p className="text-sm text-text-muted mt-0.5">Workforce insights · {new Date().toLocaleDateString('en-KE', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportPDF}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-light transition-colors"
+          >
+            <Printer className="w-4 h-4" />
+            Export PDF
+          </button>
+          <button
+            onClick={() => exportExcel(companyId)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-surface text-sm font-medium text-text-primary hover:bg-surface-alt transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            Export Excel
+          </button>
+        </div>
       </div>
 
       {/* Summary cards */}

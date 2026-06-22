@@ -184,47 +184,99 @@ export function TabOverview({ employee }: { employee: EmployeeWithUser }) {
     ? Math.max(0, 100 - (contractDaysLeft / (employee.contract_duration_months * 30)) * 100)
     : 100
 
+  function InfoRow({ label, value, mono = false }: { label: string; value: string | null | undefined; mono?: boolean }) {
+    const display = value?.trim() || '—'
+    return (
+      <div>
+        <p className="text-text-muted text-xs uppercase tracking-wide">{label}</p>
+        <p className={cn('text-text-primary font-medium mt-0.5', mono && 'font-mono', !value?.trim() && 'text-text-muted italic text-sm')}>
+          {display}
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Left: Personal info */}
       <div className="lg:col-span-2 space-y-4">
+
+        {/* Personal Information */}
         <div className="card">
-          <h3 className="text-sm font-semibold text-text-primary mb-4">Personal Information</h3>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
-            {[
-              ['Date of Birth', employee.date_of_birth ? formatDate(employee.date_of_birth) : '—'],
-              ['Gender', employee.gender ?? '—'],
-              ['Nationality', employee.nationality ?? '—'],
-              ['ID Number', employee.id_number ? '••••••••' : '—'],
-              ['Phone', employee.user?.phone ?? '—'],
-              ['Email', employee.user?.email ?? '—'],
-              ['Next of Kin', employee.next_of_kin_name ?? '—'],
-              ['NOK Phone', employee.next_of_kin_phone ?? '—'],
-              ['Relationship', employee.next_of_kin_relationship ?? '—'],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <p className="text-text-muted text-xs">{label}</p>
-                <p className="text-text-primary font-medium mt-0.5">{value}</p>
-              </div>
-            ))}
+          <h3 className="text-sm font-semibold text-text-primary mb-4 flex items-center gap-2">
+            <span className="w-1 h-4 bg-accent rounded-full inline-block" />
+            Personal Information
+          </h3>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+            <InfoRow label="Full Name" value={employee.user?.full_name} />
+            <InfoRow label="Date of Birth" value={employee.date_of_birth ? formatDate(employee.date_of_birth) : null} />
+            <InfoRow label="Gender" value={employee.gender} />
+            <InfoRow label="Nationality" value={employee.nationality} />
+            <InfoRow label="National ID" value={employee.id_number ? '••• ••••••• •••' : null} />
+            <InfoRow label="Phone" value={employee.user?.phone} />
+            <InfoRow label="Email" value={employee.user?.email} />
+            <InfoRow label="Preferred Language" value={employee.user?.preferred_language?.toUpperCase()} />
           </div>
         </div>
 
+        {/* Employment Details */}
         <div className="card">
-          <h3 className="text-sm font-semibold text-text-primary mb-4">Statutory Numbers</h3>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
-            {[
-              ['NSSF', employee.nssf_number ?? '—'],
-              ['NHIF', employee.nhif_number ?? '—'],
-              ['KRA PIN', employee.kra_pin ?? '—'],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <p className="text-text-muted text-xs">{label}</p>
-                <p className="text-text-primary font-medium font-mono mt-0.5">
-                  {value !== '—' ? '••••••••' : '—'}
-                </p>
-              </div>
-            ))}
+          <h3 className="text-sm font-semibold text-text-primary mb-4 flex items-center gap-2">
+            <span className="w-1 h-4 bg-primary rounded-full inline-block" />
+            Employment Details
+          </h3>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+            <InfoRow label="Employee Number" value={employee.employee_number} mono />
+            <InfoRow label="Job Title" value={employee.job_title} />
+            <InfoRow label="Department" value={employee.department} />
+            <InfoRow label="Employment Type" value={employee.employment_type?.replace(/_/g, ' ')} />
+            <InfoRow label="Employment Status" value={employee.employment_status?.replace(/_/g, ' ')} />
+            <InfoRow label="Work Category" value={(employee as unknown as Record<string, unknown>).work_category as string} />
+            <InfoRow label="Start Date" value={formatDate(employee.start_date)} />
+            <InfoRow label="Reporting Manager" value={employee.manager?.full_name} />
+            <InfoRow label="Company" value={employee.company?.name} />
+          </div>
+        </div>
+
+        {/* Emergency Contact */}
+        <div className="card">
+          <h3 className="text-sm font-semibold text-text-primary mb-4 flex items-center gap-2">
+            <span className="w-1 h-4 bg-red-400 rounded-full inline-block" />
+            Emergency Contact
+          </h3>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+            <InfoRow label="Next of Kin" value={employee.next_of_kin_name} />
+            <InfoRow label="Relationship" value={employee.next_of_kin_relationship} />
+            <InfoRow label="Phone" value={employee.next_of_kin_phone} />
+          </div>
+        </div>
+
+        {/* Statutory Numbers */}
+        <div className="card">
+          <h3 className="text-sm font-semibold text-text-primary mb-4 flex items-center gap-2">
+            <span className="w-1 h-4 bg-amber-400 rounded-full inline-block" />
+            Statutory Numbers
+          </h3>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+            <div>
+              <p className="text-text-muted text-xs uppercase tracking-wide">NSSF</p>
+              <p className={cn('font-mono font-medium mt-0.5', employee.nssf_number ? 'text-text-primary' : 'text-text-muted italic')}>
+                {employee.nssf_number ? '••••••••' : 'Not recorded'}
+              </p>
+            </div>
+            <div>
+              <p className="text-text-muted text-xs uppercase tracking-wide">NHIF / SHA</p>
+              <p className={cn('font-mono font-medium mt-0.5', employee.nhif_number ? 'text-text-primary' : 'text-text-muted italic')}>
+                {employee.nhif_number ? '••••••••' : 'Not recorded'}
+              </p>
+            </div>
+            <div>
+              <p className="text-text-muted text-xs uppercase tracking-wide">KRA PIN</p>
+              <p className={cn('font-mono font-medium mt-0.5', employee.kra_pin ? 'text-text-primary' : 'text-text-muted italic')}>
+                {employee.kra_pin ? '••••••••••' : 'Not recorded'}
+              </p>
+            </div>
+            <InfoRow label="IPPD No." value={(employee as unknown as Record<string, unknown>).ippd_number as string} mono />
           </div>
         </div>
       </div>

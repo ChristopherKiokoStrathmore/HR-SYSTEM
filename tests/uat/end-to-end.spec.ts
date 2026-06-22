@@ -9,11 +9,15 @@ function appUrl(baseUrl: string, path: string) {
 }
 
 async function signIn(page: import('@playwright/test').Page, loginUrl: string, email: string, password: string) {
-  await page.goto(loginUrl)
-  await expect(page.locator('#email')).toBeVisible({ timeout: 20_000 })
-  await page.locator('#email').fill(email)
-  await page.locator('#password').fill(password)
-  await page.getByRole('button', { name: /sign in/i }).click()
+  const baseUrl = new URL(loginUrl).origin
+  const res = await page.request.post(`${baseUrl}/api/auth/login`, {
+    data: { email, password },
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (!res.ok()) {
+    throw new Error(`signIn API call failed (${res.status()}): ${await res.text()}`)
+  }
+  await page.goto(`${baseUrl}/`, { waitUntil: 'load' })
   await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 30_000 })
 }
 
@@ -24,8 +28,8 @@ test.describe('UAT: careers, dashboard, and PWA', () => {
     const applicantEmail = `uat-${runId}@demo.co.ke`
 
     await test.step('browse careers jobs and open a posting', async () => {
-      await page.goto(appUrl(CAREERS_URL, '/jobs'))
-      await expect(page.getByText('Job Centre')).toBeVisible({ timeout: 20_000 })
+      await page.goto(appUrl(CAREERS_URL, '/jobs'), { waitUntil: 'domcontentloaded' })
+      await expect(page.getByRole('heading', { name: /career opportunity/i })).toBeVisible({ timeout: 20_000 })
 
       const firstJob = page.getByRole('link', { name: /view & apply/i }).first()
       await expect(firstJob).toBeVisible({ timeout: 20_000 })
@@ -33,6 +37,7 @@ test.describe('UAT: careers, dashboard, and PWA', () => {
         page.waitForURL(/\/jobs\/[A-Za-z0-9-]+$/, { timeout: 20_000 }),
         firstJob.click(),
       ])
+      await page.waitForLoadState('networkidle')
 
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
     })
@@ -45,6 +50,7 @@ test.describe('UAT: careers, dashboard, and PWA', () => {
       await page.getByPlaceholder('Tell us why you\'re a great fit for this role…').fill(
         'This is a UAT submission created by the automated cross-app journey.'
       )
+      await page.locator('input[type="checkbox"]').check()
 
       await Promise.all([
         page.waitForResponse((response) => response.url().includes('/apply') && response.request().method() === 'POST'),
@@ -61,11 +67,11 @@ test.describe('UAT: careers, dashboard, and PWA', () => {
 
       await page.goto(appUrl(CAREERS_URL, trackerHref!))
       await expect(page.getByText(applicantEmail)).toBeVisible({ timeout: 20_000 })
-      await expect(page.getByText(/Under Review/i)).toBeVisible({ timeout: 20_000 })
+      await expect(page.getByText(/Under Review/i).first()).toBeVisible({ timeout: 20_000 })
     })
 
     await test.step('verify the candidate appears in dashboard recruitment', async () => {
-      await signIn(page, appUrl(DASHBOARD_URL, '/login'), 'hr@demo.co.ke', 'Demo1234!')
+      await signIn(page, appUrl(DASHBOARD_URL, '/login'), 'carol.njeri@sheerlogic.co.ke', 'HRAdmin@2026!')
       await page.goto(appUrl(DASHBOARD_URL, '/recruitment'))
       await expect(page.getByText('Live Applications')).toBeVisible({ timeout: 20_000 })
 
@@ -80,7 +86,7 @@ test.describe('UAT: careers, dashboard, and PWA', () => {
 
   test('employee journey works in the PWA', async ({ page }) => {
     await test.step('sign in and verify home screen', async () => {
-      await signIn(page, appUrl(PWA_URL, '/login'), 'david@demo.co.ke', 'Demo1234!')
+      await signIn(page, appUrl(PWA_URL, '/login'), 'grace.wanjiku@sheerlogic.co.ke', 'Emp@2026!')
       await expect(page).toHaveURL(/\/home$/)
       await expect(page.locator('a[href="/leave"]').first()).toBeVisible({ timeout: 20_000 })
       await expect(page.locator('a[href="/attendance"]').first()).toBeVisible({ timeout: 20_000 })

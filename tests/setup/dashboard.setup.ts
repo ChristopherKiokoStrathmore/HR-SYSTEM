@@ -10,8 +10,8 @@ setup('authenticate as HR admin', async ({ page }) => {
   await page.goto('/login')
   await expect(page.locator('#email')).toBeVisible({ timeout: 20_000 })
 
-  await page.locator('#email').fill(process.env.DASHBOARD_EMAIL ?? 'hr@demo.co.ke')
-  await page.locator('#password').fill(process.env.DASHBOARD_PASSWORD ?? 'Demo1234!')
+  await page.locator('#email').fill(process.env.DASHBOARD_EMAIL ?? 'carol.njeri@sheerlogic.co.ke')
+  await page.locator('#password').fill(process.env.DASHBOARD_PASSWORD ?? 'HRAdmin@2026!')
   await page.locator('button[type="submit"]').click()
 
   // Wait until we leave the login page (dashboard or redirect) — this confirms auth worked

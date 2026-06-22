@@ -7,8 +7,8 @@ test.describe('UAT: careers applicant profile', () => {
     const applicantName = `UAT Candidate ${runId}`
     const applicantEmail = `uat-${runId}@demo.co.ke`
 
-    await page.goto(appUrl(CAREERS_URL, '/jobs'))
-    await expect(page.getByText('Job Centre')).toBeVisible({ timeout: 20_000 })
+    await page.goto(appUrl(CAREERS_URL, '/jobs'), { waitUntil: 'domcontentloaded' })
+    await expect(page.getByRole('heading', { name: /career opportunity/i })).toBeVisible({ timeout: 20_000 })
 
     const firstJob = page.getByRole('link', { name: /view & apply/i }).first()
     await expect(firstJob).toBeVisible({ timeout: 20_000 })
@@ -16,6 +16,7 @@ test.describe('UAT: careers applicant profile', () => {
       page.waitForURL(/\/jobs\/[A-Za-z0-9-]+$/, { timeout: 20_000 }),
       firstJob.click(),
     ])
+    await page.waitForLoadState('networkidle')
 
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 })
     await page.locator('#apply').scrollIntoViewIfNeeded()
@@ -25,6 +26,7 @@ test.describe('UAT: careers applicant profile', () => {
     await page.getByPlaceholder('Tell us why you\'re a great fit for this role…').fill(
       'This is a UAT submission created by the automated cross-app journey.'
     )
+    await page.locator('input[type="checkbox"]').check()
 
     await Promise.all([
       page.waitForResponse((response) => response.url().includes('/apply') && response.request().method() === 'POST'),
@@ -38,6 +40,6 @@ test.describe('UAT: careers applicant profile', () => {
 
     await page.goto(appUrl(CAREERS_URL, trackerHref!))
     await expect(page.getByText(applicantEmail)).toBeVisible({ timeout: 20_000 })
-    await expect(page.getByText(/Under Review/i)).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText(/Under Review/i).first()).toBeVisible({ timeout: 20_000 })
   })
 })

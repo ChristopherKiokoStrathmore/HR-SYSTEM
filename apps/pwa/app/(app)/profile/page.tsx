@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { FileText, Globe, LogOut, ChevronRight, CreditCard, Banknote, Smartphone, X, Check, Loader2 } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { FileText, Globe, LogOut, ChevronRight, CreditCard, Banknote, Smartphone, X, Check, Loader2, Camera } from 'lucide-react'
 import { motion, useReducedMotion, AnimatePresence } from 'framer-motion'
-import { useMe, useUpdatePaymentMethod } from '@/lib/hooks/use-me'
+import { useMe, useUpdatePaymentMethod, useUploadProfilePicture } from '@/lib/hooks/use-me'
 import { useStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
 import { t } from '@hr/i18n'
@@ -244,6 +244,9 @@ export default function ProfilePage() {
   const { language, setLanguage } = useStore()
   const shouldReduce = useReducedMotion()
   const router = useRouter()
+  const uploadPicture = useUploadProfilePicture()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [localAvatar, setLocalAvatar] = useState<string | null>(null)
 
   const user = me?.user
   const emp = me?.employee
@@ -258,23 +261,75 @@ export default function ProfilePage() {
     ? user.full_name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
     : '?'
 
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    // Client-side compress: draw onto 400×400 canvas, export as JPEG quality 0.82
+    const img = new Image()
+    img.onload = async () => {
+      const size = 400
+      const canvas = document.createElement('canvas')
+      canvas.width = size
+      canvas.height = size
+      const ctx = canvas.getContext('2d')!
+      const scale = Math.max(size / img.width, size / img.height)
+      const sw = size / scale
+      const sh = size / scale
+      const sx = (img.width - sw) / 2
+      const sy = (img.height - sh) / 2
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.82)
+      setLocalAvatar(dataUrl)
+      try {
+        await uploadPicture.mutateAsync(dataUrl)
+      } catch {
+        setLocalAvatar(null)
+      }
+    }
+    img.src = URL.createObjectURL(file)
+    e.target.value = ''
+  }
+
+  const avatarSrc = localAvatar ?? user?.avatar_url
+
   return (
     <div className="px-4 pt-6 pb-8">
       <motion.div variants={sectionVariants} initial="hidden" animate="show" className="space-y-5">
         {/* Avatar + name */}
         <motion.div variants={sectionItem} className="flex flex-col items-center py-4">
-          <div
-            className="w-24 h-24 rounded-full flex items-center justify-center mb-4"
-            style={{
-              background: 'linear-gradient(135deg, #1A2E5A, #2A4A8A)',
-              boxShadow: '0 0 0 3px #F47920, 0 0 0 6px rgba(244,121,32,0.18)',
-            }}
-          >
-            {user?.avatar_url ? (
-              <img src={user.avatar_url} alt={user.full_name} className="w-24 h-24 rounded-full object-cover" />
-            ) : (
-              <span className="text-white font-black text-3xl">{initials}</span>
-            )}
+          <div className="relative mb-4">
+            <div
+              className="w-24 h-24 rounded-full flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, #1A2E5A, #2A4A8A)',
+                boxShadow: '0 0 0 3px #F47920, 0 0 0 6px rgba(244,121,32,0.18)',
+              }}
+            >
+              {avatarSrc ? (
+                <img src={avatarSrc} alt={user?.full_name ?? ''} className="w-24 h-24 rounded-full object-cover" />
+              ) : (
+                <span className="text-white font-black text-3xl">{initials}</span>
+              )}
+            </div>
+            {/* Camera overlay button */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadPicture.isPending}
+              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#F47920] flex items-center justify-center shadow-md border-2 border-white active:scale-95 transition-transform disabled:opacity-60"
+              aria-label="Change profile picture"
+            >
+              {uploadPicture.isPending
+                ? <Loader2 className="w-4 h-4 text-white animate-spin" />
+                : <Camera className="w-4 h-4 text-white" />}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="user"
+              className="hidden"
+              onChange={handleFileChange}
+            />
           </div>
           <h1 className="text-2xl font-black text-text-primary">{isLoading ? '...' : user?.full_name}</h1>
           <p className="text-sm text-text-muted mt-0.5">{emp?.job_title}</p>

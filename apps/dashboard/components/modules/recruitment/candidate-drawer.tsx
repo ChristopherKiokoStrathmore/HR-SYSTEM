@@ -96,7 +96,7 @@ export function CandidateDrawer({ candidate, onClose }: Props) {
 
   if (!candidate || !localStage) return null
 
-  const isPortal   = candidate.source === 'portal'
+  const isPortal   = candidate.source === 'portal' || candidate.source === 'careers_site'
   const careersUrl = process.env.NEXT_PUBLIC_CAREERS_URL ?? 'http://localhost:3002'
   const currentStageDef = STAGES.find((s) => s.key === localStage)
   const nextStage = NEXT_STAGE[localStage]
