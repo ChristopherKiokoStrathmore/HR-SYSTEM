@@ -38,7 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     // Forward raw candidate data to Django — Django owns candidate creation and
     // will run AI scoring server-side. No scoring logic lives here.
     const djangoRes = await fetch(
-      `${DJANGO_BASE_URL}/careers/jobs/${params.id}/apply/`,
+      `${DJANGO_BASE_URL}/api/careers/jobs/${params.id}/apply/`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
