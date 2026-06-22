@@ -296,7 +296,12 @@ export function PayrollRunDetailClient({ runId }: { runId: string }) {
                 <th className="px-4 py-3 text-left">Employee</th>
                 <th className="px-4 py-3 text-left">Emp #</th>
                 <th className="px-4 py-3 text-right">Gross</th>
-                <th className="px-4 py-3 text-right">Deductions</th>
+                <th className="px-4 py-3 text-right">PAYE</th>
+                <th className="px-4 py-3 text-right">NSSF</th>
+                <th className="px-4 py-3 text-right">NHIF</th>
+                <th className="px-4 py-3 text-right">HELB</th>
+                <th className="px-4 py-3 text-right">Other</th>
+                <th className="px-4 py-3 text-right">Total Ded.</th>
                 <th className="px-4 py-3 text-right">Net</th>
                 <th className="px-4 py-3 text-center">Method</th>
                 <th className="px-4 py-3 text-center">Status</th>
@@ -345,6 +350,21 @@ export function PayrollRunDetailClient({ runId }: { runId: string }) {
                       {formatKES(record.gross_salary)}
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-red-600">
+                      {formatKES(record.paye)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-red-600">
+                      {formatKES(record.nssf)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-red-600">
+                      {formatKES(record.nhif)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-red-600">
+                      {formatKES(record.helb)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-red-600">
+                      {formatKES(record.other_deductions)}
+                    </td>
+                    <td className="px-4 py-3 text-right font-mono text-red-600 font-medium">
                       {formatKES(record.paye + record.nssf + record.nhif + record.helb + record.other_deductions)}
                     </td>
                     <td className="px-4 py-3 text-right font-mono font-medium">
