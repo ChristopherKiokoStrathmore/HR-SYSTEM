@@ -25,6 +25,8 @@ import {
 import { cn } from '@/lib/utils'
 import { useStore } from '@/lib/store'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import { useCurrentUser, useRbac } from '@/lib/hooks/use-current-user'
+import { roleLabel } from '@/lib/rbac'
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -47,6 +49,12 @@ export function Sidebar() {
   const pathname = usePathname()
   const { sidebarCollapsed, toggleSidebar, darkMode, toggleDarkMode } = useStore()
   const prefersReducedMotion = useReducedMotion()
+  const { role, canAccess } = useRbac()
+  const { data: session } = useCurrentUser()
+  const user = session?.user
+
+  // Show only the modules this role is allowed to open.
+  const visibleNav = navItems.filter((item) => canAccess(item.href))
 
   return (
     <aside
@@ -77,7 +85,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4 px-2">
         <ul className="space-y-0.5">
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {visibleNav.map(({ href, label, icon: Icon }) => {
             const isActive =
               pathname === href || (href !== '/' && pathname.startsWith(href))
             return (
@@ -125,12 +133,16 @@ export function Sidebar() {
       <div className="border-t border-white/10 p-3">
         <div className="flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-white/[0.08] cursor-pointer transition-colors">
           <div className="w-7 h-7 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs font-bold">HR</span>
+            <span className="text-white text-xs font-bold">
+              {(user?.full_name || user?.email || 'U').trim().charAt(0).toUpperCase()}
+            </span>
           </div>
           {!sidebarCollapsed && (
             <div className="min-w-0 flex-1">
-              <p className="text-white text-xs font-medium truncate">HR Admin</p>
-              <p className="text-white/40 text-[10px] truncate">Administrator</p>
+              <p className="text-white text-xs font-medium truncate">
+                {user?.full_name || user?.email || 'Signed in'}
+              </p>
+              <p className="text-white/40 text-[10px] truncate">{roleLabel(role)}</p>
             </div>
           )}
         </div>
