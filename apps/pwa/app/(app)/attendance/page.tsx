@@ -1,12 +1,15 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { MapPin, CheckCircle, Camera, RefreshCw, X } from 'lucide-react'
+import { MapPin, CheckCircle, Camera, RefreshCw, X, Share2, AlertTriangle } from 'lucide-react'
 import { motion, useReducedMotion, AnimatePresence } from 'framer-motion'
 import anime from 'animejs'
 import { toast } from 'sonner'
 import ReactConfetti from 'react-confetti'
-import { useAttendance, useCheckInOut, type AttendanceRecord } from '@/lib/hooks/use-attendance-pwa'
+import {
+  useAttendance, useCheckInOut, useSubmitViolationReason,
+  type AttendanceRecord,
+} from '@/lib/hooks/use-attendance-pwa'
 import { useMe } from '@/lib/hooks/use-me'
 import { useStore } from '@/lib/store'
 import { t } from '@hr/i18n'
@@ -87,7 +90,6 @@ function SelfieModal({ onCapture, onClose, action }: SelfieModalProps) {
     canvas.width  = size
     canvas.height = size
     const ctx = canvas.getContext('2d')!
-    // Mirror + crop to square
     ctx.translate(size, 0)
     ctx.scale(-1, 1)
     const vw = video.videoWidth
@@ -101,16 +103,11 @@ function SelfieModal({ onCapture, onClose, action }: SelfieModalProps) {
     streamRef.current?.getTracks().forEach((t) => t.stop())
   }
 
-  function retake() {
-    setPreview(null)
-    startCamera()
-  }
+  function retake() { setPreview(null); startCamera() }
 
   function confirm() {
     if (!preview) return
-    // strip data URL prefix → raw base64
-    const b64 = preview.replace(/^data:image\/\w+;base64,/, '')
-    onCapture(b64)
+    onCapture(preview.replace(/^data:image\/\w+;base64,/, ''))
   }
 
   const label = action === 'check_in' ? 'Check In' : 'Check Out'
@@ -119,21 +116,15 @@ function SelfieModal({ onCapture, onClose, action }: SelfieModalProps) {
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-end">
       <motion.div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         onClick={onClose}
       />
       <motion.div
         className="relative w-full bg-white rounded-t-3xl overflow-hidden z-10"
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', stiffness: 320, damping: 32 }}
       >
-        {/* Handle */}
         <div className="w-10 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
-
         <div className="px-5 pb-8 space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -150,7 +141,6 @@ function SelfieModal({ onCapture, onClose, action }: SelfieModalProps) {
               {camError}
             </div>
           ) : preview ? (
-            /* Preview */
             <div className="flex flex-col items-center gap-4">
               <div className="relative w-64 h-64 rounded-full overflow-hidden ring-4 ring-orange-400 shadow-xl">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -162,29 +152,22 @@ function SelfieModal({ onCapture, onClose, action }: SelfieModalProps) {
                   onClick={retake}
                   className="flex-1 h-12 rounded-2xl border border-border text-text-body font-semibold flex items-center justify-center gap-2 text-sm"
                 >
-                  <RefreshCw className="w-4 h-4" />
-                  Retake
+                  <RefreshCw className="w-4 h-4" /> Retake
                 </button>
                 <button
                   onClick={confirm}
                   className="flex-1 h-12 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2"
                   style={{ background: 'linear-gradient(135deg, #F47920, #E8650A)', boxShadow: '0 4px 16px rgba(244,121,32,0.35)' }}
                 >
-                  <CheckCircle className="w-4 h-4" />
-                  {label}
+                  <CheckCircle className="w-4 h-4" /> {label}
                 </button>
               </div>
             </div>
           ) : (
-            /* Live camera */
             <div className="flex flex-col items-center gap-4">
               <div className="relative w-64 h-64 rounded-full overflow-hidden ring-4 ring-orange-300 shadow-xl bg-black">
-                {/* Mirror the front camera so it feels natural */}
                 <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
+                  ref={videoRef} autoPlay playsInline muted
                   className="absolute inset-0 w-full h-full object-cover"
                   style={{ transform: 'scaleX(-1)' }}
                 />
@@ -193,16 +176,12 @@ function SelfieModal({ onCapture, onClose, action }: SelfieModalProps) {
                     <Camera className="w-10 h-10 text-white/60" />
                   </div>
                 )}
-                {/* Face guide overlay */}
-                <div
-                  className="absolute inset-4 rounded-full border-2 border-dashed border-white/40 pointer-events-none"
-                />
+                <div className="absolute inset-4 rounded-full border-2 border-dashed border-white/40 pointer-events-none" />
               </div>
               <canvas ref={canvasRef} className="hidden" />
               <p className="text-xs text-text-muted text-center">Position your face within the circle</p>
               <button
-                onClick={capture}
-                disabled={!ready}
+                onClick={capture} disabled={!ready}
                 className="w-16 h-16 rounded-full text-white flex items-center justify-center shadow-lg disabled:opacity-40"
                 style={{ background: 'linear-gradient(135deg, #F47920, #E8650A)', boxShadow: '0 4px 20px rgba(244,121,32,0.4)' }}
               >
@@ -210,6 +189,84 @@ function SelfieModal({ onCapture, onClose, action }: SelfieModalProps) {
               </button>
             </div>
           )}
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+// ─── Geofence reason modal ────────────────────────────────────────────────────
+
+function ReasonModal({
+  violationId,
+  onSubmit,
+  onDismiss,
+}: {
+  violationId: string
+  onSubmit: (id: string, reason: string) => void
+  onDismiss: () => void
+}) {
+  const [reason, setReason] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  async function handleSubmit() {
+    if (!reason.trim()) return
+    setSubmitting(true)
+    onSubmit(violationId, reason.trim())
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-end">
+      <motion.div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        onClick={onDismiss}
+      />
+      <motion.div
+        className="relative w-full bg-white rounded-t-3xl overflow-hidden z-10"
+        initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+        transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+      >
+        <div className="w-10 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
+        <div className="px-5 pb-8 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <AlertTriangle className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="font-bold text-text-primary">Out of work zone</p>
+              <p className="text-xs text-text-muted mt-0.5">
+                Your check-in was recorded but you appear to be outside your assigned work area.
+                Please provide a reason so your manager can review.
+              </p>
+            </div>
+          </div>
+
+          <textarea
+            className="w-full rounded-2xl border border-border px-4 py-3 text-sm text-text-body placeholder:text-text-muted resize-none focus:outline-none focus:border-orange-400 transition-colors"
+            rows={4}
+            placeholder="e.g. Working from client site today, attending off-site training…"
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            autoFocus
+          />
+
+          <div className="flex gap-3">
+            <button
+              onClick={onDismiss}
+              className="flex-1 h-12 rounded-2xl border border-border text-text-body font-semibold text-sm"
+            >
+              Skip for now
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!reason.trim() || submitting}
+              className="flex-1 h-12 rounded-2xl text-white font-bold text-sm disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #F47920, #E8650A)' }}
+            >
+              Submit reason
+            </button>
+          </div>
         </div>
       </motion.div>
     </div>
@@ -233,10 +290,13 @@ export default function AttendancePage() {
   const { data: me, isLoading: meLoading } = useMe()
   const { data, isLoading } = useAttendance()
   const checkInOut = useCheckInOut()
+  const submitReason = useSubmitViolationReason()
   const [currentTime, setCurrentTime] = useState('')
   const [showConfetti, setShowConfetti] = useState(false)
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 })
   const [selfieOpen, setSelfieOpen] = useState(false)
+  const [faceRejected, setFaceRejected] = useState(false)
+  const [pendingViolation, setPendingViolation] = useState<string | null>(null)
   const pulseAnim = useRef<ReturnType<typeof anime> | null>(null)
 
   useEffect(() => {
@@ -263,12 +323,8 @@ export default function AttendancePage() {
     if (isCheckedIn && !isCheckedOut) {
       pulseAnim.current = anime({
         targets: '.pulse-ring',
-        scale: [1, 2.4],
-        opacity: [0.5, 0],
-        duration: 2000,
-        delay: anime.stagger(600),
-        loop: true,
-        easing: 'easeOutCubic',
+        scale: [1, 2.4], opacity: [0.5, 0],
+        duration: 2000, delay: anime.stagger(600), loop: true, easing: 'easeOutCubic',
       })
     } else {
       pulseAnim.current?.pause()
@@ -294,6 +350,7 @@ export default function AttendancePage() {
   }
 
   async function submitCheckInOut(selfieB64?: string) {
+    setFaceRejected(false)
     try {
       const coords = await getGps()
       const result = await checkInOut.mutateAsync({
@@ -304,6 +361,10 @@ export default function AttendancePage() {
         toast.success(t(lang, 'attendance.checked_in_success'), { description: 'Have a great day!' })
         setShowConfetti(true)
         setTimeout(() => setShowConfetti(false), 3500)
+        // Prompt for reason if out of zone
+        if (result.reason_required && result.violation_id) {
+          setPendingViolation(result.violation_id)
+        }
       } else {
         toast.success(
           `${t(lang, 'attendance.checked_out_success')} · ${result?.workHours?.toFixed(1)}h`,
@@ -314,6 +375,8 @@ export default function AttendancePage() {
       const msg = err instanceof Error ? err.message : 'Something went wrong'
       if (msg.toLowerCase().includes('already completed')) {
         toast.info('Your attendance for today is already recorded.', { description: 'Refreshing…' })
+      } else if (msg.toLowerCase().includes('face') || msg.toLowerCase().includes('recogni')) {
+        setFaceRejected(true)
       } else {
         toast.error(msg)
       }
@@ -322,12 +385,24 @@ export default function AttendancePage() {
 
   function handleOrbTap() {
     if (isCheckedOut || checkInOut.isPending || isLoading) return
+    setFaceRejected(false)
     setSelfieOpen(true)
   }
 
   function handleSelfieCapture(b64: string) {
     setSelfieOpen(false)
     submitCheckInOut(b64)
+  }
+
+  async function handleViolationReason(violationId: string, reason: string) {
+    try {
+      await submitReason.mutateAsync({ violationId, reason })
+      toast.success('Reason submitted', { description: 'Your manager will be notified.' })
+    } catch {
+      toast.error('Could not submit reason — please try again later')
+    } finally {
+      setPendingViolation(null)
+    }
   }
 
   async function handleCaptureLocation() {
@@ -342,8 +417,25 @@ export default function AttendancePage() {
       })
       toast.success('Location captured', { description: 'The attendance map will update shortly.' })
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Could not capture GPS location'
-      toast.error(msg)
+      toast.error(err instanceof Error ? err.message : 'Could not capture GPS location')
+    }
+  }
+
+  function shareAttendance() {
+    const checkIn  = formatTime(todayRecord?.check_in_time ?? null)
+    const checkOut = formatTime(todayRecord?.check_out_time ?? null)
+    const hours    = calcHours(todayRecord?.check_in_time ?? null, todayRecord?.check_out_time ?? null)
+    const text = [
+      `📋 My attendance for ${data?.today ?? 'today'}`,
+      `Check-in: ${checkIn}`,
+      checkOut !== '—' ? `Check-out: ${checkOut}` : null,
+      hours !== '—' ? `Hours worked: ${hours}` : null,
+    ].filter(Boolean).join('\n')
+
+    if (navigator.share) {
+      navigator.share({ title: 'My Attendance', text }).catch(() => null)
+    } else {
+      navigator.clipboard.writeText(text).then(() => toast.success('Copied to clipboard'))
     }
   }
 
@@ -385,10 +477,8 @@ export default function AttendancePage() {
     <div className="px-4 pt-6 space-y-6 pb-4">
       {showConfetti && (
         <ReactConfetti
-          width={windowSize.width}
-          height={windowSize.height}
-          recycle={false}
-          numberOfPieces={180}
+          width={windowSize.width} height={windowSize.height}
+          recycle={false} numberOfPieces={180}
           colors={['#F47920', '#1A2E5A', '#22C55E', '#EAB308', '#FFFFFF']}
           style={{ position: 'fixed', top: 0, left: 0, zIndex: 100, pointerEvents: 'none' }}
         />
@@ -402,22 +492,64 @@ export default function AttendancePage() {
             onClose={() => setSelfieOpen(false)}
           />
         )}
+        {pendingViolation && (
+          <ReasonModal
+            violationId={pendingViolation}
+            onSubmit={handleViolationReason}
+            onDismiss={() => setPendingViolation(null)}
+          />
+        )}
       </AnimatePresence>
 
-      <motion.h1
-        className="text-2xl font-black text-text-primary tracking-tight"
-        initial={shouldReduce ? false : { opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        {t(lang, 'nav.attendance')}
-      </motion.h1>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <motion.h1
+          className="text-2xl font-black text-text-primary tracking-tight"
+          initial={shouldReduce ? false : { opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {t(lang, 'nav.attendance')}
+        </motion.h1>
+        {(isCheckedIn || isCheckedOut) && (
+          <button
+            onClick={shareAttendance}
+            className="flex items-center gap-1.5 text-xs font-semibold text-text-muted hover:text-text-primary transition-colors px-3 py-1.5 rounded-xl hover:bg-surface-alt"
+          >
+            <Share2 className="w-3.5 h-3.5" /> Share
+          </button>
+        )}
+      </div>
 
       {/* Face-required badge */}
       <div className="flex items-center gap-2 rounded-2xl bg-orange-50 border border-orange-100 px-4 py-2.5">
         <Camera className="w-4 h-4 text-orange-500 flex-shrink-0" />
         <p className="text-xs text-orange-700 font-medium">Face verification required for each check-in</p>
       </div>
+
+      {/* Face rejected — retry banner */}
+      <AnimatePresence>
+        {faceRejected && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            className="rounded-2xl bg-red-50 border border-red-200 p-4 flex items-center justify-between gap-3"
+          >
+            <div className="flex items-start gap-2 min-w-0">
+              <X className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-red-800">Face not recognised</p>
+                <p className="text-xs text-red-700/80 mt-0.5">Please try again in good lighting, facing the camera directly.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => { setFaceRejected(false); setSelfieOpen(true) }}
+              className="flex-shrink-0 rounded-xl bg-red-600 px-3 py-1.5 text-xs font-bold text-white"
+            >
+              Try again
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Check-in orb */}
       <div className="flex flex-col items-center py-8">

@@ -188,6 +188,8 @@ export async function POST(req: NextRequest) {
       ok: boolean
       event_type: string
       face_verified: boolean | null
+      violation_id?: string | null
+      reason_required?: boolean
     }
 
     if (eventType === 'check_out') {
@@ -197,7 +199,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ action: 'checked_out', workHours, faceVerified: djangoData.face_verified })
     }
 
-    return NextResponse.json({ action: 'checked_in', workHours: null, faceVerified: djangoData.face_verified })
+    return NextResponse.json({
+      action: 'checked_in',
+      workHours: null,
+      faceVerified: djangoData.face_verified,
+      violation_id: djangoData.violation_id ?? null,
+      reason_required: djangoData.reason_required ?? false,
+    })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'DB error'
     return NextResponse.json({ error: msg }, { status: 500 })

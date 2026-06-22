@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { X, ChevronDown, XCircle, Loader2 } from 'lucide-react'
+import { X, ChevronDown, XCircle, Loader2, Share2, Paperclip } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Drawer } from 'vaul'
 import { toast } from 'sonner'
@@ -19,10 +19,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 const LEAVE_TYPES = ['annual', 'sick', 'maternity', 'paternity', 'study', 'compassionate', 'unpaid', 'adoption', 'family'] as const
 
 const schema = z.object({
-  leave_type: z.enum(LEAVE_TYPES),
-  start_date: z.string().min(1),
-  end_date: z.string().min(1),
-  reason: z.string().min(10, 'Please provide at least 10 characters'),
+  leave_type:         z.enum(LEAVE_TYPES),
+  start_date:         z.string().min(1),
+  end_date:           z.string().min(1),
+  reason:             z.string().min(10, 'Please provide at least 10 characters'),
+  supporting_doc_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
 }).refine((d) => d.end_date >= d.start_date, { message: 'End date must be after start date', path: ['end_date'] })
 
 type FormValues = z.infer<typeof schema>
@@ -71,6 +72,21 @@ export default function LeavePage() {
   const start = watch('start_date')
   const end = watch('end_date')
   const days = calcDays(start, end)
+
+  function shareRequest(req: ReturnType<typeof useLeaveRequests>['data'] extends (infer R)[] | undefined ? R : never) {
+    if (!req) return
+    const text = [
+      `📅 Leave Request — ${req.leave_type.charAt(0).toUpperCase() + req.leave_type.slice(1)} Leave`,
+      `Dates: ${req.start_date} → ${req.end_date} (${req.days_requested} day${req.days_requested !== 1 ? 's' : ''})`,
+      `Status: ${req.status.toUpperCase()}`,
+      req.rejection_reason ? `Reason for rejection: ${req.rejection_reason}` : null,
+    ].filter(Boolean).join('\n')
+    if (navigator.share) {
+      navigator.share({ title: 'Leave Request', text }).catch(() => null)
+    } else {
+      navigator.clipboard.writeText(text).then(() => toast.success('Copied to clipboard'))
+    }
+  }
 
   async function onSubmit(values: FormValues) {
     try {
@@ -172,7 +188,7 @@ export default function LeavePage() {
                         {req.start_date} → {req.end_date} · {req.days_requested} {req.days_requested !== 1 ? t(lang, 'leave.working_days') : t(lang, 'leave.working_day')}
                       </p>
                       {req.rejection_reason && (
-                        <p className="text-xs text-danger mt-1">{req.rejection_reason}</p>
+                        <p className="text-xs text-danger mt-1">↳ {req.rejection_reason}</p>
                       )}
                     </div>
                     <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
@@ -194,6 +210,12 @@ export default function LeavePage() {
                           Cancel
                         </button>
                       )}
+                      <button
+                        onClick={() => shareRequest(req)}
+                        className="flex items-center gap-1 text-[11px] text-text-muted hover:text-text-primary transition-colors"
+                      >
+                        <Share2 className="w-3 h-3" /> Share
+                      </button>
                     </div>
                   </div>
                 </motion.div>
@@ -255,6 +277,21 @@ export default function LeavePage() {
                   <label className="text-sm font-medium text-text-body block mb-1.5">{t(lang, 'leave.reason')}</label>
                   <textarea {...register('reason')} rows={3} className="input resize-none" placeholder={t(lang, 'leave.reason_placeholder')} />
                   {errors.reason && <p className="text-xs text-danger mt-1">{errors.reason.message}</p>}
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-text-body block mb-1.5 flex items-center gap-1.5">
+                    <Paperclip className="w-3.5 h-3.5 text-text-muted" />
+                    Supporting document (optional)
+                  </label>
+                  <input
+                    {...register('supporting_doc_url')}
+                    type="url"
+                    className="input"
+                    placeholder="https://drive.google.com/..."
+                  />
+                  {errors.supporting_doc_url && <p className="text-xs text-danger mt-1">{errors.supporting_doc_url.message}</p>}
+                  <p className="text-xs text-text-muted mt-1">Paste a Google Drive, OneDrive or Dropbox link</p>
                 </div>
 
                 <motion.button

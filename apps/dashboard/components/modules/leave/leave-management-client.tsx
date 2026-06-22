@@ -14,6 +14,7 @@ import {
   CheckCircle, XCircle, Calendar, Filter, ChevronDown,
   Clock, CalendarCheck, Users,
 } from 'lucide-react'
+import { ShareButton } from '@/components/ui/share-button'
 
 const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
   annual: 'Annual',
@@ -278,6 +279,11 @@ function LeaveRow({
             </button>
           </>
         )}
+        <ShareButton
+          module="leave"
+          objectId={leave.id}
+          title={`${name} — ${LEAVE_TYPE_LABELS[leave.leave_type as LeaveType] ?? leave.leave_type} leave`}
+        />
       </div>
     </div>
   )
