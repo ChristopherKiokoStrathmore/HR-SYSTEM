@@ -74,7 +74,11 @@ export async function GET(req: NextRequest) {
 
     for (const [, ev] of firstCheckin) {
       const isLate = new Date(ev.time) > shiftStart
-      isLate ? late++ : present++
+      if (isLate) {
+        late++
+      } else {
+        present++
+      }
       enrichedRows.push({ ...ev, is_late: isLate })
     }
 

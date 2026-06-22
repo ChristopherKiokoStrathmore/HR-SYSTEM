@@ -62,16 +62,12 @@ function ClearanceFormModal({ exit, onClose }: { exit: EmployeeExit | null; onCl
   const qc = useQueryClient()
   const [signerName, setSignerName] = useState('')
 
-  if (!exit) return null
-
-  const cleared = exit.clearance_items?.filter(i => i.is_cleared).length ?? 0
-  const total = exit.clearance_items?.length ?? 0
-  const pct = total > 0 ? Math.round((cleared / total) * 100) : 0
-  const employeeName = exit.employee?.user?.full_name ?? 'Employee'
-
+  // All hooks must run before any early return (rules-of-hooks); exit can be
+  // null here, so the mutation reads exit?.id (it only fires while the modal,
+  // and thus a non-null exit, is open).
   const clearItem = useMutation({
     mutationFn: async (itemId: string) => {
-      const res = await fetch(`/api/hr/exits/${exit.id}/clear_item`, {
+      const res = await fetch(`/api/hr/exits/${exit?.id}/clear_item`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ item_id: itemId, cleared_by: signerName || 'HR Admin' }),
@@ -82,6 +78,13 @@ function ClearanceFormModal({ exit, onClose }: { exit: EmployeeExit | null; onCl
     onSuccess: () => qc.invalidateQueries({ queryKey: ['exits'] }),
     onError: (e: Error) => toast.error(e.message),
   })
+
+  if (!exit) return null
+
+  const cleared = exit.clearance_items?.filter(i => i.is_cleared).length ?? 0
+  const total = exit.clearance_items?.length ?? 0
+  const pct = total > 0 ? Math.round((cleared / total) * 100) : 0
+  const employeeName = exit.employee?.user?.full_name ?? 'Employee'
 
   function handlePrint() {
     const title = document.title
