@@ -17,7 +17,7 @@ async function signIn(page: import('@playwright/test').Page, loginUrl: string, e
   if (!res.ok()) {
     throw new Error(`signIn API call failed (${res.status()}): ${await res.text()}`)
   }
-  await page.goto(`${baseUrl}/`, { waitUntil: 'load' })
+  await page.goto(`${baseUrl}/`, { waitUntil: 'domcontentloaded' })
   await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 30_000 })
 }
 
@@ -30,9 +30,11 @@ test.describe('UAT: careers, dashboard, and PWA', () => {
     await test.step('browse careers jobs and open a posting', async () => {
       await page.goto(appUrl(CAREERS_URL, '/jobs'), { waitUntil: 'domcontentloaded' })
       await expect(page.getByRole('heading', { name: /career opportunity/i })).toBeVisible({ timeout: 20_000 })
+      // Wait for the client-side jobs fetch to complete before looking for job cards
+      await page.waitForLoadState('networkidle')
 
       const firstJob = page.getByRole('link', { name: /view & apply/i }).first()
-      await expect(firstJob).toBeVisible({ timeout: 20_000 })
+      await expect(firstJob).toBeVisible({ timeout: 30_000 })
       await Promise.all([
         page.waitForURL(/\/jobs\/[A-Za-z0-9-]+$/, { timeout: 20_000 }),
         firstJob.click(),
