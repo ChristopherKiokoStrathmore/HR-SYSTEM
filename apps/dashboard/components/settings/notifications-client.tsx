@@ -34,7 +34,7 @@ export function NotificationSettingsClient() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     event: '',
-    channel: 'email' as const,
+    channel: 'email' as 'email' | 'sms' | 'whatsapp',
     subject: '',
     body: '',
     is_active: true,
@@ -178,7 +178,7 @@ export function NotificationSettingsClient() {
       )}
 
       {!templates?.length ? (
-        <LottieEmpty title="No notification templates" />
+        <LottieEmpty message="No notification templates" />
       ) : (
         <div className="space-y-2">
           {templates.map(t => (

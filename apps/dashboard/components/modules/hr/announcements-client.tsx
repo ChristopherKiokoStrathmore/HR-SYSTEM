@@ -71,7 +71,7 @@ export function AnnouncementsClient() {
   }
 
   if (isLoading) return <SkeletonTable rows={5} />
-  if (!announcements?.length) return <LottieEmpty title="No announcements" />
+  if (!announcements?.length) return <LottieEmpty message="No announcements" />
 
   return (
     <div className="space-y-4">
@@ -144,7 +144,7 @@ export function AnnouncementsClient() {
                       title: ann.title,
                       body: ann.body,
                       department: ann.department || '',
-                      posted_by: ann.posted_by || '',
+                      posted_by: '',
                     })
                   }}
                   className="p-1 text-blue-600 hover:bg-blue-50 rounded"

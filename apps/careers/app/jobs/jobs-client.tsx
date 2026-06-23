@@ -245,7 +245,7 @@ export function JobsClient({ jobs }: Props) {
           paddingBottom: 0,
         }}
       >
-        {/* Ambient radial glow centred behind the logo */}
+        {/* Ambient crimson glow centred behind the logo */}
         <div
           aria-hidden
           style={{
@@ -253,10 +253,10 @@ export function JobsClient({ jobs }: Props) {
             top: 0,
             left: '50%',
             transform: 'translateX(-50%)',
-            width: 720,
-            height: 520,
+            width: 760,
+            height: 560,
             background:
-              'radial-gradient(ellipse at 50% 32%, rgba(201,168,76,0.16) 0%, rgba(128,21,27,0.10) 42%, transparent 68%)',
+              'radial-gradient(ellipse at 50% 30%, rgba(128,21,27,0.55) 0%, rgba(128,21,27,0.18) 40%, transparent 68%)',
             pointerEvents: 'none',
           }}
         />
@@ -265,24 +265,25 @@ export function JobsClient({ jobs }: Props) {
         <div className="flex justify-center mb-10 relative z-10">
           <div
             style={{
-              width: 156,
-              height: 156,
-              borderRadius: 30,
+              width: 180,
+              height: 180,
+              borderRadius: 22,
               overflow: 'hidden',
               boxShadow: [
-                '0 0 0 1px rgba(201,168,76,0.28)',
-                '0 0 0 10px rgba(201,168,76,0.06)',
-                '0 0 50px rgba(201,168,76,0.28)',
-                '0 0 100px rgba(128,21,27,0.55)',
+                '0 0 0 1px rgba(255,255,255,0.10)',
+                '0 0 0 14px rgba(128,21,27,0.12)',
+                '0 0 50px rgba(128,21,27,0.80)',
+                '0 0 110px rgba(128,21,27,0.45)',
+                '0 0 180px rgba(128,21,27,0.20)',
               ].join(', '),
             }}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="https://sheerlogicltd.com/wp-content/uploads/2024/08/fav.png"
+              src="/sheer-logic-logo.jpg"
               alt="Sheer Logic"
-              width={156}
-              height={156}
+              width={180}
+              height={180}
               style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
             />
           </div>
