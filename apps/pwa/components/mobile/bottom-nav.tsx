@@ -30,7 +30,15 @@ export function BottomNav() {
 
   return (
     <nav className="shrink-0 z-50"
-         style={{ paddingBottom: 'env(safe-area-inset-bottom)', background: '#FFFFFF', boxShadow: '0 -1px 0 rgba(0,0,0,0.06), 0 -4px 16px rgba(0,0,0,0.06)' }}>
+         style={{ 
+           position: 'fixed',
+           bottom: '0',
+           left: '0',
+           right: '0',
+           paddingBottom: 'env(safe-area-inset-bottom)', 
+           background: '#FFFFFF', 
+           boxShadow: '0 -1px 0 rgba(0,0,0,0.06), 0 -4px 16px rgba(0,0,0,0.06)' 
+         }}>
       <div className="flex items-center justify-around h-[68px] px-2 relative">
         {visibleItems.map(({ href, key, icon: Icon }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/')
