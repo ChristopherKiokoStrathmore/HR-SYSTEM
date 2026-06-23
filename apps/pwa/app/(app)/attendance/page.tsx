@@ -148,8 +148,8 @@ function SelfieModal({ onCapture, onClose, action, storedDescriptor }: SelfieMod
       {camError}
     </div>
   ) : preview ? (
-    <div className="flex flex-col items-center gap-4">
-      <div className="relative w-64 h-64 rounded-full overflow-hidden ring-4 ring-[#C9A84C] shadow-xl">
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative w-56 h-56 rounded-full overflow-hidden ring-4 ring-[#C9A84C] shadow-xl">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={preview} alt="Captured selfie" className="w-full h-full object-cover" />
       </div>
@@ -177,13 +177,13 @@ function SelfieModal({ onCapture, onClose, action, storedDescriptor }: SelfieMod
       </div>
     </div>
   ) : (
-    <div className="flex flex-col items-center gap-4">
+    <div className="flex flex-col items-center gap-3">
       {!storedDescriptor && (
         <div className="w-full rounded-2xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800 font-medium text-center">
           No Face ID enrolled — go to Profile to upload your photo first
         </div>
       )}
-      <div className="relative w-64 h-64 rounded-full overflow-hidden ring-4 ring-[#C9A84C]/60 shadow-xl bg-black">
+      <div className="relative w-56 h-56 rounded-full overflow-hidden ring-4 ring-[#C9A84C]/60 shadow-xl bg-black">
         <video
           ref={videoRef} autoPlay playsInline muted
           className="absolute inset-0 w-full h-full object-cover"
