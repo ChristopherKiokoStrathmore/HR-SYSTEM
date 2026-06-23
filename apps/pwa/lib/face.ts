@@ -4,7 +4,8 @@ import * as faceapi from 'face-api.js'
 // For offline-first deployments, download the weights from the CDN and place
 // them in /public/models/ — the path below falls back automatically.
 const MODEL_URI = '/models'
-const MODEL_CDN = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights'
+// npm package doesn't bundle weight files — use GitHub CDN as fallback
+const MODEL_CDN = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights'
 
 let loaded = false
 
