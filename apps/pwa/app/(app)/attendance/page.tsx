@@ -67,7 +67,6 @@ function SelfieModal({ onCapture, onClose, action, storedDescriptor }: SelfieMod
     setFaceError('')
     setPreview(null)
     setReady(false)
-    // Preload models while camera warms up
     loadModels().catch(() => null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -115,17 +114,12 @@ function SelfieModal({ onCapture, onClose, action, storedDescriptor }: SelfieMod
 
   async function confirm() {
     if (!preview) return
-    setVerifying(true)
-    setFaceError('')
-    const b64 = preview.replace(/^data:image\/\w+;base64,/, '')
-
-    // No stored descriptor yet — allow check-in without verification
     if (!storedDescriptor) {
-      setVerifying(false)
-      onCapture(b64, false)
+      setFaceError('No Face ID enrolled. Go to your Profile and upload a photo first.')
       return
     }
-
+    setVerifying(true)
+    setFaceError('')
     try {
       const liveDescriptor = await extractDescriptor(preview)
       if (!liveDescriptor) {
@@ -139,15 +133,90 @@ function SelfieModal({ onCapture, onClose, action, storedDescriptor }: SelfieMod
         setVerifying(false)
         return
       }
+      const b64 = preview.replace(/^data:image\/\w+;base64,/, '')
       onCapture(b64, true)
     } catch {
-      // On model-load failure, proceed without verification
-      onCapture(b64, false)
+      setFaceError('Face verification unavailable right now. Please try again.')
     }
     setVerifying(false)
   }
 
   const label = action === 'check_in' ? 'Check In' : 'Check Out'
+
+  const sheetContent = camError ? (
+    <div className="rounded-2xl bg-red-50 border border-red-200 p-4 text-sm text-red-700 text-center">
+      {camError}
+    </div>
+  ) : preview ? (
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative w-64 h-64 rounded-full overflow-hidden ring-4 ring-[#C9A84C] shadow-xl">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={preview} alt="Captured selfie" className="w-full h-full object-cover" />
+      </div>
+      {faceError && (
+        <p className="text-sm text-red-600 font-medium text-center px-2">{faceError}</p>
+      )}
+      <p className="text-sm font-medium text-text-body">Looks good?</p>
+      <div className="flex gap-3 w-full">
+        <button
+          onClick={retake}
+          disabled={verifying}
+          className="flex-1 h-12 rounded-2xl border border-border text-text-body font-semibold flex items-center justify-center gap-2 text-sm disabled:opacity-50"
+        >
+          <RefreshCw className="w-4 h-4" /> Retake
+        </button>
+        <button
+          onClick={confirm}
+          disabled={verifying}
+          className="flex-1 h-12 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+          style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)', boxShadow: '0 4px 16px rgba(128,21,27,0.35)' }}
+        >
+          {verifying ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+          {verifying ? 'Verifying…' : label}
+        </button>
+      </div>
+    </div>
+  ) : (
+    <div className="flex flex-col items-center gap-4">
+      {!storedDescriptor && (
+        <div className="w-full rounded-2xl bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800 font-medium text-center">
+          No Face ID enrolled — go to Profile to upload your photo first
+        </div>
+      )}
+      <div className="relative w-64 h-64 rounded-full overflow-hidden ring-4 ring-[#C9A84C]/60 shadow-xl bg-black">
+        <video
+          ref={videoRef} autoPlay playsInline muted
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ transform: 'scaleX(-1)' }}
+        />
+        {!ready && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Camera className="w-10 h-10 text-white/60" />
+          </div>
+        )}
+        <div className="absolute inset-4 rounded-full border-2 border-dashed border-white/40 pointer-events-none" />
+      </div>
+      <canvas ref={canvasRef} className="hidden" />
+      <p className="text-xs text-text-muted text-center">Position your face within the circle</p>
+      {!storedDescriptor ? (
+        <button
+          onClick={() => { onClose(); window.location.href = '/profile' }}
+          className="h-12 px-8 rounded-2xl text-white font-bold text-sm"
+          style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)', boxShadow: '0 4px 16px rgba(128,21,27,0.35)' }}
+        >
+          Go to Profile
+        </button>
+      ) : (
+        <button
+          onClick={capture} disabled={!ready}
+          className="w-16 h-16 rounded-full text-white flex items-center justify-center shadow-lg disabled:opacity-40"
+          style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)', boxShadow: '0 4px 20px rgba(128,21,27,0.40)' }}
+        >
+          <Camera className="w-7 h-7" />
+        </button>
+      )}
+    </div>
+  )
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-end">
@@ -167,79 +236,14 @@ function SelfieModal({ onCapture, onClose, action, storedDescriptor }: SelfieMod
             <div>
               <p className="font-bold text-text-primary text-base">{label} — Face Verification</p>
               <p className="text-xs text-text-muted mt-0.5">
-                {storedDescriptor ? 'Look directly at the camera' : 'No face ID enrolled — upload a profile photo to enable face check-in'}
+                {storedDescriptor ? 'Look directly at the camera' : 'Face ID required to check in'}
               </p>
             </div>
             <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-surface-alt text-text-muted">
               <X className="w-5 h-5" />
             </button>
           </div>
-
-          {!storedDescriptor && (
-            <div className="rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800 font-medium">
-              Upload a clear profile photo first to enable face recognition. You can still check in now.
-            </div>
-          )}
-
-          {camError ? (
-            <div className="rounded-2xl bg-red-50 border border-red-200 p-4 text-sm text-red-700 text-center">
-              {camError}
-            </div>
-          ) : preview ? (
-            <div className="flex flex-col items-center gap-4">
-              <div className="relative w-64 h-64 rounded-full overflow-hidden ring-4 ring-[#C9A84C] shadow-xl">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={preview} alt="Captured selfie" className="w-full h-full object-cover" />
-              </div>
-              {faceError && (
-                <p className="text-sm text-red-600 font-medium text-center px-2">{faceError}</p>
-              )}
-              <p className="text-sm font-medium text-text-body">Looks good?</p>
-              <div className="flex gap-3 w-full">
-                <button
-                  onClick={retake}
-                  disabled={verifying}
-                  className="flex-1 h-12 rounded-2xl border border-border text-text-body font-semibold flex items-center justify-center gap-2 text-sm disabled:opacity-50"
-                >
-                  <RefreshCw className="w-4 h-4" /> Retake
-                </button>
-                <button
-                  onClick={confirm}
-                  disabled={verifying}
-                  className="flex-1 h-12 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
-                  style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)', boxShadow: '0 4px 16px rgba(128,21,27,0.35)' }}
-                >
-                  {verifying ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                  {verifying ? 'Verifying…' : label}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-4">
-              <div className="relative w-64 h-64 rounded-full overflow-hidden ring-4 ring-[#C9A84C]/60 shadow-xl bg-black">
-                <video
-                  ref={videoRef} autoPlay playsInline muted
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ transform: 'scaleX(-1)' }}
-                />
-                {!ready && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Camera className="w-10 h-10 text-white/60" />
-                  </div>
-                )}
-                <div className="absolute inset-4 rounded-full border-2 border-dashed border-white/40 pointer-events-none" />
-              </div>
-              <canvas ref={canvasRef} className="hidden" />
-              <p className="text-xs text-text-muted text-center">Position your face within the circle</p>
-              <button
-                onClick={capture} disabled={!ready}
-                className="w-16 h-16 rounded-full text-white flex items-center justify-center shadow-lg disabled:opacity-40"
-                style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)', boxShadow: '0 4px 20px rgba(128,21,27,0.40)' }}
-              >
-                <Camera className="w-7 h-7" />
-              </button>
-            </div>
-          )}
+          {sheetContent}
         </div>
       </motion.div>
     </div>
@@ -342,6 +346,7 @@ export default function AttendancePage() {
   const { data, isLoading } = useAttendance()
   const checkInOut = useCheckInOut()
   const submitReason = useSubmitViolationReason()
+  const [mounted, setMounted] = useState(false)
   const [currentTime, setCurrentTime] = useState('')
   const [showConfetti, setShowConfetti] = useState(false)
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 })
@@ -351,6 +356,7 @@ export default function AttendancePage() {
   const pulseAnim = useRef<ReturnType<typeof anime> | null>(null)
 
   useEffect(() => {
+    setMounted(true)
     setWindowSize({ width: window.innerWidth, height: window.innerHeight })
   }, [])
 
@@ -504,6 +510,24 @@ export default function AttendancePage() {
       : { background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)', boxShadow: '0 8px 32px rgba(34,197,94,0.4), inset 0 1px 1px rgba(255,255,255,0.2)' }
 
   const isBlueCollar = me?.employee?.worker_class === 'blue_collar'
+
+  // Render a static shell during SSR and initial hydration to prevent mismatch.
+  // framer-motion, AnimatePresence, and time-based state all diverge between
+  // server and client; the mounted guard ensures both render identically first.
+  if (!mounted) {
+    return (
+      <div className="px-4 pt-6 space-y-6 pb-4">
+        <div className="h-9 w-36 rounded-xl bg-surface-alt animate-pulse" />
+        <div className="h-10 rounded-2xl bg-surface-alt animate-pulse" />
+        <div className="flex flex-col items-center py-8">
+          <div className="w-44 h-44 rounded-full bg-surface-alt animate-pulse" />
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[0, 1, 2].map(i => <div key={i} className="h-16 rounded-2xl bg-surface-alt animate-pulse" />)}
+        </div>
+      </div>
+    )
+  }
 
   if (!meLoading && me && !isBlueCollar) {
     return (
