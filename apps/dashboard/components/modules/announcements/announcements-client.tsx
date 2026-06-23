@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   useAnnouncements, useCreateAnnouncement,
   useUpdateAnnouncement, useDeleteAnnouncement,
@@ -51,7 +52,7 @@ function AnnouncementModal({
     }
   })
 
-  if (!open) return null
+  if (!open || typeof document === 'undefined') return null
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -59,9 +60,9 @@ function AnnouncementModal({
     onSave({ title: title.trim(), body: body.trim(), priority, department: department || undefined })
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-card rounded-xl shadow-xl w-full max-w-lg p-6 space-y-5">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="bg-card rounded-xl shadow-2xl w-full max-w-lg p-6 space-y-5">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-text-primary">
             {initial?.id ? 'Edit Announcement' : 'New Announcement'}
@@ -133,7 +134,8 @@ function AnnouncementModal({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -152,10 +154,10 @@ function DeleteModal({
   onCancel: () => void
   isDeleting: boolean
 }) {
-  if (!open) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-card rounded-xl shadow-xl w-full max-w-sm p-6 space-y-4">
+  if (!open || typeof document === 'undefined') return null
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="bg-card rounded-xl shadow-2xl w-full max-w-sm p-6 space-y-4">
         <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
           <Trash2 className="w-5 h-5 text-red-600" />
         </div>
@@ -176,7 +178,8 @@ function DeleteModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

@@ -20,6 +20,7 @@ interface UserRow {
   full_name: string | null
   email: string
   avatar_url: string | null
+  employee_id: string | null
 }
 
 interface CompanyRow {
@@ -58,6 +59,10 @@ export async function GET(req: NextRequest) {
     const userMap = new Map<string, UserRow>(
       (usersRes.results ?? []).map((u) => [u.id, u])
     )
+    // Primary lookup: AppUser.employee_id == EmployeeProfile.id (more reliable than user_id link)
+    const userByEmployeeId = new Map<string, UserRow>(
+      (usersRes.results ?? []).filter(u => u.employee_id).map((u) => [u.employee_id!, u])
+    )
     const companyMap = new Map<string, CompanyRow>(
       (companiesRes.results ?? []).map((c) => [c.id, c])
     )
@@ -75,7 +80,7 @@ export async function GET(req: NextRequest) {
         (d) => REQUIRED_DOCS.includes(d.type) && d.status === 'verified'
       ).length
       const uploaded = empDocs.filter((d) => REQUIRED_DOCS.includes(d.type)).length
-      const u = userMap.get(emp.user_id)
+      const u = userByEmployeeId.get(emp.id) ?? userMap.get(emp.user_id)
       const c = companyMap.get(emp.company_id)
       return {
         id: emp.id,
