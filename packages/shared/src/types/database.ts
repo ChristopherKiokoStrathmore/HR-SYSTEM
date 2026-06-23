@@ -75,6 +75,7 @@ export interface EmployeeProfile extends BaseRecord {
   job_title: string
   employment_type: EmploymentType
   employment_status: EmploymentStatus
+  worker_class: 'white_collar' | 'blue_collar'
   manager_id: UUID | null
   start_date: string
   end_date: string | null
@@ -95,6 +96,8 @@ export interface EmployeeProfile extends BaseRecord {
   next_of_kin_name: string | null
   next_of_kin_phone: string | null
   next_of_kin_relationship: string | null
+  profile_picture_url: string | null
+  face_descriptor: number[] | null
 }
 
 export interface Document extends BaseRecord {
@@ -342,6 +345,89 @@ export interface BackgroundCheck extends BaseRecord {
   expiry_date: string | null
   flags: string[]
   notes: string | null
+}
+
+// ── HR operations ────────────────────────────────────────────────────────────
+
+export interface OvertimeRequest extends BaseRecord {
+  company_id: UUID
+  employee_id: UUID
+  manager_id: UUID | null
+  date: string
+  hours: number
+  rate_multiplier: number
+  reason: string
+  status: 'pending' | 'approved' | 'rejected'
+  decided_by: UUID | null
+  decided_at: string | null
+}
+
+export interface Reimbursement extends BaseRecord {
+  company_id: UUID
+  employee_id: UUID
+  category: string
+  amount: number
+  description: string
+  receipt_url: string
+  status: 'submitted' | 'approved' | 'rejected' | 'paid'
+  processed_by: UUID | null
+  processed_at: string | null
+  payment_reference: string
+}
+
+export interface LeaveRecall extends BaseRecord {
+  company_id: UUID
+  leave_id: UUID
+  employee_id: UUID
+  manager_id: UUID | null
+  requested_by: UUID | null
+  reason: string
+  resume_date: string
+  days_credited: number | null
+  status: 'pending' | 'approved' | 'rejected'
+  decided_by: UUID | null
+  decided_at: string | null
+}
+
+export interface ComplianceAlert extends BaseRecord {
+  company_id: UUID
+  alert_type: 'below_minimum_wage' | 'certificate_expired' | 'other'
+  employee_id: UUID | null
+  payroll_run_id: UUID | null
+  details: Record<string, unknown>
+  status: 'open' | 'acknowledged' | 'resolved'
+  acknowledged_by: UUID | null
+}
+
+export interface WorkZone extends BaseRecord {
+  company_id: UUID
+  name: string
+  center_lat: number
+  center_lng: number
+  radius_m: number
+  work_start: string
+  work_end: string
+  is_active: boolean
+}
+
+export interface GeofenceViolation extends BaseRecord {
+  company_id: UUID
+  employee_id: UUID
+  zone_id: UUID | null
+  started_at: string
+  ended_at: string | null
+  distance_m: number | null
+  reason: string
+  status: 'open' | 'reason_submitted' | 'resolved'
+}
+
+export interface NotificationTemplate extends BaseRecord {
+  company_id: UUID | null
+  event: string
+  channel: 'email' | 'sms' | 'whatsapp'
+  subject: string | null
+  body: string
+  is_active: boolean
 }
 
 // ── Joined / enriched types ──────────────────────────────────────────────────

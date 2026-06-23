@@ -14,14 +14,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'violation_id and reason are required' }, { status: 400 })
   }
 
+  const companyId = (session as { company_id?: string }).company_id ?? ''
+
   const djangoRes = await fetch(
     `${HR_API_URL}/attendance/geofence-violations/${violation_id}/submit_reason/`,
     {
       method: 'POST',
       headers: {
-        'Content-Type':  'application/json',
-        'X-Service-Key': HR_SERVICE_KEY,
-        'X-User-Id':     session.user_id,
+        'Content-Type':   'application/json',
+        'X-Service-Key':  HR_SERVICE_KEY,
+        'X-User-Id':      session.user_id,
+        ...(companyId ? { 'X-Company-Id': companyId } : {}),
       },
       body: JSON.stringify({ reason: reason.trim() }),
       signal: AbortSignal.timeout(15_000),
