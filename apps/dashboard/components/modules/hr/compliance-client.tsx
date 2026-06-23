@@ -218,3 +218,5 @@ export function ComplianceClient() {
     </div>
   )
 }
+
+export { ComplianceClient as ComplianceAlertsClient }

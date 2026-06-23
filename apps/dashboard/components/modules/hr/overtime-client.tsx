@@ -127,3 +127,5 @@ export function OvertimeClient() {
     </div>
   )
 }
+
+export { OvertimeClient as OvertimeRequestsClient }

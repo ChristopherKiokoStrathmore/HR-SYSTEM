@@ -158,7 +158,7 @@ export function WorkZonesClient() {
       )}
 
       {!zones?.length ? (
-        <LottieEmpty title="No work zones yet" />
+        <LottieEmpty message="No work zones yet" />
       ) : (
         <div className="space-y-2">
           {zones.map(zone => (

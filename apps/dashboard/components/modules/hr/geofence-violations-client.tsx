@@ -35,7 +35,7 @@ export function GeofenceViolationsClient() {
   }
 
   if (isLoading) return <SkeletonTable rows={5} />
-  if (!violations?.length) return <LottieEmpty title="No active geofence violations" />
+  if (!violations?.length) return <LottieEmpty message="No active geofence violations" />
 
   return (
     <div className="space-y-3">
