@@ -20,13 +20,18 @@ export async function GET(
     ;(data as Record<string, unknown>).period_month = date.getMonth() + 1
     ;(data as Record<string, unknown>).period_year = date.getFullYear()
 
-    // Calculate total_deductions from individual components
-    ;(data as Record<string, unknown>).total_deductions =
-      (Number(data.total_paye) || 0) +
-      (Number(data.total_nssf) || 0) +
-      (Number(data.total_nhif) || 0) +
-      (Number(data.total_housing_levy) || 0) +
-      (Number(data.total_helb) || 0)
+    // The run-detail serializer already returns total_deductions; only fall back
+    // to summing the individual components when it's actually missing. (Don't
+    // overwrite it — the detail serializer omits the per-component totals, so
+    // recomputing here clobbers the real figure with 0.)
+    if (data.total_deductions == null) {
+      ;(data as Record<string, unknown>).total_deductions =
+        (Number(data.total_paye) || 0) +
+        (Number(data.total_nssf) || 0) +
+        (Number(data.total_nhif) || 0) +
+        (Number(data.total_housing_levy) || 0) +
+        (Number(data.total_helb) || 0)
+    }
 
     return NextResponse.json({ data })
   } catch (err) {
