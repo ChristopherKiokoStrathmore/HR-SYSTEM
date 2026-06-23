@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useAttendanceSummary, useAttendanceLocations } from '@/lib/hooks/use-attendance'
+import type { AttendanceEventRow } from '@/lib/hooks/use-attendance'
 import { SkeletonTable } from '@/components/ui/skeleton'
 import { useStore } from '@/lib/store'
-import { Calendar, MapPin, Users, Clock, AlertCircle, RefreshCw, Navigation, Printer, CheckCircle2, XCircle } from 'lucide-react'
+import { Calendar, MapPin, Users, Clock, RefreshCw, Printer, CheckCircle2, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { CheckInLocation } from './check-in-map'
 
@@ -33,17 +34,10 @@ function getInitials(name: string) {
   )
 }
 
-function getStatusMeta(status: string) {
-  switch (status) {
-    case 'present':
-      return { label: 'Present', className: 'bg-green-50 text-green-700 border-green-200' }
-    case 'absent':
-      return { label: 'Absent', className: 'bg-red-50 text-red-700 border-red-200' }
-    case 'half_day':
-      return { label: 'Half Day', className: 'bg-amber-50 text-amber-700 border-amber-200' }
-    default:
-      return { label: status, className: 'bg-surface-alt text-text-muted border-border' }
-  }
+function getStatusMeta(isLate: boolean) {
+  return isLate
+    ? { label: 'Late', className: 'bg-amber-50 text-amber-700 border-amber-200' }
+    : { label: 'Present', className: 'bg-green-50 text-green-700 border-green-200' }
 }
 
 export function AttendanceClient() {
@@ -54,10 +48,10 @@ export function AttendanceClient() {
   const { data: locData } = useAttendanceLocations(activeCompanyId, date)
 
   const records = data?.data ?? []
-  const stats = data?.stats ?? { present: 0, absent: 0, late: 0, total: 0 }
+  const stats = data?.stats ?? { present: 0, absent: 0, late: 0, total: 0, daily_rate: 0, date }
   const checkedIn = stats.present + stats.late
-  const absent = stats.total > 0 ? stats.total - checkedIn : stats.absent
-  const attendanceRate = stats.total > 0 ? Math.round((checkedIn / stats.total) * 100) : 0
+  const absent = stats.absent
+  const attendanceRate = stats.daily_rate
 
   function handleShareReport() {
     const title = document.title
@@ -206,61 +200,37 @@ export function AttendanceClient() {
         ) : (
           <>
             {/* Table header */}
-            <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_1fr_1.5fr] gap-4 px-4 py-2 bg-surface-alt text-xs font-semibold text-text-muted uppercase tracking-wide">
+            <div className="hidden md:grid grid-cols-[2fr_1fr_1fr_2fr] gap-4 px-4 py-2 bg-surface-alt text-xs font-semibold text-text-muted uppercase tracking-wide">
               <span>Employee</span>
               <span>Check In</span>
-              <span>Check Out</span>
               <span>Status</span>
-              <span>Reason / Notes</span>
+              <span>Out-of-Zone Reason</span>
             </div>
             <div className="divide-y divide-border">
-              {records.map((rec) => {
-                const name = rec.employee?.user?.full_name ?? '—'
-                const checkIn = rec.check_in_time
-                  ? new Date(rec.check_in_time).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
+              {(records as AttendanceEventRow[]).map((rec) => {
+                const name = rec.employee_name ?? '—'
+                const checkIn = rec.time
+                  ? new Date(rec.time).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
                   : null
-                const checkOut = rec.check_out_time
-                  ? new Date(rec.check_out_time).toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
-                  : null
-                const notes = (rec as unknown as Record<string, unknown>).notes as string | undefined
+                const statusMeta = getStatusMeta(rec.is_late)
 
                 return (
-                  <div key={rec.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_1.5fr] gap-2 md:gap-4 px-4 py-3 items-center">
+                  <div key={rec.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_2fr] gap-2 md:gap-4 px-4 py-3 items-center">
                     {/* Employee */}
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">
                         {getInitials(name)}
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-text-primary truncate">{name}</p>
-                        <p className="text-xs text-text-muted truncate">
-                          {rec.employee?.job_title}
-                          {rec.employee?.department && <> · {rec.employee.department}</>}
-                        </p>
-                      </div>
+                      <p className="text-sm font-medium text-text-primary truncate">{name}</p>
                     </div>
 
                     {/* Check in */}
                     <div className="text-sm">
                       {checkIn ? (
-                        <div>
-                          <span className={cn('font-medium', rec.is_late ? 'text-amber-600' : 'text-green-600')}>
-                            {checkIn}
-                          </span>
+                        <span className={cn('font-medium', rec.is_late ? 'text-amber-600' : 'text-green-600')}>
+                          {checkIn}
                           {rec.is_late && <span className="ml-1 text-xs text-amber-500">(late)</span>}
-                          {rec.check_in_lat != null && rec.check_in_lng != null && (
-                            <span className="ml-1 text-green-500 text-xs" title="GPS check-in"><Navigation className="w-3 h-3 inline" /></span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-text-muted text-xs">—</span>
-                      )}
-                    </div>
-
-                    {/* Check out */}
-                    <div className="text-sm">
-                      {checkOut ? (
-                        <span className="text-text-body font-medium">{checkOut}</span>
+                        </span>
                       ) : (
                         <span className="text-text-muted text-xs">—</span>
                       )}
@@ -268,24 +238,17 @@ export function AttendanceClient() {
 
                     {/* Status */}
                     <div>
-                      <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium', getStatusMeta(rec.status).className)}>
-                        {getStatusMeta(rec.status).label}
+                      <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium', statusMeta.className)}>
+                        {statusMeta.label}
                       </span>
                     </div>
 
-                    {/* Reason / Notes */}
+                    {/* Out-of-zone reason */}
                     <div className="text-xs text-text-muted italic">
-                      {notes ? (
-                        <span className="text-text-body not-italic">{notes}</span>
-                      ) : rec.status === 'absent' ? (
-                        <span className="text-red-400">No reason provided</span>
+                      {rec.out_of_zone_reason ? (
+                        <span className="text-text-body not-italic">{rec.out_of_zone_reason}</span>
                       ) : (
                         <span>—</span>
-                      )}
-                      {rec.distance_covered_km != null && rec.distance_covered_km > 0 && (
-                        <span className="ml-2 not-italic text-text-muted">
-                          <MapPin className="w-3 h-3 inline mr-0.5" />{rec.distance_covered_km.toFixed(1)} km
-                        </span>
                       )}
                     </div>
                   </div>

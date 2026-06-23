@@ -36,6 +36,17 @@ interface ClearanceItem {
   cleared_at?: string | null
 }
 
+interface ExitClearanceRecord {
+  id: string
+  status: string
+  sections_complete: number
+  it_cleared: boolean; it_cleared_by: string | null; it_cleared_at: string | null
+  finance_cleared: boolean; finance_cleared_by: string | null; finance_cleared_at: string | null
+  admin_cleared: boolean; admin_cleared_by: string | null; admin_cleared_at: string | null
+  hr_cleared: boolean; hr_cleared_by: string | null; hr_cleared_at: string | null
+  manager_cleared: boolean; manager_cleared_by: string | null; manager_cleared_at: string | null
+}
+
 interface EmployeeExit {
   id: string
   employee_id: string
@@ -62,29 +73,52 @@ function ClearanceFormModal({ exit, onClose }: { exit: EmployeeExit | null; onCl
   const qc = useQueryClient()
   const [signerName, setSignerName] = useState('')
 
-  // All hooks must run before any early return (rules-of-hooks); exit can be
-  // null here, so the mutation reads exit?.id (it only fires while the modal,
-  // and thus a non-null exit, is open).
-  const clearItem = useMutation({
-    mutationFn: async (itemId: string) => {
-      const res = await fetch(`/api/hr/exits/${exit?.id}/clear_item`, {
+  const { data: clearanceData, isLoading: clearanceLoading } = useQuery({
+    queryKey: ['exit-clearance', exit?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/hr/exits/${exit!.id}/clearance/`)
+      if (!res.ok) return null
+      const json = await res.json()
+      const results: ExitClearanceRecord[] = json.results ?? json
+      return results[0] ?? null
+    },
+    enabled: !!exit,
+  })
+
+  const createClearance = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/hr/exits/${exit!.id}/clearance/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item_id: itemId, cleared_by: signerName || 'HR Admin' }),
+        body: JSON.stringify({}),
       })
-      if (!res.ok) throw new Error((await res.json()).error ?? 'Failed')
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Failed to create clearance')
+      return res.json() as Promise<ExitClearanceRecord>
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['exit-clearance', exit?.id] }),
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const signSection = useMutation({
+    mutationFn: async ({ clearanceId, section }: { clearanceId: string; section: string }) => {
+      const res = await fetch(`/api/hr/exits/${exit!.id}/clearance/${clearanceId}/sign_section/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ section, cleared_by: signerName || 'HR Admin' }),
+      })
+      if (!res.ok) throw new Error((await res.json()).error ?? 'Failed to sign section')
       return res.json()
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['exits'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['exit-clearance', exit?.id] }),
     onError: (e: Error) => toast.error(e.message),
   })
 
   if (!exit) return null
 
-  const cleared = exit.clearance_items?.filter(i => i.is_cleared).length ?? 0
-  const total = exit.clearance_items?.length ?? 0
-  const pct = total > 0 ? Math.round((cleared / total) * 100) : 0
   const employeeName = exit.employee?.user?.full_name ?? 'Employee'
+  const clearance = clearanceData
+  const sectionsComplete = clearance?.sections_complete ?? 0
+  const pct = Math.round((sectionsComplete / 5) * 100)
 
   function handlePrint() {
     const title = document.title
@@ -112,88 +146,103 @@ function ClearanceFormModal({ exit, onClose }: { exit: EmployeeExit | null; onCl
           </button>
         </div>
 
-        {/* Progress bar */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-medium text-text-muted">Clearance Progress</p>
-            <span className={cn('text-sm font-bold', pct === 100 ? 'text-green-600' : pct > 60 ? 'text-amber-600' : 'text-red-500')}>
-              {cleared}/{total} · {pct}%
-            </span>
+        {clearanceLoading ? (
+          <div className="py-8 text-center text-text-muted text-sm">Loading clearance record…</div>
+        ) : !clearance ? (
+          <div className="text-center py-8 space-y-3">
+            <p className="text-sm text-text-muted">No clearance record yet for this exit.</p>
+            <button
+              onClick={() => createClearance.mutate()}
+              disabled={createClearance.isPending}
+              className="btn-primary flex items-center gap-2 mx-auto"
+            >
+              {createClearance.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Create Clearance Checklist
+            </button>
           </div>
-          <div className="h-2.5 rounded-full bg-border overflow-hidden">
-            <div
-              className={cn('h-full rounded-full transition-all duration-500', pct === 100 ? 'bg-green-500' : pct > 60 ? 'bg-amber-400' : 'bg-red-400')}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Signer name */}
-        <div className="flex items-center gap-3 p-3 bg-surface-alt rounded-xl print:hidden">
-          <User className="w-4 h-4 text-text-muted flex-shrink-0" />
-          <input
-            className="input flex-1 text-sm"
-            placeholder="Your name (signs off each cleared item)…"
-            value={signerName}
-            onChange={e => setSignerName(e.target.value)}
-          />
-        </div>
-
-        {/* Clearance sections */}
-        <div className="space-y-3">
-          {CLEARANCE_SECTIONS.map(section => {
-            const sectionItems = exit.clearance_items?.filter(i =>
-              section.items.some(si => i.item.toLowerCase().includes(si.split(' ')[0].toLowerCase()))
-            ) ?? []
-
-            return (
-              <div key={section.key} className="border border-border rounded-xl overflow-hidden">
-                <div className="px-4 py-3 bg-surface-alt flex items-center gap-2">
-                  <span className="text-base">{section.icon}</span>
-                  <p className="text-sm font-semibold text-text-primary">{section.label}</p>
-                  <span className="ml-auto text-xs text-text-muted">
-                    {sectionItems.filter(i => i.is_cleared).length}/{sectionItems.length || section.items.length} cleared
-                  </span>
-                </div>
-                <div className="divide-y divide-border">
-                  {(sectionItems.length > 0 ? sectionItems : exit.clearance_items?.slice(0, 4) ?? []).map(item => (
-                    <div key={item.id} className="flex items-center gap-3 px-4 py-3">
-                      <button
-                        disabled={item.is_cleared || clearItem.isPending}
-                        onClick={() => clearItem.mutate(item.id)}
-                        className="flex-shrink-0 disabled:cursor-default"
-                      >
-                        {item.is_cleared
-                          ? <CheckCircle2 className="w-5 h-5 text-green-600" />
-                          : <Circle className="w-5 h-5 text-border hover:text-accent transition-colors" />
-                        }
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <p className={cn('text-sm', item.is_cleared ? 'text-text-muted line-through' : 'text-text-body')}>{item.item}</p>
-                        {item.is_cleared && item.cleared_by && (
-                          <p className="text-xs text-green-600 mt-0.5">✓ Cleared by {item.cleared_by}{item.cleared_at ? ` · ${new Date(item.cleared_at).toLocaleDateString('en-KE')}` : ''}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+        ) : (
+          <>
+            {/* Progress bar */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-text-muted">Clearance Progress</p>
+                <span className={cn('text-sm font-bold', pct === 100 ? 'text-green-600' : pct > 60 ? 'text-amber-600' : 'text-red-500')}>
+                  {sectionsComplete}/5 sections · {pct}%
+                </span>
               </div>
-            )
-          })}
-
-          {/* Any uncategorised items */}
-          {exit.clearance_items?.length === 0 && (
-            <div className="card text-center py-8 text-text-muted text-sm">
-              No clearance items — items are created automatically when an exit is initiated.
+              <div className="h-2.5 rounded-full bg-border overflow-hidden">
+                <div
+                  className={cn('h-full rounded-full transition-all duration-500', pct === 100 ? 'bg-green-500' : pct > 60 ? 'bg-amber-400' : 'bg-red-400')}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
             </div>
-          )}
-        </div>
 
-        {pct === 100 && (
-          <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-            <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
-            <p className="text-sm text-green-800 font-medium">All clearance items completed. Employee exit is fully processed.</p>
-          </div>
+            {/* Signer name */}
+            <div className="flex items-center gap-3 p-3 bg-surface-alt rounded-xl print:hidden">
+              <User className="w-4 h-4 text-text-muted flex-shrink-0" />
+              <input
+                className="input flex-1 text-sm"
+                placeholder="Your name (signs off each section)…"
+                value={signerName}
+                onChange={e => setSignerName(e.target.value)}
+              />
+            </div>
+
+            {/* Clearance sections */}
+            <div className="space-y-3">
+              {CLEARANCE_SECTIONS.map(section => {
+                const isCleared = clearance[`${section.key}_cleared` as keyof ExitClearanceRecord] as boolean
+                const clearedBy = clearance[`${section.key}_cleared_by` as keyof ExitClearanceRecord] as string | null
+                const clearedAt = clearance[`${section.key}_cleared_at` as keyof ExitClearanceRecord] as string | null
+
+                return (
+                  <div key={section.key} className={cn('border rounded-xl overflow-hidden', isCleared ? 'border-green-200' : 'border-border')}>
+                    <div className={cn('px-4 py-3 flex items-center gap-2', isCleared ? 'bg-green-50' : 'bg-surface-alt')}>
+                      <span className="text-base">{section.icon}</span>
+                      <p className="text-sm font-semibold text-text-primary">{section.label}</p>
+                      <span className="ml-auto">
+                        {isCleared
+                          ? <CheckCircle2 className="w-4 h-4 text-green-600" />
+                          : <Circle className="w-4 h-4 text-border" />}
+                      </span>
+                    </div>
+                    <div className="px-4 py-3">
+                      <ul className="text-xs text-text-muted space-y-1 mb-3">
+                        {section.items.map(item => (
+                          <li key={item} className="flex items-center gap-1.5">
+                            <span className={cn('w-1.5 h-1.5 rounded-full flex-shrink-0', isCleared ? 'bg-green-500' : 'bg-border')} />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                      {isCleared ? (
+                        <p className="text-xs text-green-700 font-medium">
+                          ✓ Signed off by {clearedBy ?? 'unknown'}{clearedAt ? ` · ${new Date(clearedAt).toLocaleDateString('en-KE')}` : ''}
+                        </p>
+                      ) : (
+                        <button
+                          disabled={signSection.isPending}
+                          onClick={() => signSection.mutate({ clearanceId: clearance.id, section: section.key })}
+                          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
+                        >
+                          {signSection.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                          Sign off {section.label}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {pct === 100 && (
+              <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <p className="text-sm text-green-800 font-medium">All sections cleared. Employee exit is fully processed.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </Modal>
