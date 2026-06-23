@@ -90,6 +90,23 @@ export async function POST(req: NextRequest) {
       return false
     })
 
+    // A run can only be sent for signing while it's draft/calculated/
+    // pending_approval. If this period's run is already approved/processing/
+    // paid/completed, it must NOT be re-submitted (Django rejects it with a
+    // cryptic "Run is {status}" error) and must NEVER be deleted below — it may
+    // hold real payments. Surface a clear message instead.
+    const SUBMITTABLE_STATUSES = ['draft', 'calculated', 'pending_approval']
+    if (currentPeriodRun && !SUBMITTABLE_STATUSES.includes(currentPeriodRun.status)) {
+      return NextResponse.json(
+        {
+          error:
+            `Payroll for ${periodMonth}/${periodYear} is already "${currentPeriodRun.status}" ` +
+            `and can't be re-sent for approval. Open that run to disburse or review it.`,
+        },
+        { status: 409 }
+      )
+    }
+
     const isRunUsable =
       currentPeriodRun &&
       (currentPeriodRun.status === 'draft' ||
