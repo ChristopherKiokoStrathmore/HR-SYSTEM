@@ -16,18 +16,19 @@ export interface LocationRow {
   is_late: boolean | null
 }
 
-interface AttendanceWithEmployee extends Attendance {
-  employee?: {
-    employee_number: string
-    job_title: string
-    department: string | null
-    user?: { full_name: string; avatar_url: string | null }
-  }
+export interface AttendanceEventRow {
+  id: number
+  employee_id: string
+  employee_name: string | null
+  time: string
+  event_type: string
+  out_of_zone_reason: string
+  is_late: boolean
 }
 
 interface AttendanceSummary {
-  data: AttendanceWithEmployee[]
-  stats: { present: number; absent: number; late: number; total: number }
+  data: AttendanceEventRow[]
+  stats: { present: number; absent: number; late: number; total: number; daily_rate: number; date: string }
 }
 
 export function useAttendanceLocations(companyId: string | null, date?: string) {

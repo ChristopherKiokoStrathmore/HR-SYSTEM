@@ -10,7 +10,8 @@ export interface LeaveFilters {
   leaveType?: string
 }
 
-interface LeaveWithEmployee extends Leave {
+export interface LeaveWithEmployee extends Leave {
+  employee_name?: string | null
   employee?: {
     employee_number: string
     job_title: string

@@ -6,7 +6,7 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
-import { Download, Users, DollarSign, Calendar, TrendingUp, FileText, Printer } from 'lucide-react'
+import { Users, DollarSign, Calendar, TrendingUp, FileText, Printer } from 'lucide-react'
 
 const COLORS = ['#1A2E5A', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4']
 
@@ -41,18 +41,10 @@ async function fetchReport(endpoint: string, companyId?: string | null) {
   return data
 }
 
-async function exportExcel(companyId?: string | null) {
-  const XLSX = await import('xlsx')
-  const [hc, ps, ls] = await Promise.all([
-    fetchReport('headcount', companyId),
-    fetchReport('payroll-summary', companyId),
-    fetchReport('leave-summary', companyId),
-  ])
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hc.byDepartment), 'Headcount by Dept')
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ps.trend), 'Payroll Trend')
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ls.byType), 'Leave by Type')
-  XLSX.writeFile(wb, 'hr-report.xlsx')
+function exportExcel(companyId?: string | null) {
+  const params = new URLSearchParams({ format: 'xlsx', type: 'full' })
+  if (companyId) params.set('companyId', companyId)
+  window.location.href = `/api/exports?${params}`
 }
 
 function exportPDF() {

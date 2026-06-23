@@ -8,6 +8,7 @@ import { SkeletonTable } from '@/components/ui/skeleton'
 import { toast } from '@/lib/toast'
 import { formatDate } from '@hr/shared'
 import type { Leave, LeaveType } from '@hr/shared'
+import type { LeaveWithEmployee } from '@/lib/hooks/use-leave'
 import { useStore } from '@/lib/store'
 import { LottieEmpty } from '@/components/ui/lottie-empty'
 import {
@@ -40,13 +41,6 @@ const LEAVE_TYPE_COLORS: Record<string, string> = {
   family: 'bg-teal-50 text-teal-700',
 }
 
-interface LeaveWithEmployee extends Leave {
-  employee?: {
-    employee_number: string
-    job_title: string
-    user?: { full_name: string; email: string }
-  }
-}
 
 function RejectModal({
   open,
@@ -230,7 +224,7 @@ function LeaveRow({
   isActing: boolean
 }) {
   const typeColor = LEAVE_TYPE_COLORS[leave.leave_type] ?? 'bg-surface text-text-muted'
-  const name = leave.employee?.user?.full_name ?? 'Unknown'
+  const name = leave.employee_name ?? leave.employee?.user?.full_name ?? 'Unknown'
   const title = leave.employee?.job_title ?? ''
 
   return (
