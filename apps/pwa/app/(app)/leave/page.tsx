@@ -41,7 +41,7 @@ const STATUS_COLOR: Record<string, { bg: string; text: string }> = {
   cancelled: { bg: 'rgba(226,232,240,0.8)', text: '#6B7280' },
 }
 
-const BALANCE_COLORS = ['#F47920', '#22C55E', '#1A2E5A', '#EAB308']
+const BALANCE_COLORS = ['#80151B', '#22C55E', '#C9A84C', '#EAB308']
 
 export default function LeavePage() {
   const lang = useStore((s) => s.language)
@@ -120,7 +120,7 @@ export default function LeavePage() {
           const entitled = (b as any).entitled_days ?? 20
           const remaining = (b as any).remaining_days ?? 0
           const pct = entitled > 0 ? Math.round((remaining / entitled) * 100) : 0
-          const color = BALANCE_COLORS[i] ?? '#1A2E5A'
+          const color = BALANCE_COLORS[i] ?? '#80151B'
           return (
             <motion.div
               key={b.leave_type}
@@ -156,7 +156,7 @@ export default function LeavePage() {
         onClick={() => setModalOpen(true)}
         whileTap={{ scale: 0.97 }}
         className="w-full h-14 text-white font-bold text-base rounded-2xl flex items-center justify-center gap-2 focus:outline-none"
-        style={{ background: 'linear-gradient(135deg, #F47920, #E8650A)', boxShadow: '0 4px 16px rgba(244,121,32,0.35)' }}
+        style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)', boxShadow: '0 4px 16px rgba(128,21,27,0.35)' }}
       >
         + {t(lang, 'actions.request_leave')}
       </motion.button>
@@ -268,7 +268,7 @@ export default function LeavePage() {
                 </div>
 
                 {days > 0 && (
-                  <p className="text-sm font-semibold" style={{ color: '#F47920' }}>
+                  <p className="text-sm font-semibold" style={{ color: '#80151B' }}>
                     {days} {days !== 1 ? t(lang, 'leave.working_days') : t(lang, 'leave.working_day')}
                   </p>
                 )}
@@ -299,7 +299,7 @@ export default function LeavePage() {
                   disabled={requestLeave.isPending}
                   whileTap={{ scale: 0.97 }}
                   className="w-full h-14 text-white font-bold rounded-2xl disabled:opacity-60"
-                  style={{ background: 'linear-gradient(135deg, #F47920, #E8650A)', boxShadow: '0 4px 16px rgba(244,121,32,0.3)' }}
+                  style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)', boxShadow: '0 4px 16px rgba(128,21,27,0.30)' }}
                 >
                   {requestLeave.isPending ? t(lang, 'actions.submitting') : t(lang, 'actions.submit')}
                 </motion.button>

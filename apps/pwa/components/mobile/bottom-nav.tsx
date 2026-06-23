@@ -33,12 +33,12 @@ export function BottomNav() {
           const isActive = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link key={href} href={href} className="flex-1 flex flex-col items-center justify-center gap-0.5 relative py-2 group">
-              {/* Spring sliding indicator pill */}
+              {/* Gold indicator pill for active tab */}
               {isActive && (
                 <motion.div
                   layoutId="bottom-nav-pill"
                   className="absolute top-1 left-1/2 -translate-x-1/2 h-[3px] w-8 rounded-full"
-                  style={{ background: 'linear-gradient(90deg, #F47920, #F9A05C)' }}
+                  style={{ background: 'linear-gradient(90deg, #C9A84C, #DEC571)' }}
                   transition={shouldReduce ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 30 }}
                 />
               )}
@@ -46,10 +46,10 @@ export function BottomNav() {
                 animate={{ scale: isActive ? 1.15 : 1 }}
                 transition={shouldReduce ? { duration: 0 } : { type: 'spring', stiffness: 400, damping: 17 }}
               >
-                <Icon className="w-5 h-5" style={{ color: isActive ? '#F47920' : '#6B7280' }} />
+                <Icon className="w-5 h-5" style={{ color: isActive ? '#80151B' : '#6B7280' }} />
               </motion.div>
               <span className="text-[10px] font-semibold"
-                    style={{ color: isActive ? '#F47920' : '#6B7280' }}>
+                    style={{ color: isActive ? '#80151B' : '#6B7280' }}>
                 {t(lang, key)}
               </span>
             </Link>

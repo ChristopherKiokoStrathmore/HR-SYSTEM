@@ -70,7 +70,7 @@ function CompanyTab({ companyId }: { companyId: string | null }) {
     country: company.country,
     city: company.city ?? '',
     contact_email: company.contact_email,
-    primary_color: company.primary_color ?? '#1A2E5A',
+    primary_color: company.primary_color ?? '#80151B',
     is_active: company.is_active,
   } : null)
 

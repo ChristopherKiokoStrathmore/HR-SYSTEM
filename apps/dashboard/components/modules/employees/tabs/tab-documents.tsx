@@ -49,7 +49,7 @@ export function TabDocuments({ employeeId, tenantId }: { employeeId: string; ten
             <circle cx="40" cy="40" r="34" fill="none" stroke="#E2E8F0" strokeWidth="8" />
             <circle
               cx="40" cy="40" r="34" fill="none"
-              stroke={pct === 100 ? '#22C55E' : pct > 60 ? '#F47920' : '#EF4444'}
+              stroke={pct === 100 ? '#22C55E' : pct > 60 ? '#C9A84C' : '#EF4444'}
               strokeWidth="8"
               strokeDasharray={`${(pct / 100) * 213.6} 213.6`}
               strokeLinecap="round"

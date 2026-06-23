@@ -11,7 +11,7 @@ import { toast } from '@/lib/toast'
 import { useStore } from '@/lib/store'
 import {
   MapPin, Plus, Loader2, CircleDot, Trash2, RotateCcw,
-  ChevronDown, Users, Building2, CheckSquare, Square,
+  ChevronDown, Users, Building2, CheckSquare, Square, CheckCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -599,9 +599,96 @@ const COLOR_STYLES: Record<string, string> = {
   grey: 'text-gray-400',
 }
 
+// ─── Violations panel ─────────────────────────────────────────────────────────
+
+function ViolationsPanel({ companyId }: { companyId: string | null }) {
+  const qc = useQueryClient()
+  const { data, isLoading } = useQuery({
+    queryKey: ['geofence-violations', companyId],
+    queryFn: async () => {
+      const res = await fetch(`/api/hr/geofence-violations?company_id=${companyId}`)
+      if (!res.ok) return []
+      return res.json() as Promise<Violation[]>
+    },
+    enabled: !!companyId,
+  })
+
+  const violations: Violation[] = Array.isArray(data) ? data : []
+  const open = violations.filter(v => v.status === 'open').length
+
+  const resolve = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/hr/geofence-violations/${id}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'resolved', ended_at: new Date().toISOString() }),
+      })
+      if (!res.ok) throw new Error('Failed to resolve')
+      return res.json()
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['geofence-violations'] }),
+  })
+
+  const STATUS_STYLES: Record<string, string> = {
+    open: 'bg-red-50 text-red-700 border-red-200',
+    reason_submitted: 'bg-amber-50 text-amber-700 border-amber-200',
+    resolved: 'bg-green-50 text-green-700 border-green-200',
+  }
+
+  if (isLoading) return <SkeletonTable rows={4} />
+
+  if (violations.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-16">
+        <CheckCircle className="w-10 h-10 text-green-300" />
+        <p className="text-text-muted text-sm">No geofence violations recorded</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-text-muted px-1">{open} open violation{open !== 1 ? 's' : ''}</p>
+      <div className="card p-0 overflow-hidden">
+        <div className="divide-y divide-border">
+          {violations.map(v => (
+            <div key={v.id} className="flex items-center gap-4 px-4 py-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-text-primary">
+                    {String(v.employee_id).slice(0, 8)}…
+                  </p>
+                  <span className={cn('text-xs px-2 py-0.5 rounded-full border font-medium', STATUS_STYLES[v.status] ?? '')}>
+                    {v.status.replace('_', ' ')}
+                  </span>
+                </div>
+                <p className="text-xs text-text-muted mt-0.5">
+                  Started {new Date(v.started_at).toLocaleString()}
+                  {v.distance_m != null && <> · {Math.round(v.distance_m)}m from zone</>}
+                  {v.reason && <> · <span className="italic">"{v.reason}"</span></>}
+                </p>
+              </div>
+              {v.status !== 'resolved' && (
+                <button
+                  onClick={() => resolve.mutate(v.id)}
+                  disabled={resolve.isPending}
+                  className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition-colors disabled:opacity-50 flex-shrink-0"
+                >
+                  <CheckCircle className="w-3.5 h-3.5" /> Resolve
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function GeofenceClient() {
   const activeCompanyId = useStore(s => s.activeCompanyId)
   const [modal, setModal] = useState(false)
+  const [activeTab, setActiveTab] = useState<'live' | 'violations'>('live')
 
   const { data, isLoading } = useQuery({
     queryKey: ['geofence-dashboard', activeCompanyId],
@@ -658,42 +745,71 @@ export function GeofenceClient() {
         ))}
       </div>
 
-      <div className="card p-0 overflow-hidden">
-        <div className="px-4 py-3 border-b border-border">
-          <h3 className="text-sm font-semibold text-text-primary">Employee Zone Status (last 12h)</h3>
-        </div>
-        {isLoading ? (
-          <SkeletonTable rows={6} />
-        ) : employees.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16">
-            <MapPin className="w-12 h-12 text-border" />
-            <p className="text-text-muted text-sm">No location signals yet — create a zone and assign employees.</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {employees.map(e => (
-              <div key={e.employee_id} className="flex items-center gap-4 px-4 py-3">
-                <CircleDot className={cn('w-4 h-4 flex-shrink-0', COLOR_STYLES[e.color])} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-text-primary truncate">{e.employee_id.slice(0, 8)}…</p>
-                  <p className="text-xs text-text-muted">
-                    {e.event_type.replace('_', ' ')} · {new Date(e.last_seen).toLocaleTimeString()}
-                    {e.color === 'red' && (e.reason ? ` · reason: ${e.reason}` : ' · no reason submitted')}
-                  </p>
-                </div>
-                <span className={cn(
-                  'text-xs px-2 py-0.5 rounded-full border',
-                  e.color === 'green' ? 'bg-green-50 text-green-700 border-green-200'
-                    : e.color === 'red' ? 'bg-red-50 text-red-700 border-red-200'
-                    : 'bg-gray-50 text-gray-500 border-gray-200'
-                )}>
-                  {e.color === 'green' ? 'in zone' : e.color === 'red' ? 'out of zone' : 'no signal'}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* ── Tabs ── */}
+      <div className="flex gap-1 p-1 bg-surface-alt rounded-xl w-fit border border-border">
+        {(['live', 'violations'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              'text-xs font-medium px-4 py-1.5 rounded-lg transition-colors capitalize',
+              activeTab === tab
+                ? 'bg-surface text-text-primary shadow-sm'
+                : 'text-text-muted hover:text-text-primary'
+            )}
+          >
+            {tab === 'live' ? 'Live Status' : 'Violations'}
+            {tab === 'violations' && violations.length > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 bg-red-100 text-red-700 rounded-full text-[10px] font-bold">
+                {violations.length}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
+
+      {activeTab === 'live' && (
+        <div className="card p-0 overflow-hidden">
+          <div className="px-4 py-3 border-b border-border">
+            <h3 className="text-sm font-semibold text-text-primary">Employee Zone Status (last 12h)</h3>
+          </div>
+          {isLoading ? (
+            <SkeletonTable rows={6} />
+          ) : employees.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-16">
+              <MapPin className="w-12 h-12 text-border" />
+              <p className="text-text-muted text-sm">No location signals yet — create a zone and assign employees.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {employees.map(e => (
+                <div key={e.employee_id} className="flex items-center gap-4 px-4 py-3">
+                  <CircleDot className={cn('w-4 h-4 flex-shrink-0', COLOR_STYLES[e.color])} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-text-primary truncate">{e.employee_id.slice(0, 8)}…</p>
+                    <p className="text-xs text-text-muted">
+                      {e.event_type.replace('_', ' ')} · {new Date(e.last_seen).toLocaleTimeString()}
+                      {e.color === 'red' && (e.reason ? ` · reason: ${e.reason}` : ' · no reason submitted')}
+                    </p>
+                  </div>
+                  <span className={cn(
+                    'text-xs px-2 py-0.5 rounded-full border',
+                    e.color === 'green' ? 'bg-green-50 text-green-700 border-green-200'
+                      : e.color === 'red' ? 'bg-red-50 text-red-700 border-red-200'
+                      : 'bg-gray-50 text-gray-500 border-gray-200'
+                  )}>
+                    {e.color === 'green' ? 'in zone' : e.color === 'red' ? 'out of zone' : 'no signal'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'violations' && (
+        <ViolationsPanel companyId={activeCompanyId} />
+      )}
 
       <AddZoneModal
         open={modal}

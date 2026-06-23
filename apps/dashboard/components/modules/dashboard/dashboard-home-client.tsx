@@ -95,8 +95,8 @@ export function DashboardHomeClient() {
       value: data?.activeEmployees ?? 0,
       rawValue: data?.activeEmployees ?? '—',
       icon: Users,
-      gradient: 'linear-gradient(135deg, #1A2E5A, #2A4A8A)',
-      glow: '0 4px 12px rgba(26,46,90,0.3)',
+      gradient: 'linear-gradient(135deg, #80151B, #5A0C11)',
+      glow: '0 4px 12px rgba(128,21,27,0.30)',
     },
     {
       label: 'On Leave Today',
@@ -119,8 +119,8 @@ export function DashboardHomeClient() {
       value: data?.pendingLeave?.length ?? 0,
       rawValue: data?.pendingLeave?.length ?? '—',
       icon: Calendar,
-      gradient: 'linear-gradient(135deg, #F47920, #E8650A)',
-      glow: '0 4px 12px rgba(244,121,32,0.3)',
+      gradient: 'linear-gradient(135deg, #C9A84C, #A8892A)',
+      glow: '0 4px 12px rgba(201,168,76,0.30)',
     },
   ]
 
@@ -136,7 +136,7 @@ export function DashboardHomeClient() {
         <h1 className="text-3xl font-black text-text-primary tracking-tight">Workforce Overview</h1>
         <div
           className="w-10 h-0.5 mt-2"
-          style={{ background: 'linear-gradient(90deg, #F47920, #F9A05C)' }}
+          style={{ background: 'linear-gradient(90deg, #80151B, #C9A84C)' }}
         />
       </motion.div>
 

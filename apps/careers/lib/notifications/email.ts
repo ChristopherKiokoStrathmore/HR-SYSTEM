@@ -20,7 +20,7 @@ function buildHtml(alert: JobAlert, job: JobPosting): string {
 <style>
   body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;color:#111827}
   .wrap{max-width:560px;margin:2rem auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-  .header{background:#1A2E5A;padding:1.5rem 2rem;display:flex;align-items:center;gap:.75rem}
+  .header{background:#80151B;padding:1.5rem 2rem;display:flex;align-items:center;gap:.75rem}
   .header img{width:36px;height:36px;border-radius:6px}
   .header-text{color:#fff}
   .header-text p{margin:0;font-size:.75rem;opacity:.7;letter-spacing:.05em;text-transform:uppercase}
@@ -28,15 +28,15 @@ function buildHtml(alert: JobAlert, job: JobPosting): string {
   .body{padding:1.75rem 2rem}
   .greeting{color:#374151;margin-bottom:1rem}
   .card{border:1px solid #e5e7eb;border-radius:8px;padding:1.25rem;margin-bottom:1.25rem}
-  .job-title{font-size:1.1rem;font-weight:700;color:#1A2E5A;margin:0 0 .5rem}
+  .job-title{font-size:1.1rem;font-weight:700;color:#80151B;margin:0 0 .5rem}
   .meta{font-size:.8rem;color:#6b7280;display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem}
   .badge{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:.2rem .6rem;border-radius:999px;font-size:.75rem;font-weight:600}
   .badge.casual{background:#fffbeb;color:#92400e;border-color:#fde68a}
   .badge.exp{background:#f0fdf4;color:#166534;border-color:#bbf7d0}
   .snippet{font-size:.85rem;color:#4b5563;line-height:1.6;margin-bottom:1rem}
-  .btn{display:inline-block;background:#F47920;color:#fff;text-decoration:none;padding:.65rem 1.5rem;border-radius:8px;font-weight:700;font-size:.9rem}
+  .btn{display:inline-block;background:#C9A84C;color:#fff;text-decoration:none;padding:.65rem 1.5rem;border-radius:8px;font-weight:700;font-size:.9rem}
   .footer{border-top:1px solid #f3f4f6;padding:1rem 2rem;font-size:.75rem;color:#9ca3af;text-align:center}
-  .footer a{color:#F47920;text-decoration:none}
+  .footer a{color:#C9A84C;text-decoration:none}
 </style>
 </head>
 <body>
@@ -62,7 +62,7 @@ function buildHtml(alert: JobAlert, job: JobPosting): string {
       <p class="snippet">${job.description.replace(/\n/g, ' ').slice(0, 220)}…</p>
       <a href="${jobUrl}" class="btn">View &amp; Apply →</a>
     </div>
-    <p style="font-size:.8rem;color:#6b7280">This alert was triggered because it matches your saved preferences. You can <a href="${unsubscribeUrl}" style="color:#F47920">unsubscribe</a> at any time.</p>
+    <p style="font-size:.8rem;color:#6b7280">This alert was triggered because it matches your saved preferences. You can <a href="${unsubscribeUrl}" style="color:#C9A84C">unsubscribe</a> at any time.</p>
   </div>
   <div class="footer">
     © ${new Date().getFullYear()} Sheer Logic Management Consultants Ltd &nbsp;·&nbsp;

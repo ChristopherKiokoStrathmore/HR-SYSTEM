@@ -8,7 +8,7 @@ import {
 } from 'recharts'
 import { Users, DollarSign, Calendar, TrendingUp, FileText, Printer } from 'lucide-react'
 
-const COLORS = ['#1A2E5A', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4']
+const COLORS = ['#80151B', '#3B82F6', '#10B981', '#C9A84C', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4']
 
 function StatCard({ label, value, icon: Icon, sub }: { label: string; value: string | number; icon: typeof Users; sub?: string }) {
   return (
@@ -127,7 +127,7 @@ export function ReportsClient() {
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="value" name="Employees" fill="#1A2E5A" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" name="Employees" fill="#80151B" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -183,7 +183,7 @@ export function ReportsClient() {
               <YAxis tick={{ fontSize: 11 }} tickFormatter={formatKES} />
               <Tooltip formatter={(v: number) => [`KES ${v.toLocaleString()}`, '']} />
               <Legend />
-              <Bar dataKey="gross" name="Gross" fill="#1A2E5A" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="gross" name="Gross" fill="#80151B" radius={[2, 2, 0, 0]} />
               <Bar dataKey="deductions" name="Deductions" fill="#EF4444" radius={[2, 2, 0, 0]} />
               <Bar dataKey="net" name="Net" fill="#10B981" radius={[2, 2, 0, 0]} />
             </BarChart>

@@ -27,7 +27,7 @@ function getInitials(name: string) {
 function markerStyle(status: string, is_late?: boolean): { bg: string; ring: string } {
   if (is_late)              return { bg: '#D97706', ring: '#FEF3C7' }  // amber  – late
   if (status === 'half_day') return { bg: '#7C3AED', ring: '#EDE9FE' } // purple – half-day
-  return { bg: '#1A2E5A', ring: '#DBEAFE' }                            // navy   – present
+  return { bg: '#80151B', ring: '#FFE8E9' }                            // crimson – present
 }
 
 function buildPopupHtml(loc: CheckInLocation, address?: string | null) {

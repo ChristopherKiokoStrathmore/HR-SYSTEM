@@ -101,11 +101,11 @@ function RecallSection() {
       {active.map(l => (
         <div key={l.id} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-[#1A2E5A] capitalize">{l.leave_type} leave</p>
+            <p className="text-sm font-medium text-text-primary capitalize">{l.leave_type} leave</p>
             <p className="text-xs text-gray-500">{l.start_date} → {l.end_date}</p>
           </div>
           <button onClick={() => { setRecalling(l); setResumeDate('') }}
-                  className="text-sm font-medium text-[#F47920] border border-[#F47920]/30 rounded-full px-3 py-1.5">
+                  className="text-sm font-medium text-primary border border-primary/30 rounded-full px-3 py-1.5">
             Recall
           </button>
         </div>
@@ -116,7 +116,7 @@ function RecallSection() {
           <Drawer.Overlay className="fixed inset-0 bg-black/40 z-40" />
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl p-5 pb-8">
             <div className="flex items-center justify-between mb-4">
-              <Drawer.Title className="text-lg font-bold text-[#1A2E5A]">Recall Leave</Drawer.Title>
+              <Drawer.Title className="text-lg font-bold text-text-primary">Recall Leave</Drawer.Title>
               <button onClick={() => setRecalling(null)}><X className="w-5 h-5 text-gray-400" /></button>
             </div>
             <div className="space-y-4">
@@ -133,7 +133,7 @@ function RecallSection() {
                           placeholder="Needed back for the audit…" />
               </div>
               <button onClick={() => recall.mutate()} disabled={recall.isPending}
-                      className="w-full bg-[#F47920] text-white font-semibold rounded-xl py-3 disabled:opacity-60">
+                      className="w-full bg-primary text-white font-semibold rounded-xl py-3 disabled:opacity-60">
                 {recall.isPending ? 'Sending…' : 'Request recall — manager approves'}
               </button>
             </div>
@@ -151,7 +151,7 @@ function Section({ title, icon: Icon, children }: {
 }) {
   return (
     <section className="space-y-2">
-      <h2 className="flex items-center gap-2 text-sm font-semibold text-[#1A2E5A]">
+      <h2 className="flex items-center gap-2 text-sm font-semibold text-text-primary">
         <Icon className="w-4 h-4" /> {title}
       </h2>
       {children}
@@ -242,9 +242,9 @@ export default function ApprovalsPage() {
   return (
     <div className="p-4 space-y-6 pb-24">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[#1A2E5A]">Requests &amp; Approvals</h1>
+        <h1 className="text-xl font-bold text-text-primary">Requests &amp; Approvals</h1>
         <button onClick={() => setDrawerOpen(true)}
-                className="flex items-center gap-1.5 text-sm font-medium text-white bg-[#F47920] rounded-full px-4 py-2">
+                className="flex items-center gap-1.5 text-sm font-medium text-white bg-primary rounded-full px-4 py-2">
           <Plus className="w-4 h-4" /> Overtime
         </button>
       </div>
@@ -253,7 +253,7 @@ export default function ApprovalsPage() {
         <Section title="Awaiting your approval (overtime)" icon={Clock4}>
           {(pendingQueue ?? []).map(ot => (
             <div key={ot.id} className="bg-white rounded-2xl p-4 shadow-sm space-y-2">
-              <p className="text-sm font-medium text-[#1A2E5A]">{Number(ot.hours)}h on {ot.date}</p>
+              <p className="text-sm font-medium text-text-primary">{Number(ot.hours)}h on {ot.date}</p>
               {ot.reason && <p className="text-xs text-gray-500">{ot.reason}</p>}
               <div className="flex gap-2">
                 <button onClick={() => decide.mutate({ kind: 'overtime', id: ot.id, verb: 'approve' })}
@@ -276,7 +276,7 @@ export default function ApprovalsPage() {
         <Section title="Awaiting your approval (leave recalls)" icon={Undo2}>
           {(pendingRecalls ?? []).map(r => (
             <div key={r.id} className="bg-white rounded-2xl p-4 shadow-sm space-y-2">
-              <p className="text-sm font-medium text-[#1A2E5A]">Resume {r.resume_date}</p>
+              <p className="text-sm font-medium text-text-primary">Resume {r.resume_date}</p>
               {r.reason && <p className="text-xs text-gray-500">{r.reason}</p>}
               <div className="flex gap-2">
                 <button onClick={() => decide.mutate({ kind: 'leave-recalls', id: r.id, verb: 'approve' })}
@@ -302,7 +302,7 @@ export default function ApprovalsPage() {
           (myOvertime ?? []).map(ot => (
             <div key={ot.id} className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-[#1A2E5A]">{Number(ot.hours)}h on {ot.date}</p>
+                <p className="text-sm font-medium text-text-primary">{Number(ot.hours)}h on {ot.date}</p>
                 {ot.reason && <p className="text-xs text-gray-500">{ot.reason}</p>}
               </div>
               {statusChip(ot.status)}
@@ -318,7 +318,7 @@ export default function ApprovalsPage() {
           <Drawer.Overlay className="fixed inset-0 bg-black/40 z-40" />
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl p-5 pb-8">
             <div className="flex items-center justify-between mb-4">
-              <Drawer.Title className="text-lg font-bold text-[#1A2E5A]">Request Overtime</Drawer.Title>
+              <Drawer.Title className="text-lg font-bold text-text-primary">Request Overtime</Drawer.Title>
               <button onClick={() => setDrawerOpen(false)}><X className="w-5 h-5 text-gray-400" /></button>
             </div>
             <form onSubmit={handleSubmit(v => requestOvertime.mutateAsync(v))} className="space-y-4">
@@ -339,7 +339,7 @@ export default function ApprovalsPage() {
                 {errors.reason && <p className="text-xs text-red-500 mt-1">{errors.reason.message}</p>}
               </div>
               <button type="submit" disabled={isSubmitting}
-                      className="w-full bg-[#F47920] text-white font-semibold rounded-xl py-3 disabled:opacity-60">
+                      className="w-full bg-primary text-white font-semibold rounded-xl py-3 disabled:opacity-60">
                 {isSubmitting ? 'Sending…' : 'Submit — manager will be notified'}
               </button>
             </form>

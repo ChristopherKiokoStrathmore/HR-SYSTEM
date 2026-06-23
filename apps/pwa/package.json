@@ -28,6 +28,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.20",
+    "face-api.js": "^0.22.2",
     "framer-motion": "^12.38.0",
     "jspdf": "^2.5.2",
     "lottie-react": "^2.4.1",

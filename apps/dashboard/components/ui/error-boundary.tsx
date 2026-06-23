@@ -31,7 +31,7 @@ function ErrorFallback({
       <button
         onClick={resetErrorBoundary}
         className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-        style={{ background: 'linear-gradient(135deg, #F47920, #E8650A)' }}
+        style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)' }}
       >
         <RefreshCw className="w-4 h-4" />
         Try again

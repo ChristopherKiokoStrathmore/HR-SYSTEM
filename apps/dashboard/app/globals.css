@@ -6,35 +6,45 @@
 
 @layer base {
   :root {
-    --background: #F5F7FA;
-    --surface: #FFFFFF;
-    --surface-alt: #F0F4F8;
-    --border: #E2E8F0;
-    --text-primary: #1A2E5A;
-    --text-body: #374151;
-    --text-muted: #6B7280;
-    --primary: #1A2E5A;
-    --primary-light: #2A4A8A;
-    --accent: #F47920;
-    --accent-light: #F9A05C;
-    --success: #22C55E;
-    --warning: #EAB308;
-    --danger: #EF4444;
+    /* ── Surfaces ─────────────────────────────────────── */
+    --background:   #F8F6F6;   /* warm off-white */
+    --surface:      #FFFFFF;
+    --surface-alt:  #F2EEEE;   /* warm surface alt */
+
+    /* ── Borders ─────────────────────────────────────── */
+    --border: #E8E0E0;
+
+    /* ── Text ────────────────────────────────────────── */
+    --text-primary: #111111;   /* near-black */
+    --text-body:    #374151;
+    --text-muted:   #6B7280;
+
+    /* ── Brand — Crimson ─────────────────────────────── */
+    --primary:       #80151B;
+    --primary-light: #9B1C23;
+    --primary-dark:  #5A0C11;
+
+    /* ── Accent — Gold ───────────────────────────────── */
+    --accent:       #C9A84C;
+    --accent-light: #DEC571;
+
+    /* ── Semantic ────────────────────────────────────── */
+    --success: #16A34A;
+    --warning: #CA8A04;
+    --danger:  #DC2626;
   }
 
   .dark {
-    --background: #0D1B2A;
-    --surface: #1A2E5A;
-    --surface-alt: #243B55;
-    --border: #2E4A6B;
-    --text-primary: #F1F5F9;
-    --text-body: #CBD5E1;
-    --text-muted: #94A3B8;
+    --background:   #0A0202;
+    --surface:      #180506;
+    --surface-alt:  #240A0D;
+    --border:       #3A1215;
+    --text-primary: #F7EEEE;
+    --text-body:    #D9CCCC;
+    --text-muted:   #9E8888;
   }
 
-  * {
-    box-sizing: border-box;
-  }
+  * { box-sizing: border-box; }
 
   body {
     @apply bg-background text-text-body font-sans antialiased;
@@ -48,19 +58,19 @@
 @layer components {
   .btn-primary {
     @apply text-white font-semibold px-4 py-2 rounded-xl
-           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent/50
+           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40
            disabled:opacity-50 disabled:cursor-not-allowed active:scale-95;
-    background: linear-gradient(135deg, #F47920 0%, #E8650A 100%);
-    box-shadow: 0 4px 12px rgba(244, 121, 32, 0.3);
+    background: linear-gradient(135deg, #80151B 0%, #5A0C11 100%);
+    box-shadow: 0 4px 12px rgba(128, 21, 27, 0.30);
   }
 
   .btn-primary:hover {
-    box-shadow: 0 6px 16px rgba(244, 121, 32, 0.4);
+    box-shadow: 0 6px 16px rgba(128, 21, 27, 0.42);
   }
 
   .btn-secondary {
     @apply bg-primary hover:bg-primary-light text-white font-medium px-4 py-2 rounded-xl
-           transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50
+           transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
@@ -85,8 +95,8 @@
 
   .input {
     @apply w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm text-text-body
-           placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50
-           focus:border-accent transition-colors duration-200
+           placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30
+           focus:border-primary transition-colors duration-200
            disabled:cursor-not-allowed disabled:opacity-50;
   }
 
@@ -136,25 +146,17 @@
   }
 
   /* Scrollbar styling */
-  ::-webkit-scrollbar {
-    @apply w-1.5 h-1.5;
-  }
-  ::-webkit-scrollbar-track {
-    @apply bg-surface-alt;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-border rounded-full;
-  }
-  ::-webkit-scrollbar-thumb:hover {
-    @apply bg-text-muted/30;
-  }
+  ::-webkit-scrollbar { @apply w-1.5 h-1.5; }
+  ::-webkit-scrollbar-track { @apply bg-surface-alt; }
+  ::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-text-muted/30; }
 }
 
-/* ─── Print styles (for attendance + report PDF export) ─────────────────── */
+/* ─── Print styles ───────────────────────────────────────────────────────── */
 @media print {
   body {
     background: white !important;
-    color: #1A2E5A !important;
+    color: #111111 !important;
   }
 
   aside,
@@ -173,7 +175,7 @@
 
   .card {
     box-shadow: none !important;
-    border: 1px solid #E2E8F0 !important;
+    border: 1px solid #E8E0E0 !important;
     break-inside: avoid;
   }
 
@@ -188,7 +190,7 @@
   }
 
   h1, h2, h3 {
-    color: #1A2E5A !important;
+    color: #80151B !important;
   }
 
   /* Sheer Logic print header */
@@ -198,7 +200,7 @@
     font-size: 11px;
     color: #6B7280;
     padding-bottom: 12px;
-    border-bottom: 1px solid #E2E8F0;
+    border-bottom: 1px solid #E8E0E0;
     margin-bottom: 20px;
     font-family: 'Inter', sans-serif;
   }

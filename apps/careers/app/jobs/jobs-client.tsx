@@ -237,41 +237,110 @@ export function JobsClient({ jobs }: Props) {
   return (
     <>
       {/* ── Hero ── */}
-      <section className="text-center space-y-5 py-12 px-4">
-        <span className="inline-flex items-center gap-2 bg-accent/10 text-accent text-xs font-semibold px-4 py-1.5 rounded-full">
-          <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-          Job Centre
-        </span>
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-text-primary tracking-tight leading-tight">
-          Your Next Career<br />Opportunity Starts Here
-        </h1>
-        <p className="text-text-muted text-lg max-w-2xl mx-auto">
-          Sheer Logic connects talented professionals with leading organisations
-          across Kenya, Uganda and Rwanda. Browse our live vacancies below.
-        </p>
-        <div className="flex items-center justify-center gap-6 pt-2 text-sm">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-accent">{jobs.length}</p>
-            <p className="text-text-muted text-xs">Live vacancies</p>
+      <section
+        className="relative text-center overflow-hidden"
+        style={{
+          background: 'linear-gradient(180deg, #060101 0%, #3D0A0D 62%, var(--background) 100%)',
+          paddingTop: 80,
+          paddingBottom: 0,
+        }}
+      >
+        {/* Ambient radial glow centred behind the logo */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 720,
+            height: 520,
+            background:
+              'radial-gradient(ellipse at 50% 32%, rgba(201,168,76,0.16) 0%, rgba(128,21,27,0.10) 42%, transparent 68%)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* Logo mark */}
+        <div className="flex justify-center mb-10 relative z-10">
+          <div
+            style={{
+              width: 156,
+              height: 156,
+              borderRadius: 30,
+              overflow: 'hidden',
+              boxShadow: [
+                '0 0 0 1px rgba(201,168,76,0.28)',
+                '0 0 0 10px rgba(201,168,76,0.06)',
+                '0 0 50px rgba(201,168,76,0.28)',
+                '0 0 100px rgba(128,21,27,0.55)',
+              ].join(', '),
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://sheerlogicltd.com/wp-content/uploads/2024/08/fav.png"
+              alt="Sheer Logic"
+              width={156}
+              height={156}
+              style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           </div>
-          {departments.length > 0 && (
-            <>
-              <div className="w-px h-8 bg-border" />
-              <div className="text-center">
-                <p className="text-2xl font-bold text-accent">{departments.length}</p>
-                <p className="text-text-muted text-xs">Departments</p>
-              </div>
-            </>
-          )}
-          {types.length > 0 && (
-            <>
-              <div className="w-px h-8 bg-border" />
-              <div className="text-center">
-                <p className="text-2xl font-bold text-accent">{types.length}</p>
-                <p className="text-text-muted text-xs">Job type{types.length !== 1 ? 's' : ''}</p>
-              </div>
-            </>
-          )}
+        </div>
+
+        {/* Text */}
+        <div className="relative z-10 space-y-5 px-4 pb-24">
+          <span
+            className="inline-flex items-center gap-2 text-xs font-semibold px-4 py-1.5 rounded-full"
+            style={{
+              background: 'rgba(201,168,76,0.12)',
+              color: '#C9A84C',
+              border: '1px solid rgba(201,168,76,0.24)',
+            }}
+          >
+            <span
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ background: '#C9A84C' }}
+            />
+            Job Centre
+          </span>
+
+          <h1
+            className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight"
+            style={{ color: '#F7EEEE' }}
+          >
+            Your Next Career<br />Opportunity Starts Here
+          </h1>
+
+          <p className="text-lg max-w-2xl mx-auto" style={{ color: '#9E8888' }}>
+            Sheer Logic connects talented professionals with leading organisations
+            across Kenya, Uganda and Rwanda. Browse our live vacancies below.
+          </p>
+
+          <div className="flex items-center justify-center gap-6 pt-2 text-sm">
+            <div className="text-center">
+              <p className="text-2xl font-bold" style={{ color: '#C9A84C' }}>{jobs.length}</p>
+              <p className="text-xs" style={{ color: '#9E8888' }}>Live vacancies</p>
+            </div>
+            {departments.length > 0 && (
+              <>
+                <div className="w-px h-8" style={{ background: 'rgba(255,255,255,0.08)' }} />
+                <div className="text-center">
+                  <p className="text-2xl font-bold" style={{ color: '#C9A84C' }}>{departments.length}</p>
+                  <p className="text-xs" style={{ color: '#9E8888' }}>Departments</p>
+                </div>
+              </>
+            )}
+            {types.length > 0 && (
+              <>
+                <div className="w-px h-8" style={{ background: 'rgba(255,255,255,0.08)' }} />
+                <div className="text-center">
+                  <p className="text-2xl font-bold" style={{ color: '#C9A84C' }}>{types.length}</p>
+                  <p className="text-xs" style={{ color: '#9E8888' }}>Job type{types.length !== 1 ? 's' : ''}</p>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </section>
 

@@ -32,15 +32,15 @@ export const metadata: Metadata = {
   },
   other: {
     'mobile-web-app-capable': 'yes',
-    'msapplication-TileColor': '#1A2E5A',
+    'msapplication-TileColor': '#80151B',
     'msapplication-tap-highlight': 'no',
   },
 }
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#1A2E5A' },
-    { media: '(prefers-color-scheme: dark)', color: '#1A2E5A' },
+    { media: '(prefers-color-scheme: light)', color: '#80151B' },
+    { media: '(prefers-color-scheme: dark)', color: '#80151B' },
   ],
   width: 'device-width',
   initialScale: 1,

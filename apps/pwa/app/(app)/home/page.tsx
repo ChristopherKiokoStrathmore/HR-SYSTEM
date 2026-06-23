@@ -71,8 +71,8 @@ export default function HomePage() {
       value: annualBalance === '—' ? '—' : `${annualBalance}`,
       unit: t(lang, 'leave.working_days'),
       icon: Calendar,
-      gradient: 'linear-gradient(135deg, #F47920, #E8650A)',
-      glow: '0 4px 10px rgba(244,121,32,0.30)',
+      gradient: 'linear-gradient(135deg, #80151B, #5A0C11)',
+      glow: '0 4px 10px rgba(128,21,27,0.30)',
     },
     {
       label: t(lang, 'home.next_payday'),
@@ -87,8 +87,8 @@ export default function HomePage() {
       value: '—',
       unit: '',
       icon: TrendingUp,
-      gradient: 'linear-gradient(135deg, #1A2E5A, #2A4A8A)',
-      glow: '0 4px 10px rgba(26,46,90,0.25)',
+      gradient: 'linear-gradient(135deg, #C9A84C, #A8892A)',
+      glow: '0 4px 10px rgba(201,168,76,0.30)',
     },
     {
       label: t(lang, 'home.attendance_streak'),
@@ -105,8 +105,8 @@ export default function HomePage() {
       label: t(lang, 'actions.request_leave'),
       href: '/leave',
       icon: Calendar,
-      gradient: 'linear-gradient(135deg, #F47920, #E8650A)',
-      glow: '0 4px 12px rgba(244,121,32,0.35)',
+      gradient: 'linear-gradient(135deg, #80151B, #5A0C11)',
+      glow: '0 4px 12px rgba(128,21,27,0.35)',
     },
     {
       label: t(lang, 'actions.check_in'),
@@ -119,31 +119,32 @@ export default function HomePage() {
       label: t(lang, 'nav.payslip'),
       href: '/payslip',
       icon: Wallet,
-      gradient: 'linear-gradient(135deg, #1A2E5A, #2A4A8A)',
-      glow: '0 4px 12px rgba(26,46,90,0.25)',
+      gradient: 'linear-gradient(135deg, #C9A84C, #A8892A)',
+      glow: '0 4px 12px rgba(201,168,76,0.35)',
     },
     {
       label: t(lang, 'nav.profile'),
       href: '/profile',
       icon: TrendingUp,
-      gradient: 'linear-gradient(135deg, #EAB308, #CA9A07)',
-      glow: '0 4px 12px rgba(234,179,8,0.35)',
+      gradient: 'linear-gradient(135deg, #3D0407, #80151B)',
+      glow: '0 4px 12px rgba(128,21,27,0.25)',
     },
   ]
 
   return (
     <div className="px-4 pt-6 space-y-6 pb-4">
-      {/* Greeting card */}
+      {/* Greeting card — deep crimson brand hero */}
       <motion.div
         className="relative overflow-hidden rounded-3xl p-6 text-white"
-        style={{ background: 'linear-gradient(135deg, #1A2E5A 0%, #0D1B3E 100%)' }}
+        style={{ background: 'linear-gradient(135deg, #80151B 0%, #3D0407 100%)' }}
         initial={shouldReduce ? false : { opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: 'easeOut' }}
       >
+        {/* Gold shimmer orb */}
         <div
           className="absolute top-0 right-0 w-48 h-48 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(244,121,32,0.15) 0%, transparent 70%)', transform: 'translate(30%, -30%)' }}
+          style={{ background: 'radial-gradient(circle, rgba(201,168,76,0.18) 0%, transparent 70%)', transform: 'translate(30%, -30%)' }}
         />
         <div
           className="absolute bottom-0 left-0 w-32 h-32 rounded-full pointer-events-none"
