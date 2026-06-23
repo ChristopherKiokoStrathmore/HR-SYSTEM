@@ -44,12 +44,16 @@
 }
 
 @layer components {
+  /* Tailwind cannot apply opacity modifiers on CSS-variable colors inside
+     @apply — ring and bg opacity is set as raw CSS instead. */
+
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 text-white font-semibold px-5 py-2.5 rounded-xl
-           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40
+           transition-all duration-200 focus:outline-none focus:ring-2
            disabled:opacity-50 disabled:cursor-not-allowed active:scale-95;
     background: linear-gradient(135deg, #80151B 0%, #5A0C11 100%);
     box-shadow: 0 4px 12px rgba(128, 21, 27, 0.30);
+    --tw-ring-color: rgba(128, 21, 27, 0.4);
   }
 
   .btn-primary:hover {
@@ -63,12 +67,13 @@
 
   .input {
     @apply w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-text-body
-           placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30
+           placeholder:text-text-muted focus:outline-none focus:ring-2
            focus:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    --tw-ring-color: rgba(128, 21, 27, 0.3);
   }
 
   ::-webkit-scrollbar { @apply w-1.5 h-1.5; }
   ::-webkit-scrollbar-track { @apply bg-surface-alt; }
   ::-webkit-scrollbar-thumb { @apply bg-border rounded-full; }
-  ::-webkit-scrollbar-thumb:hover { @apply bg-text-muted/30; }
+  ::-webkit-scrollbar-thumb:hover { background-color: rgba(107, 114, 128, 0.3); }
 }
