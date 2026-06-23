@@ -240,9 +240,9 @@ export function JobsClient({ jobs }: Props) {
       <section
         className="relative text-center overflow-hidden"
         style={{
-          background: 'linear-gradient(180deg, #060101 0%, #3D0A0D 62%, var(--background) 100%)',
-          paddingTop: 80,
-          paddingBottom: 0,
+          background: 'linear-gradient(180deg, #060101 0%, #3D0A0D 100%)',
+          paddingTop: 44,
+          paddingBottom: 32,
         }}
       >
         {/* Ambient crimson glow centred behind the logo */}
@@ -253,8 +253,8 @@ export function JobsClient({ jobs }: Props) {
             top: 0,
             left: '50%',
             transform: 'translateX(-50%)',
-            width: 760,
-            height: 560,
+            width: 600,
+            height: 340,
             background:
               'radial-gradient(ellipse at 50% 30%, rgba(128,21,27,0.55) 0%, rgba(128,21,27,0.18) 40%, transparent 68%)',
             pointerEvents: 'none',
@@ -262,19 +262,18 @@ export function JobsClient({ jobs }: Props) {
         />
 
         {/* Logo mark */}
-        <div className="flex justify-center mb-10 relative z-10">
+        <div className="flex justify-center mb-5 relative z-10">
           <div
             style={{
-              width: 180,
-              height: 180,
-              borderRadius: 22,
+              width: 110,
+              height: 110,
+              borderRadius: 16,
               overflow: 'hidden',
               boxShadow: [
                 '0 0 0 1px rgba(255,255,255,0.10)',
-                '0 0 0 14px rgba(128,21,27,0.12)',
-                '0 0 50px rgba(128,21,27,0.80)',
-                '0 0 110px rgba(128,21,27,0.45)',
-                '0 0 180px rgba(128,21,27,0.20)',
+                '0 0 0 10px rgba(128,21,27,0.12)',
+                '0 0 36px rgba(128,21,27,0.75)',
+                '0 0 80px rgba(128,21,27,0.40)',
               ].join(', '),
             }}
           >
@@ -282,15 +281,15 @@ export function JobsClient({ jobs }: Props) {
             <img
               src="/sheer-logic-logo.jpg"
               alt="Sheer Logic"
-              width={180}
-              height={180}
+              width={110}
+              height={110}
               style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }}
             />
           </div>
         </div>
 
         {/* Text */}
-        <div className="relative z-10 space-y-5 px-4 pb-24">
+        <div className="relative z-10 space-y-3 px-4">
           <span
             className="inline-flex items-center gap-2 text-xs font-semibold px-4 py-1.5 rounded-full"
             style={{
@@ -307,18 +306,18 @@ export function JobsClient({ jobs }: Props) {
           </span>
 
           <h1
-            className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight"
+            className="text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight"
             style={{ color: '#F7EEEE' }}
           >
             Your Next Career<br />Opportunity Starts Here
           </h1>
 
-          <p className="text-lg max-w-2xl mx-auto" style={{ color: '#9E8888' }}>
+          <p className="text-base max-w-xl mx-auto" style={{ color: '#9E8888' }}>
             Sheer Logic connects talented professionals with leading organisations
-            across Kenya, Uganda and Rwanda. Browse our live vacancies below.
+            across Kenya, Uganda and Rwanda.
           </p>
 
-          <div className="flex items-center justify-center gap-6 pt-2 text-sm">
+          <div className="flex items-center justify-center gap-6 text-sm">
             <div className="text-center">
               <p className="text-2xl font-bold" style={{ color: '#C9A84C' }}>{jobs.length}</p>
               <p className="text-xs" style={{ color: '#9E8888' }}>Live vacancies</p>
