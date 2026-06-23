@@ -13,6 +13,7 @@ interface UserRow {
   email: string
   avatar_url: string | null
   phone: string | null
+  employee_id: string | null
 }
 
 interface ContractRow {
@@ -28,7 +29,7 @@ interface PendingLeaveRow {
   days_requested: number
   start_date: string
   end_date: string
-  employee: null
+  employee: { user: { full_name: string; email: string } } | null
 }
 
 const FALLBACK = {
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
       }).catch((err) => { console.error('[summary] contracts:', err); return null }),
 
       // Pending leave approvals
-      hrApi<DRFList<{ id: string; leave_type: string; days_requested: number; start_date: string; end_date: string }>>('/leave/', {
+      hrApi<DRFList<{ id: string; employee_id: string; leave_type: string; days_requested: number; start_date: string; end_date: string }>>('/leave/', {
         params: { status: 'pending', page_size: 10 },
       }).catch((err) => { console.error('[summary] pending-leave:', err); return null }),
 
@@ -72,8 +73,13 @@ export async function GET(req: NextRequest) {
       }).catch((err) => { console.error('[summary] users:', err); return null }),
     ])
 
+    // Keyed by AppUser.id (user UUID) — for contract expiry lookup (employee profile has user_id)
     const userMap = new Map<string, UserRow>(
       (usersRes?.results ?? []).map((u) => [u.id, u])
+    )
+    // Keyed by AppUser.employee_id (EmployeeProfile UUID) — for leave lookup (leave has employee_id = EmployeeProfile.id)
+    const empProfileMap = new Map<string, UserRow>(
+      (usersRes?.results ?? []).filter(u => u.employee_id).map((u) => [u.employee_id!, u])
     )
 
     if (process.env.NODE_ENV === 'development') {
@@ -96,14 +102,19 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    const pendingLeave: PendingLeaveRow[] = (pendingLeaveRes?.results ?? []).map((l) => ({
-      id: l.id,
-      leave_type: l.leave_type,
-      days_requested: l.days_requested,
-      start_date: l.start_date,
-      end_date: l.end_date,
-      employee: null,
-    }))
+    const pendingLeave: PendingLeaveRow[] = (pendingLeaveRes?.results ?? []).map((l) => {
+      const u = empProfileMap.get(l.employee_id)
+      return {
+        id: l.id,
+        leave_type: l.leave_type,
+        days_requested: l.days_requested,
+        start_date: l.start_date,
+        end_date: l.end_date,
+        employee: u
+          ? { user: { full_name: u.full_name ?? '', email: u.email } }
+          : null,
+      }
+    })
 
     return NextResponse.json({
       data: {
