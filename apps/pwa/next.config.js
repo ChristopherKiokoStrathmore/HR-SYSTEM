@@ -52,6 +52,18 @@ const withPWA = require('@ducanh2912/next-pwa').default({
 const nextConfig = withPWA({
   transpilePackages: ['@hr/shared', '@hr/i18n'],
 
+  webpack(config, { isServer }) {
+    // face-api.js / @tensorflow/tfjs-core pull in Node.js-only modules (fs,
+    // encoding) that don't exist in the browser bundle. Stub them to false so
+    // webpack treats them as empty modules instead of erroring.
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      encoding: false,
+    }
+    return config
+  },
+
   images: {
     formats: ['image/webp'],
     remotePatterns: [
