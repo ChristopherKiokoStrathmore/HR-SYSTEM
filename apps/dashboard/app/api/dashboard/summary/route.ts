@@ -62,8 +62,8 @@ export async function GET(req: NextRequest) {
         },
       }).catch((err) => { console.error('[summary] contracts:', err); return null }),
 
-      // Pending leave approvals
-      hrApi<DRFList<{ id: string; employee_id: string; leave_type: string; days_requested: number; start_date: string; end_date: string }>>('/leave/', {
+      // Pending leave approvals — employee_name is annotated directly by Django
+      hrApi<DRFList<{ id: string; employee_id: string; employee_name: string | null; leave_type: string; days_requested: number; start_date: string; end_date: string }>>('/leave/', {
         params: { status: 'pending', page_size: 10 },
       }).catch((err) => { console.error('[summary] pending-leave:', err); return null }),
 
@@ -103,16 +103,17 @@ export async function GET(req: NextRequest) {
     })
 
     const pendingLeave: PendingLeaveRow[] = (pendingLeaveRes?.results ?? []).map((l) => {
+      // Prefer Django's annotated employee_name (fixed annotation: AppUser.employee_id == leave.employee_id)
+      // Fallback to client-side map lookup via AppUser.employee_id
       const u = empProfileMap.get(l.employee_id)
+      const name = l.employee_name ?? u?.full_name ?? null
       return {
         id: l.id,
         leave_type: l.leave_type,
         days_requested: l.days_requested,
         start_date: l.start_date,
         end_date: l.end_date,
-        employee: u
-          ? { user: { full_name: u.full_name ?? '', email: u.email } }
-          : null,
+        employee: name ? { user: { full_name: name, email: u?.email ?? '' } } : null,
       }
     })
 
