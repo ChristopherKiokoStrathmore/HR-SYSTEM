@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   const companyId = (session as { company_id?: string }).company_id ?? ''
 
   const djangoRes = await fetch(
-    `${HR_API_URL}/attendance/geofence-violations/${violation_id}/submit_reason/`,
+    `${HR_API_URL}/geofence-violations/${violation_id}/submit_reason/`,
     {
       method: 'POST',
       headers: {

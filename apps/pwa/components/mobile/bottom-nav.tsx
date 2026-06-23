@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Calendar, Clock, FileText, User, ClipboardCheck } from 'lucide-react'
@@ -24,6 +25,8 @@ export function BottomNav() {
   const { data: me } = useMe()
   const isBlueCollar = me?.employee?.worker_class === 'blue_collar'
   const visibleItems = navItems.filter((item) => !item.blueCollarOnly || isBlueCollar)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   return (
     <nav className="shrink-0 z-50"
@@ -33,8 +36,8 @@ export function BottomNav() {
           const isActive = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link key={href} href={href} className="flex-1 flex flex-col items-center justify-center gap-0.5 relative py-2 group">
-              {/* Gold indicator pill for active tab */}
-              {isActive && (
+              {/* Gold indicator pill — client-only to avoid SSR/hydration mismatch */}
+              {mounted && isActive && (
                 <motion.div
                   layoutId="bottom-nav-pill"
                   className="absolute top-1 left-1/2 -translate-x-1/2 h-[3px] w-8 rounded-full"
@@ -42,12 +45,9 @@ export function BottomNav() {
                   transition={shouldReduce ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 30 }}
                 />
               )}
-              <motion.div
-                animate={{ scale: isActive ? 1.15 : 1 }}
-                transition={shouldReduce ? { duration: 0 } : { type: 'spring', stiffness: 400, damping: 17 }}
-              >
+              <div style={{ transform: mounted && isActive ? 'scale(1.15)' : 'scale(1)', transition: shouldReduce ? 'none' : 'transform 0.2s ease' }}>
                 <Icon className="w-5 h-5" style={{ color: isActive ? '#80151B' : '#6B7280' }} />
-              </motion.div>
+              </div>
               <span className="text-[10px] font-semibold"
                     style={{ color: isActive ? '#80151B' : '#6B7280' }}>
                 {t(lang, key)}

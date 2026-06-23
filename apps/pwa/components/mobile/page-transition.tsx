@@ -1,13 +1,17 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { usePathname } from 'next/navigation'
 
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const shouldReduce = useReducedMotion()
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
-  if (shouldReduce) return <>{children}</>
+  // Render children without motion wrapper until mounted to prevent SSR/hydration mismatch
+  if (!mounted || shouldReduce) return <>{children}</>
 
   return (
     <AnimatePresence mode="wait" initial={false}>

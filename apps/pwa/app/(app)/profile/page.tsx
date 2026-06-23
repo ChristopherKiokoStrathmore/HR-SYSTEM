@@ -281,15 +281,20 @@ export default function ProfilePage() {
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size)
       const dataUrl = canvas.toDataURL('image/jpeg', 0.82)
 
-      // Extract face descriptor — abort if no face detected
+      // Extract face descriptor — require a detectable face for check-in to work later
       let face_descriptor: number[] | null = null
+      let modelFailed = false
       try {
         face_descriptor = await extractDescriptor(dataUrl)
       } catch {
-        // model load failure — proceed without descriptor
+        modelFailed = true
+      }
+      if (modelFailed) {
+        toast.error('Face recognition unavailable right now — try again in a moment')
+        return
       }
       if (face_descriptor === null) {
-        toast.error('No face detected — please use a clear front-facing photo')
+        toast.error('No face detected — please use a clear, well-lit front-facing photo')
         return
       }
 
