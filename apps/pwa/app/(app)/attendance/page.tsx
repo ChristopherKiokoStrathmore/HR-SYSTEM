@@ -149,7 +149,7 @@ function SelfieModal({ onCapture, onClose, action, storedDescriptor }: SelfieMod
     </div>
   ) : preview ? (
     <div className="flex flex-col items-center gap-3">
-      <div className="relative w-56 h-56 rounded-full overflow-hidden ring-4 ring-[#C9A84C] shadow-xl">
+      <div className="relative w-48 h-48 rounded-full overflow-hidden ring-4 ring-[#C9A84C] shadow-xl">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={preview} alt="Captured selfie" className="w-full h-full object-cover" />
       </div>
@@ -183,7 +183,7 @@ function SelfieModal({ onCapture, onClose, action, storedDescriptor }: SelfieMod
           No Face ID enrolled — go to Profile to upload your photo first
         </div>
       )}
-      <div className="relative w-56 h-56 rounded-full overflow-hidden ring-4 ring-[#C9A84C]/60 shadow-xl bg-black">
+      <div className="relative w-48 h-48 rounded-full overflow-hidden ring-4 ring-[#C9A84C]/60 shadow-xl bg-black">
         <video
           ref={videoRef} autoPlay playsInline muted
           className="absolute inset-0 w-full h-full object-cover"
@@ -219,7 +219,8 @@ function SelfieModal({ onCapture, onClose, action, storedDescriptor }: SelfieMod
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-end">
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-end"
+         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <motion.div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -229,18 +230,19 @@ function SelfieModal({ onCapture, onClose, action, storedDescriptor }: SelfieMod
         className="relative w-full bg-white rounded-t-3xl overflow-hidden z-10"
         initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
         transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+        style={{ maxHeight: '85vh' }}
       >
-        <div className="w-10 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
-        <div className="px-5 pb-8 space-y-4">
+        <div className="w-10 h-1 rounded-full bg-border mx-auto mt-2 mb-1" />
+        <div className="px-4 pb-6 space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(85vh - 20px)' }}>
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-bold text-text-primary text-base">{label} — Face Verification</p>
-              <p className="text-xs text-text-muted mt-0.5">
+              <p className="font-bold text-text-primary text-sm">{label} — Face Verification</p>
+              <p className="text-[11px] text-text-muted mt-0.5">
                 {storedDescriptor ? 'Look directly at the camera' : 'Face ID required to check in'}
               </p>
             </div>
             <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-surface-alt text-text-muted">
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
           {sheetContent}

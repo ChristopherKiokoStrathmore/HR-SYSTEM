@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="pwa-backdrop">
       <div className="pwa-shell" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <main className="flex-1 overflow-y-auto overflow-x-hidden" style={{ paddingBottom: 'calc(68px + env(safe-area-inset-bottom))' }}>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
           <PageTransition>{children}</PageTransition>
         </main>
         <BottomNav />
