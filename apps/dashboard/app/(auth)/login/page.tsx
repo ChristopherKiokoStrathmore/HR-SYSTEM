@@ -9,9 +9,9 @@ export default function LoginPage() {
       {/* LEFT — brand panel */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 relative overflow-hidden"
-        style={{ background: 'linear-gradient(160deg, #1A2E5A 0%, #0D1B3E 100%)' }}
+        style={{ background: 'linear-gradient(160deg, #80151B 0%, #3D0407 100%)' }}
       >
-        {/* Geometric decoration — top right */}
+        {/* White glow — top right */}
         <div
           className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-5"
           style={{
@@ -19,11 +19,11 @@ export default function LoginPage() {
             transform: 'translate(30%, -30%)',
           }}
         />
-        {/* Geometric decoration — bottom left */}
+        {/* Gold shimmer — bottom left */}
         <div
-          className="absolute bottom-0 left-0 w-72 h-72 rounded-full opacity-5"
+          className="absolute bottom-0 left-0 w-72 h-72 rounded-full"
           style={{
-            background: 'radial-gradient(circle, #F47920 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 70%)',
             transform: 'translate(-30%, 30%)',
           }}
         />
@@ -33,8 +33,8 @@ export default function LoginPage() {
           <div
             className="inline-flex items-center justify-center w-20 h-20 rounded-3xl mb-8"
             style={{
-              background: 'linear-gradient(135deg, #F47920, #E8650A)',
-              boxShadow: '0 0 40px rgba(244,121,32,0.4)',
+              background: 'linear-gradient(135deg, #C9A84C, #A8892A)',
+              boxShadow: '0 0 40px rgba(201,168,76,0.40)',
             }}
           >
             <span className="text-white font-black text-3xl">SL</span>
@@ -64,7 +64,7 @@ export default function LoginPage() {
           <div className="flex items-center gap-3 mb-10 lg:hidden">
             <div
               className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #F47920, #E8650A)' }}
+              style={{ background: 'linear-gradient(135deg, #C9A84C, #A8892A)' }}
             >
               <span className="text-white font-black text-base">SL</span>
             </div>

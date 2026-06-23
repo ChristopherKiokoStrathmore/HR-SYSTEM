@@ -120,18 +120,18 @@ function newLeaveHtml(opts: {
 }) {
   const row = (label: string, value: string) =>
     `<tr><td style="padding:8px 0;border-bottom:1px solid #F1F5F9;color:#6B7280;font-size:14px;width:40%;">${label}</td>
-     <td style="padding:8px 0;border-bottom:1px solid #F1F5F9;color:#1A2E5A;font-size:14px;font-weight:600;">${value}</td></tr>`
+     <td style="padding:8px 0;border-bottom:1px solid #F1F5F9;color:#80151B;font-size:14px;font-weight:600;">${value}</td></tr>`
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"/></head>
 <body style="margin:0;padding:0;background:#F5F7FA;font-family:Inter,Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0;">
 <tr><td align="center"><table width="560" cellpadding="0" cellspacing="0"
   style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-<tr><td style="background:linear-gradient(135deg,#1A2E5A,#0D1B3E);padding:32px 40px;">
+<tr><td style="background:linear-gradient(135deg,#80151B,#3D0407);padding:32px 40px;">
   <span style="color:#fff;font-size:20px;font-weight:800;">Sheer Logic HR</span>
 </td></tr>
 <tr><td style="padding:40px;">
-  <h2 style="margin:0 0 8px;color:#1A2E5A;font-size:22px;font-weight:800;">New leave request pending review</h2>
+  <h2 style="margin:0 0 8px;color:#80151B;font-size:22px;font-weight:800;">New leave request pending review</h2>
   <p style="margin:0 0 24px;color:#6B7280;font-size:15px;">Awaiting your approval.</p>
   <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
     ${row('Employee', opts.employeeName)}
@@ -145,7 +145,7 @@ function newLeaveHtml(opts: {
     <p style="margin:0 0 4px;font-size:12px;color:#9CA3AF;text-transform:uppercase;font-weight:600;">Reason</p>
     <p style="margin:0;font-size:14px;color:#374151;">${opts.reason}</p>
   </div>
-  <a href="${opts.reviewUrl}" style="display:inline-block;background:linear-gradient(135deg,#F47920,#E8650A);color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:700;font-size:15px;">Review in Dashboard →</a>
+  <a href="${opts.reviewUrl}" style="display:inline-block;background:linear-gradient(135deg,#C9A84C,#A8892A);color:#fff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:700;font-size:15px;">Review in Dashboard →</a>
 </td></tr>
 <tr><td style="background:#F8FAFF;padding:20px 40px;border-top:1px solid #E2E8F0;">
   <p style="margin:0;font-size:12px;color:#9CA3AF;text-align:center;">Automated message — Sheer Logic HR</p>

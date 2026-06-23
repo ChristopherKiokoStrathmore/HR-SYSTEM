@@ -6,17 +6,30 @@
 
 @layer base {
   :root {
-    --background: #F5F7FA;
-    --surface: #FFFFFF;
-    --surface-alt: #F0F4F8;
-    --border: #E2E8F0;
-    --text-primary: #1A2E5A;
-    --text-body: #374151;
-    --text-muted: #6B7280;
-    --primary: #1A2E5A;
-    --accent: #F47920;
-    --success: #22C55E;
-    --danger: #EF4444;
+    /* ── Surfaces ─────────────────────────────────────── */
+    --background:   #F8F6F6;
+    --surface:      #FFFFFF;
+    --surface-alt:  #F2EEEE;
+
+    /* ── Borders ─────────────────────────────────────── */
+    --border: #E8E0E0;
+
+    /* ── Text ────────────────────────────────────────── */
+    --text-primary: #111111;
+    --text-body:    #374151;
+    --text-muted:   #6B7280;
+
+    /* ── Brand — Crimson ─────────────────────────────── */
+    --primary:       #80151B;
+    --primary-light: #9B1C23;
+
+    /* ── Accent — Gold ───────────────────────────────── */
+    --accent:       #C9A84C;
+    --accent-light: #DEC571;
+
+    /* ── Semantic ────────────────────────────────────── */
+    --success: #16A34A;
+    --danger:  #DC2626;
   }
 
   * { box-sizing: border-box; }
@@ -33,14 +46,14 @@
 @layer components {
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 text-white font-semibold px-5 py-2.5 rounded-xl
-           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent/50
+           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40
            disabled:opacity-50 disabled:cursor-not-allowed active:scale-95;
-    background: linear-gradient(135deg, #F47920 0%, #E8650A 100%);
-    box-shadow: 0 4px 12px rgba(244, 121, 32, 0.3);
+    background: linear-gradient(135deg, #80151B 0%, #5A0C11 100%);
+    box-shadow: 0 4px 12px rgba(128, 21, 27, 0.30);
   }
 
   .btn-primary:hover {
-    box-shadow: 0 6px 16px rgba(244, 121, 32, 0.4);
+    box-shadow: 0 6px 16px rgba(128, 21, 27, 0.42);
   }
 
   .card {
@@ -50,8 +63,8 @@
 
   .input {
     @apply w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-text-body
-           placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/40
-           focus:border-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+           placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30
+           focus:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   ::-webkit-scrollbar { @apply w-1.5 h-1.5; }

@@ -234,7 +234,7 @@ export function Header() {
         <div className="flex items-center gap-1">
           <div
             className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ring-2 ring-transparent hover:ring-accent/40 transition-all cursor-pointer"
-            style={{ background: 'linear-gradient(135deg, #1A2E5A, #2A4A8A)' }}
+            style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)' }}
             title="HR Admin"
           >
             <span className="text-white text-xs font-bold select-none">HR</span>

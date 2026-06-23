@@ -27,7 +27,7 @@ const STAGES: { key: CandidateStage; label: string; color: string; accent: strin
   { key: 'screened',     label: 'Screened',    color: 'border-t-blue-400',   accent: '#60A5FA' },
   { key: 'interview_l1', label: 'L1 Interview', color: 'border-t-purple-400', accent: '#A78BFA' },
   { key: 'interview_l2', label: 'L2 Interview', color: 'border-t-amber-400',  accent: '#FBBF24' },
-  { key: 'offer_sent',   label: 'Offer Sent',   color: 'border-t-orange-400', accent: '#F47920' },
+  { key: 'offer_sent',   label: 'Offer Sent',   color: 'border-t-orange-400', accent: '#C9A84C' },
   { key: 'hired',        label: 'Hired',        color: 'border-t-green-500',  accent: '#22C55E' },
   { key: 'rejected',     label: 'Rejected',     color: 'border-t-red-400',    accent: '#F87171' },
 ]

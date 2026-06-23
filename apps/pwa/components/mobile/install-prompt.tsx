@@ -84,7 +84,7 @@ export function InstallPrompt() {
         >
           <div
             className="mx-3 mb-3 rounded-3xl overflow-hidden"
-            style={{ background: '#1A2E5A', boxShadow: '0 -4px 32px rgba(0,0,0,0.25)' }}
+            style={{ background: '#80151B', boxShadow: '0 -4px 32px rgba(0,0,0,0.30)' }}
           >
             {/* Header row */}
             <div className="flex items-center gap-3 px-5 pt-5 pb-3">
@@ -136,7 +136,7 @@ export function InstallPrompt() {
                 <button
                   onClick={handleInstall}
                   className="flex-1 py-3 rounded-2xl text-white font-semibold text-sm flex items-center justify-center gap-2"
-                  style={{ background: 'linear-gradient(135deg, #F47920, #E8650A)' }}
+                  style={{ background: 'linear-gradient(135deg, #C9A84C, #A8892A)' }}
                 >
                   <Download className="w-4 h-4" />
                   {isEn ? 'Install App' : 'Sakinisha Programu'}

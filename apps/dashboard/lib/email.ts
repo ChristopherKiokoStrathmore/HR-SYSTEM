@@ -6,8 +6,8 @@ function getResend() {
 }
 
 const FROM = process.env.EMAIL_FROM ?? 'Sheer Logic HR <hr@sheerlogic.co.ke>'
-const BRAND_ORANGE = '#F47920'
-const BRAND_NAVY = '#1A2E5A'
+const BRAND_ORANGE = '#C9A84C'
+const BRAND_NAVY = '#80151B'
 
 function baseTemplate(title: string, body: string) {
   return `<!DOCTYPE html>
@@ -23,7 +23,7 @@ function baseTemplate(title: string, body: string) {
       <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
         <!-- Header -->
         <tr>
-          <td style="background:linear-gradient(135deg,${BRAND_NAVY} 0%,#0D1B3E 100%);padding:32px 40px;">
+          <td style="background:linear-gradient(135deg,${BRAND_NAVY} 0%,#3D0407 100%);padding:32px 40px;">
             <div style="display:flex;align-items:center;gap:12px;">
               <div style="width:36px;height:36px;background:${BRAND_ORANGE};border-radius:10px;display:inline-block;vertical-align:middle;"></div>
               <span style="color:#ffffff;font-size:20px;font-weight:800;vertical-align:middle;margin-left:10px;">Sheer Logic HR</span>
@@ -54,7 +54,7 @@ function badge(text: string, color: string, bg: string) {
 function infoRow(label: string, value: string) {
   return `<tr>
     <td style="padding:8px 0;border-bottom:1px solid #F1F5F9;color:#6B7280;font-size:14px;width:40%;">${label}</td>
-    <td style="padding:8px 0;border-bottom:1px solid #F1F5F9;color:#1A2E5A;font-size:14px;font-weight:600;">${value}</td>
+    <td style="padding:8px 0;border-bottom:1px solid #F1F5F9;color:#80151B;font-size:14px;font-weight:600;">${value}</td>
   </tr>`
 }
 
@@ -132,7 +132,7 @@ export function newLeaveRequestHtml(opts: {
       <p style="margin:0 0 4px;font-size:12px;color:#9CA3AF;text-transform:uppercase;font-weight:600;letter-spacing:0.05em;">Reason</p>
       <p style="margin:0;font-size:14px;color:#374151;">${opts.reason}</p>
     </div>
-    <a href="${opts.reviewUrl}" style="display:inline-block;background:linear-gradient(135deg,${BRAND_ORANGE},#E8650A);color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:700;font-size:15px;">Review Request →</a>
+    <a href="${opts.reviewUrl}" style="display:inline-block;background:linear-gradient(135deg,${BRAND_ORANGE},#A8892A);color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:12px;font-weight:700;font-size:15px;">Review Request →</a>
   `
   return baseTemplate('New Leave Request — Sheer Logic HR', body)
 }

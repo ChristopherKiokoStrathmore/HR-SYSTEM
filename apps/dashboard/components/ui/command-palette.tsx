@@ -99,7 +99,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                                  transition-colors hover:bg-[#F8FAFF] group"
                     >
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                           style={{ background: 'linear-gradient(135deg, #1A2E5A, #2A4A8A)' }}>
+                           style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)' }}>
                         <page.icon className="w-3.5 h-3.5 text-white" />
                       </div>
                       <span className="flex-1 font-medium">{page.label}</span>

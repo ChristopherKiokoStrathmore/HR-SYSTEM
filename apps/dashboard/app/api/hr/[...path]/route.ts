@@ -25,6 +25,7 @@ const ALLOWED_PREFIXES = [
   'minimum-wages',
   'compliance-alerts',
   'leave-recalls',
+  'announcements',
   'work-zones',
   'geofence-violations',
   'geofence',

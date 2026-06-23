@@ -45,11 +45,11 @@ export function CompanyModal({ open, company, onClose }: Props) {
         country: company.country,
         city: company.city ?? '',
         contact_email: company.contact_email,
-        primary_color: company.primary_color ?? '#1A2E5A',
+        primary_color: company.primary_color ?? '#80151B',
         is_active: company.is_active,
       })
     } else {
-      reset({ country: 'Kenya', is_active: true, primary_color: '#1A2E5A' })
+      reset({ country: 'Kenya', is_active: true, primary_color: '#80151B' })
     }
   }, [company, reset])
 
@@ -108,7 +108,7 @@ export function CompanyModal({ open, company, onClose }: Props) {
             <label className="block text-sm font-medium text-text-body mb-1.5">Brand Color</label>
             <div className="flex gap-2">
               <input type="color" {...register('primary_color')} className="h-9 w-14 rounded border border-border cursor-pointer" />
-              <input className="input flex-1" placeholder="#1A2E5A" {...register('primary_color')} />
+              <input className="input flex-1" placeholder="#80151B" {...register('primary_color')} />
             </div>
           </div>
 

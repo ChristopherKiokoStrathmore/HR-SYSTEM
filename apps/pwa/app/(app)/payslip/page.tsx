@@ -13,7 +13,7 @@ import { t, type Language } from '@hr/i18n'
 const STATUS_COLOR: Record<string, string> = {
   paid: '#22C55E',
   pending: '#EAB308',
-  processing: '#1A2E5A',
+  processing: '#80151B',
   failed: '#EF4444',
 }
 
@@ -59,7 +59,7 @@ function PayslipBreakdown({ slip, name, lang }: { slip: Payslip; name: string; l
         {rows.map(({ label, amount, positive }) => (
           <div key={label} className="flex justify-between items-center py-1.5 border-b border-[#F1F5F9] last:border-0">
             <span className="text-sm text-text-body">{label}</span>
-            <span className="text-sm font-semibold" style={{ color: positive ? '#1A2E5A' : '#EF4444' }}>
+            <span className="text-sm font-semibold" style={{ color: positive ? '#111111' : '#DC2626' }}>
               {positive ? '' : '– '}{formatKES(Math.abs(amount))}
             </span>
           </div>
@@ -73,7 +73,7 @@ function PayslipBreakdown({ slip, name, lang }: { slip: Payslip; name: string; l
         onClick={downloadPdf}
         whileTap={{ scale: 0.97 }}
         className="w-full h-12 rounded-2xl border-2 font-semibold text-sm flex items-center justify-center gap-2"
-        style={{ borderColor: '#F47920', color: '#F47920' }}
+        style={{ borderColor: '#C9A84C', color: '#C9A84C' }}
       >
         <Download className="w-4 h-4" />
         {t(lang, 'actions.download')} PDF
@@ -149,7 +149,7 @@ export default function PayslipPage() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                         style={{ background: 'linear-gradient(135deg, #F47920, #E8650A)' }}>
+                         style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)' }}>
                       <FileText className="w-5 h-5 text-white" />
                     </div>
                     <div className="text-left">

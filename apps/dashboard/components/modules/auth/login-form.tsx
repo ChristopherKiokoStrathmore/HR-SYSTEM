@@ -33,7 +33,7 @@ function FloatingInput({
       <div
         className="relative rounded-xl border-2 transition-colors duration-200"
         style={{
-          borderColor: error ? '#EF4444' : focused ? '#F47920' : '#E2E8F0',
+          borderColor: error ? '#EF4444' : focused ? '#80151B' : '#E8E0E0',
           background: '#FFFFFF',
         }}
       >
@@ -44,7 +44,7 @@ function FloatingInput({
             top: floated ? '6px' : '50%',
             transform: floated ? 'none' : 'translateY(-50%)',
             fontSize: floated ? '10px' : '14px',
-            color: error ? '#EF4444' : focused ? '#F47920' : '#6B7280',
+            color: error ? '#EF4444' : focused ? '#80151B' : '#6B7280',
             fontWeight: floated ? 600 : 400,
           }}
         >
@@ -125,7 +125,7 @@ export function LoginForm() {
       <motion.button type="submit" disabled={isLoading}
         whileTap={shouldReduce ? {} : { scale: 0.97 }}
         className="w-full h-12 rounded-xl font-semibold text-white text-sm flex items-center justify-center gap-2 disabled:opacity-70 focus:outline-none"
-        style={{ background: 'linear-gradient(135deg, #F47920 0%, #E8650A 100%)', boxShadow: '0 4px 16px rgba(244,121,32,0.30)' }}
+        style={{ background: 'linear-gradient(135deg, #80151B 0%, #5A0C11 100%)', boxShadow: '0 4px 16px rgba(128,21,27,0.30)' }}
       >
         {isLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</> : 'Sign In'}
       </motion.button>

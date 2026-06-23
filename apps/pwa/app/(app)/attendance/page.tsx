@@ -13,6 +13,7 @@ import {
 import { useMe } from '@/lib/hooks/use-me'
 import { useStore } from '@/lib/store'
 import { t } from '@hr/i18n'
+import { extractDescriptor, compareFaces, loadModels } from '@/lib/face'
 
 function formatTime(iso: string | null) {
   if (!iso) return '—'
@@ -45,23 +46,29 @@ function DayChip({ record }: { record: AttendanceRecord }) {
 // ─── Selfie capture modal ───────────────────────────────────────────────────
 
 interface SelfieModalProps {
-  onCapture: (b64: string) => void
+  onCapture: (b64: string, faceVerified: boolean) => void
   onClose: () => void
   action: 'check_in' | 'check_out'
+  storedDescriptor: number[] | null
 }
 
-function SelfieModal({ onCapture, onClose, action }: SelfieModalProps) {
+function SelfieModal({ onCapture, onClose, action, storedDescriptor }: SelfieModalProps) {
   const videoRef  = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [camError, setCamError] = useState('')
   const [ready, setReady] = useState(false)
+  const [verifying, setVerifying] = useState(false)
+  const [faceError, setFaceError] = useState('')
 
   const startCamera = useCallback(async () => {
     setCamError('')
+    setFaceError('')
     setPreview(null)
     setReady(false)
+    // Preload models while camera warms up
+    loadModels().catch(() => null)
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } },
@@ -100,14 +107,44 @@ function SelfieModal({ onCapture, onClose, action }: SelfieModalProps) {
     ctx.drawImage(video, ox, oy, side, side, 0, 0, size, size)
     const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
     setPreview(dataUrl)
+    setFaceError('')
     streamRef.current?.getTracks().forEach((t) => t.stop())
   }
 
-  function retake() { setPreview(null); startCamera() }
+  function retake() { setPreview(null); setFaceError(''); startCamera() }
 
-  function confirm() {
+  async function confirm() {
     if (!preview) return
-    onCapture(preview.replace(/^data:image\/\w+;base64,/, ''))
+    setVerifying(true)
+    setFaceError('')
+    const b64 = preview.replace(/^data:image\/\w+;base64,/, '')
+
+    // No stored descriptor yet — allow check-in without verification
+    if (!storedDescriptor) {
+      setVerifying(false)
+      onCapture(b64, false)
+      return
+    }
+
+    try {
+      const liveDescriptor = await extractDescriptor(preview)
+      if (!liveDescriptor) {
+        setFaceError('No face detected in photo. Try again in better lighting.')
+        setVerifying(false)
+        return
+      }
+      const { verified } = compareFaces(storedDescriptor, liveDescriptor)
+      if (!verified) {
+        setFaceError('Face not recognised. Please try again in good lighting, facing the camera directly.')
+        setVerifying(false)
+        return
+      }
+      onCapture(b64, true)
+    } catch {
+      // On model-load failure, proceed without verification
+      onCapture(b64, false)
+    }
+    setVerifying(false)
   }
 
   const label = action === 'check_in' ? 'Check In' : 'Check Out'
@@ -129,12 +166,20 @@ function SelfieModal({ onCapture, onClose, action }: SelfieModalProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="font-bold text-text-primary text-base">{label} — Face Verification</p>
-              <p className="text-xs text-text-muted mt-0.5">Look directly at the camera</p>
+              <p className="text-xs text-text-muted mt-0.5">
+                {storedDescriptor ? 'Look directly at the camera' : 'No face ID enrolled — upload a profile photo to enable face check-in'}
+              </p>
             </div>
             <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-surface-alt text-text-muted">
               <X className="w-5 h-5" />
             </button>
           </div>
+
+          {!storedDescriptor && (
+            <div className="rounded-2xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800 font-medium">
+              Upload a clear profile photo first to enable face recognition. You can still check in now.
+            </div>
+          )}
 
           {camError ? (
             <div className="rounded-2xl bg-red-50 border border-red-200 p-4 text-sm text-red-700 text-center">
@@ -142,30 +187,36 @@ function SelfieModal({ onCapture, onClose, action }: SelfieModalProps) {
             </div>
           ) : preview ? (
             <div className="flex flex-col items-center gap-4">
-              <div className="relative w-64 h-64 rounded-full overflow-hidden ring-4 ring-orange-400 shadow-xl">
+              <div className="relative w-64 h-64 rounded-full overflow-hidden ring-4 ring-[#C9A84C] shadow-xl">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={preview} alt="Captured selfie" className="w-full h-full object-cover" />
               </div>
+              {faceError && (
+                <p className="text-sm text-red-600 font-medium text-center px-2">{faceError}</p>
+              )}
               <p className="text-sm font-medium text-text-body">Looks good?</p>
               <div className="flex gap-3 w-full">
                 <button
                   onClick={retake}
-                  className="flex-1 h-12 rounded-2xl border border-border text-text-body font-semibold flex items-center justify-center gap-2 text-sm"
+                  disabled={verifying}
+                  className="flex-1 h-12 rounded-2xl border border-border text-text-body font-semibold flex items-center justify-center gap-2 text-sm disabled:opacity-50"
                 >
                   <RefreshCw className="w-4 h-4" /> Retake
                 </button>
                 <button
                   onClick={confirm}
-                  className="flex-1 h-12 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2"
-                  style={{ background: 'linear-gradient(135deg, #F47920, #E8650A)', boxShadow: '0 4px 16px rgba(244,121,32,0.35)' }}
+                  disabled={verifying}
+                  className="flex-1 h-12 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)', boxShadow: '0 4px 16px rgba(128,21,27,0.35)' }}
                 >
-                  <CheckCircle className="w-4 h-4" /> {label}
+                  {verifying ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  {verifying ? 'Verifying…' : label}
                 </button>
               </div>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-4">
-              <div className="relative w-64 h-64 rounded-full overflow-hidden ring-4 ring-orange-300 shadow-xl bg-black">
+              <div className="relative w-64 h-64 rounded-full overflow-hidden ring-4 ring-[#C9A84C]/60 shadow-xl bg-black">
                 <video
                   ref={videoRef} autoPlay playsInline muted
                   className="absolute inset-0 w-full h-full object-cover"
@@ -183,7 +234,7 @@ function SelfieModal({ onCapture, onClose, action }: SelfieModalProps) {
               <button
                 onClick={capture} disabled={!ready}
                 className="w-16 h-16 rounded-full text-white flex items-center justify-center shadow-lg disabled:opacity-40"
-                style={{ background: 'linear-gradient(135deg, #F47920, #E8650A)', boxShadow: '0 4px 20px rgba(244,121,32,0.4)' }}
+                style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)', boxShadow: '0 4px 20px rgba(128,21,27,0.40)' }}
               >
                 <Camera className="w-7 h-7" />
               </button>
@@ -262,7 +313,7 @@ function ReasonModal({
               onClick={handleSubmit}
               disabled={!reason.trim() || submitting}
               className="flex-1 h-12 rounded-2xl text-white font-bold text-sm disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #F47920, #E8650A)' }}
+              style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)' }}
             >
               Submit reason
             </button>
@@ -349,13 +400,14 @@ export default function AttendancePage() {
     }
   }
 
-  async function submitCheckInOut(selfieB64?: string) {
+  async function submitCheckInOut(selfieB64?: string, faceVerified?: boolean) {
     setFaceRejected(false)
     try {
       const coords = await getGps()
       const result = await checkInOut.mutateAsync({
         ...coords,
         ...(selfieB64 ? { selfie_b64: selfieB64 } : {}),
+        ...(faceVerified !== undefined ? { face_verified: faceVerified } : {}),
       })
       if (result?.action === 'checked_in') {
         toast.success(t(lang, 'attendance.checked_in_success'), { description: 'Have a great day!' })
@@ -389,9 +441,9 @@ export default function AttendancePage() {
     setSelfieOpen(true)
   }
 
-  function handleSelfieCapture(b64: string) {
+  function handleSelfieCapture(b64: string, faceVerified: boolean) {
     setSelfieOpen(false)
-    submitCheckInOut(b64)
+    submitCheckInOut(b64, faceVerified)
   }
 
   async function handleViolationReason(violationId: string, reason: string) {
@@ -479,7 +531,7 @@ export default function AttendancePage() {
         <ReactConfetti
           width={windowSize.width} height={windowSize.height}
           recycle={false} numberOfPieces={180}
-          colors={['#F47920', '#1A2E5A', '#22C55E', '#EAB308', '#FFFFFF']}
+          colors={['#80151B', '#C9A84C', '#22C55E', '#EAB308', '#FFFFFF']}
           style={{ position: 'fixed', top: 0, left: 0, zIndex: 100, pointerEvents: 'none' }}
         />
       )}
@@ -490,6 +542,7 @@ export default function AttendancePage() {
             action={isCheckedIn ? 'check_out' : 'check_in'}
             onCapture={handleSelfieCapture}
             onClose={() => setSelfieOpen(false)}
+            storedDescriptor={me?.employee?.face_descriptor ?? null}
           />
         )}
         {pendingViolation && (

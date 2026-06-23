@@ -51,6 +51,7 @@ export async function GET() {
           mpesa_number: emp.mpesa_number,
           airtel_number: emp.airtel_number,
           start_date: emp.start_date,
+          face_descriptor: emp.face_descriptor ?? null,
           company: emp.company_name ? { name: emp.company_name, logo_url: emp.company_logo_url } : null,
         }
       : null

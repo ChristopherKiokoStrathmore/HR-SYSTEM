@@ -21,6 +21,11 @@ import {
   Gavel,
   DoorOpen,
   MapPin,
+  Timer,
+  Receipt,
+  ShieldOff,
+  Megaphone,
+  RotateCcw,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/lib/store'
@@ -39,8 +44,13 @@ const navItems = [
   { href: '/performance', label: 'Performance', icon: TrendingUp },
   { href: '/payroll', label: 'Payroll', icon: DollarSign },
   { href: '/leave', label: 'Leave', icon: Calendar },
+  { href: '/leave-recalls', label: 'Leave Recalls', icon: RotateCcw },
+  { href: '/overtime', label: 'Overtime', icon: Timer },
+  { href: '/reimbursements', label: 'Reimbursements', icon: Receipt },
   { href: '/disciplinary', label: 'Disciplinary', icon: Gavel },
   { href: '/exits', label: 'Exits', icon: DoorOpen },
+  { href: '/compliance', label: 'Compliance', icon: ShieldOff },
+  { href: '/announcements', label: 'Announcements', icon: Megaphone },
   { href: '/reports', label: 'Reports', icon: BarChart3 },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
@@ -62,14 +72,14 @@ export function Sidebar() {
         'group flex flex-col text-white transition-all duration-300 ease-in-out flex-shrink-0 relative',
         sidebarCollapsed ? 'w-16' : 'w-64'
       )}
-      style={{ background: 'linear-gradient(160deg, #1A2E5A 0%, #0D1B3E 100%)' }}
+      style={{ background: 'linear-gradient(160deg, #80151B 0%, #430A0D 60%, #0F0203 100%)' }}
     >
       {/* Logo */}
       <div className="flex items-center h-16 px-4 border-b border-white/10 flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <div
             className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center flex-shrink-0"
-            style={{ boxShadow: '0 0 20px rgba(244,121,32,0.3)' }}
+            style={{ boxShadow: '0 0 20px rgba(201,168,76,0.30)' }}
           >
             <span className="text-white font-bold text-sm">SL</span>
           </div>
@@ -105,8 +115,8 @@ export function Sidebar() {
                         layoutId={prefersReducedMotion ? undefined : 'sidebar-active-pill'}
                         className="absolute inset-0 rounded-xl"
                         style={{
-                          background: 'linear-gradient(135deg, #F47920 0%, #E8650A 100%)',
-                          boxShadow: '0 4px 12px rgba(244,121,32,0.35)',
+                          background: 'linear-gradient(135deg, #C9A84C 0%, #A8892A 100%)',
+                          boxShadow: '0 4px 12px rgba(201,168,76,0.35)',
                         }}
                         transition={
                           prefersReducedMotion

@@ -7,6 +7,8 @@ import { useMe, useUpdatePaymentMethod, useUploadProfilePicture } from '@/lib/ho
 import { useStore } from '@/lib/store'
 import { useRouter } from 'next/navigation'
 import { t } from '@hr/i18n'
+import { toast } from 'sonner'
+import { extractDescriptor } from '@/lib/face'
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null
@@ -214,7 +216,7 @@ function PaymentMethodSection({ employee, language }: PaymentMethodSectionProps)
             <div className="flex items-center gap-3 py-2">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #1A2E5A, #2A4A8A)' }}
+                style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)' }}
               >
                 <CurrentIcon className="w-5 h-5 text-white" />
               </div>
@@ -264,7 +266,6 @@ export default function ProfilePage() {
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    // Client-side compress: draw onto 400×400 canvas, export as JPEG quality 0.82
     const img = new Image()
     img.onload = async () => {
       const size = 400
@@ -279,9 +280,24 @@ export default function ProfilePage() {
       const sy = (img.height - sh) / 2
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size)
       const dataUrl = canvas.toDataURL('image/jpeg', 0.82)
-      setLocalAvatar(dataUrl)
+
+      // Extract face descriptor — abort if no face detected
+      let face_descriptor: number[] | null = null
       try {
-        await uploadPicture.mutateAsync(dataUrl)
+        face_descriptor = await extractDescriptor(dataUrl)
+      } catch {
+        // model load failure — proceed without descriptor
+      }
+      if (face_descriptor === null) {
+        toast.error('No face detected — please use a clear front-facing photo')
+        return
+      }
+
+      setLocalAvatar(dataUrl)
+      const image_b64 = dataUrl.split(',')[1]
+      try {
+        await uploadPicture.mutateAsync({ image_b64, face_descriptor })
+        toast.success('Profile photo & face ID saved')
       } catch {
         setLocalAvatar(null)
       }
@@ -301,8 +317,8 @@ export default function ProfilePage() {
             <div
               className="w-24 h-24 rounded-full flex items-center justify-center"
               style={{
-                background: 'linear-gradient(135deg, #1A2E5A, #2A4A8A)',
-                boxShadow: '0 0 0 3px #F47920, 0 0 0 6px rgba(244,121,32,0.18)',
+                background: 'linear-gradient(135deg, #80151B, #5A0C11)',
+                boxShadow: '0 0 0 3px #C9A84C, 0 0 0 6px rgba(201,168,76,0.18)',
               }}
             >
               {avatarSrc ? (
@@ -315,7 +331,7 @@ export default function ProfilePage() {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadPicture.isPending}
-              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#F47920] flex items-center justify-center shadow-md border-2 border-white active:scale-95 transition-transform disabled:opacity-60"
+              className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#C9A84C] flex items-center justify-center shadow-md border-2 border-white active:scale-95 transition-transform disabled:opacity-60"
               aria-label="Change profile picture"
             >
               {uploadPicture.isPending
@@ -362,7 +378,7 @@ export default function ProfilePage() {
               <button
                 onClick={() => setLanguage(language === 'en' ? 'sw' : 'en')}
                 className="relative w-14 h-7 rounded-full focus:outline-none transition-colors duration-200"
-                style={{ background: language === 'sw' ? '#1A2E5A' : '#E2E8F0' }}
+                style={{ background: language === 'sw' ? '#80151B' : '#E8E0E0' }}
               >
                 <motion.div
                   layout
@@ -385,7 +401,7 @@ export default function ProfilePage() {
             className="rounded-2xl bg-white flex items-center gap-4 p-4 active:scale-98 transition-transform"
             style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}
           >
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #1A2E5A, #2A4A8A)' }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #80151B, #5A0C11)' }}>
               <FileText className="w-5 h-5 text-white" />
             </div>
             <span className="flex-1 font-semibold text-text-primary">{t(language, 'profile.documents')}</span>
