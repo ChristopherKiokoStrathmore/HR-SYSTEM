@@ -26,23 +26,32 @@ import {
   ShieldOff,
   Megaphone,
   RotateCcw,
+  type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/lib/store'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useCurrentUser, useRbac } from '@/lib/hooks/use-current-user'
 import { roleLabel } from '@/lib/rbac'
+import { usePermissions, hasPermission } from '@/lib/hooks/use-permissions'
 
-const navItems = [
+type NavItem = {
+  href: string
+  label: string
+  icon: LucideIcon
+  perm?: readonly [string, string]
+}
+
+const navItems: NavItem[] = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/recruitment', label: 'Recruitment', icon: UserPlus },
-  { href: '/background-checks', label: 'Background Checks', icon: ShieldCheck },
-  { href: '/onboarding', label: 'Onboarding', icon: ClipboardList },
-  { href: '/employees', label: 'Employees', icon: Users },
+  { href: '/recruitment', label: 'Recruitment', icon: UserPlus, perm: ['candidate', 'view'] },
+  { href: '/background-checks', label: 'Background Checks', icon: ShieldCheck, perm: ['candidate', 'view'] },
+  { href: '/onboarding', label: 'Onboarding', icon: ClipboardList, perm: ['onboarding', 'manage'] },
+  { href: '/employees', label: 'Employees', icon: Users, perm: ['employee', 'view'] },
   { href: '/attendance', label: 'Attendance', icon: Clock },
   { href: '/attendance/geofence', label: 'Geofence', icon: MapPin },
   { href: '/performance', label: 'Performance', icon: TrendingUp },
-  { href: '/payroll', label: 'Payroll', icon: DollarSign },
+  { href: '/payroll', label: 'Payroll', icon: DollarSign, perm: ['payroll', 'view'] },
   { href: '/leave', label: 'Leave', icon: Calendar },
   { href: '/leave-recalls', label: 'Leave Recalls', icon: RotateCcw },
   { href: '/overtime', label: 'Overtime', icon: Timer },
@@ -51,7 +60,7 @@ const navItems = [
   { href: '/exits', label: 'Exits', icon: DoorOpen },
   { href: '/compliance', label: 'Compliance', icon: ShieldOff },
   { href: '/announcements', label: 'Announcements', icon: Megaphone },
-  { href: '/reports', label: 'Reports', icon: BarChart3 },
+  { href: '/reports', label: 'Reports', icon: BarChart3, perm: ['report', 'view'] },
   { href: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -61,10 +70,18 @@ export function Sidebar() {
   const prefersReducedMotion = useReducedMotion()
   const { role, canAccess } = useRbac()
   const { data: session } = useCurrentUser()
+  const { data: perms } = usePermissions()
   const user = session?.user
 
-  // Show only the modules this role is allowed to open.
-  const visibleNav = navItems.filter((item) => canAccess(item.href))
+  // Show only the modules this role is allowed to open AND (once the user has
+  // resolved RBAC grants) that they hold the required permission for.
+  const visibleNav = navItems.filter((item) => {
+    if (!canAccess(item.href)) return false
+    if (item.perm) {
+      return hasPermission(perms, item.perm[0], item.perm[1])
+    }
+    return true
+  })
 
   return (
     <aside
