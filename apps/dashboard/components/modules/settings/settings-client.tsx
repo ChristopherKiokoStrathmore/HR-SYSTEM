@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/lib/toast'
 import { Avatar } from '@/components/ui/avatar'
 import { AuditLogClient } from './audit-log-client'
+import { CompaniesClient } from './rbac/companies-client'
 import { cn } from '@/lib/utils'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -539,6 +540,7 @@ const TABS = [
   { id: 'company', label: 'Company Profile', icon: Building2 },
   { id: 'payroll', label: 'Payroll Settings', icon: CreditCard },
   { id: 'users', label: 'Users & Roles', icon: Users },
+  { id: 'companies', label: 'Partner Companies', icon: Building2 },
   { id: 'audit', label: 'Audit Log', icon: Clock },
 ] as const
 
@@ -585,6 +587,7 @@ export function SettingsClient() {
       {activeTab === 'company' && <CompanyTab companyId={companyId} />}
       {activeTab === 'payroll' && <PayrollSettingsTab companyId={companyId} />}
       {activeTab === 'users' && <UsersTab companyId={companyId} />}
+      {activeTab === 'companies' && <CompaniesClient />}
       {activeTab === 'audit' && <AuditLogClient />}
     </div>
   )
