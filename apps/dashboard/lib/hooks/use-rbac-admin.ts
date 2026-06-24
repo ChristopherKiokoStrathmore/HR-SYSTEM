@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 /** Part B2 — company-admin RBAC management hooks (proxied to Django /api/rbac). */
 
-const BASE = '/api/hr/rbac'
+const BASE = '/api/hr/orgrbac'
 
 export interface Organization {
   id: string

@@ -37,6 +37,7 @@ const ALLOWED_PREFIXES = [
   'payroll-workflow',
   'share',
   'rbac',
+  'orgrbac',
   'notifications',
   'audit',
 ]
