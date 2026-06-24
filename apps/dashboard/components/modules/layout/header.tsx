@@ -3,14 +3,29 @@
 import { Bell, Search, Moon, Sun, LogOut, Building2, Share2, MessageCircle, Mail, MessageSquare, X } from 'lucide-react'
 import { useStore } from '@/lib/store'
 import { useRouter, usePathname } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState, useRef } from 'react'
 import { useCurrentUser, canSwitchCompanies } from '@/lib/hooks/use-current-user'
 import { toast } from '@/lib/toast'
 
+// Push the active company into the httpOnly hr_session cookie so the backend's
+// X-Company-Id header follows the UI selection.
+async function syncActiveCompany(companyId: string | null) {
+  try {
+    await fetch('/api/auth/active-company', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyId }),
+    })
+  } catch {
+    /* non-fatal */
+  }
+}
+
 function CompanySwitcher() {
   const { activeCompanyId, setActiveCompanyId } = useStore()
   const { data: session } = useCurrentUser()
+  const qc = useQueryClient()
   const canSwitch = canSwitchCompanies(session?.user?.role)
 
   const { data } = useQuery({
@@ -41,6 +56,22 @@ function CompanySwitcher() {
     }
   }, [companies, activeCompanyId, canSwitch, setActiveCompanyId, session?.user?.company_id])
 
+  // On load, make the session cookie match the persisted active company so a
+  // reload doesn't leave the backend scoped to the login company.
+  useEffect(() => {
+    if (!canSwitch) return
+    syncActiveCompany(activeCompanyId).then(() => qc.invalidateQueries())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canSwitch])
+
+  // Switch: update the cookie FIRST so queries keyed on the new company refetch
+  // with the correct X-Company-Id, then flip the store and refresh everything.
+  async function handleSwitch(id: string | null) {
+    await syncActiveCompany(id)
+    setActiveCompanyId(id)
+    qc.invalidateQueries()
+  }
+
   // Only company admins / super admins can switch companies or view all.
   if (!canSwitch || companies.length === 0) return null
   return (
@@ -48,7 +79,7 @@ function CompanySwitcher() {
       <Building2 className="w-3.5 h-3.5 text-text-muted flex-shrink-0" />
       <select
         value={activeCompanyId ?? ''}
-        onChange={e => setActiveCompanyId(e.target.value || null)}
+        onChange={e => handleSwitch(e.target.value || null)}
         className="bg-transparent text-xs text-text-body font-medium focus:outline-none cursor-pointer pr-1 max-w-[160px] truncate"
       >
         <option value="">All Companies</option>
