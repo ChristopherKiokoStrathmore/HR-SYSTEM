@@ -6,6 +6,7 @@ import { usePayrollRun, useDisbursePayroll, type PayrollRecordWithEmployee } fro
 import { Modal } from '@/components/ui/modal'
 import { StatusBadge } from '@/components/ui/badge'
 import { ShareButton } from '@/components/ui/share-button'
+import { Can } from '@/components/auth/can'
 import { ApprovalsPanel } from '@/components/modules/payroll/approvals-panel'
 import { SkeletonTable } from '@/components/ui/skeleton'
 import { formatKES, monthYearLabel } from '@hr/shared'
@@ -204,19 +205,21 @@ export function PayrollRunDetailClient({ runId }: { runId: string }) {
         </div>
         <div className="flex items-center gap-3">
           {pendingRecords.length > 0 && (
-            <button
-              onClick={() => { selectAllPending(); setDisburseModal(true) }}
-              disabled={!canDisburse || disburse.isPending}
-              title={canDisburse
-                ? `Disburse ${pendingRecords.length} pending payment${pendingRecords.length !== 1 ? 's' : ''}`
-                : 'Disabled until the employer signs the payroll via DocuSeal'}
-              className="btn-primary text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {disburse.isPending
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : <CreditCard className="w-4 h-4" />}
-              Disburse Payments
-            </button>
+            <Can resource="payroll" action="approve">
+              <button
+                onClick={() => { selectAllPending(); setDisburseModal(true) }}
+                disabled={!canDisburse || disburse.isPending}
+                title={canDisburse
+                  ? `Disburse ${pendingRecords.length} pending payment${pendingRecords.length !== 1 ? 's' : ''}`
+                  : 'Disabled until the employer signs the payroll via DocuSeal'}
+                className="btn-primary text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {disburse.isPending
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <CreditCard className="w-4 h-4" />}
+                Disburse Payments
+              </button>
+            </Can>
           )}
           <ShareButton module="payroll" objectId={runId}
                        title={`Payroll ${monthYearLabel(run.period_month, run.period_year)}`} />
