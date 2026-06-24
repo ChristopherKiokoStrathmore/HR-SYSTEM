@@ -25,7 +25,7 @@ export function usePermissions() {
   return useQuery({
     queryKey: ['rbac-me'],
     queryFn: async () => {
-      const res = await fetch('/api/hr/rbac/me')
+      const res = await fetch('/api/hr/orgrbac/me')
       if (!res.ok) throw new Error('Failed to load permissions')
       return (await res.json()) as MePermissions
     },
