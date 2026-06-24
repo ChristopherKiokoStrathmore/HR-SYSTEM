@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
       payment_method: 'bank' as const,
       payment_date: run.created_at ?? '',
       reference: run.id,
-      status: run.status === 'completed' ? 'paid' : 'pending',
+      status: ['paid', 'completed'].includes(run.status) ? 'paid' : 'pending',
       period_month: run.period_month,
       period_year: run.period_year,
     }))

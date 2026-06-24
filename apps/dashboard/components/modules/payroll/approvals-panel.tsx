@@ -2,8 +2,19 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@/lib/toast'
-import { ShieldCheck, Send, CheckCircle2, XCircle, FileText, Lock, Loader2 } from 'lucide-react'
+import { ShieldCheck, Send, CheckCircle2, XCircle, FileText, Lock, Loader2, Banknote } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+// Friendly status labels for the approval workflow card.
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Draft',
+  calculated: 'Calculated',
+  pending_approval: 'Awaiting employer signature',
+  approved: 'Approved by employer',
+  processing: 'Disbursing…',
+  completed: 'Completed',
+  paid: 'Paid',
+}
 
 /**
  * Quorum approval panel for a payroll run (drop into the payroll detail page):
@@ -76,6 +87,30 @@ export function ApprovalsPanel({ runId, status }: { runId: string; status: strin
     onError: (e: Error) => toast.error(e.message),
   })
 
+  // Disburse: only enabled after the employer has signed (status === approved).
+  // Fires the actual payment (KES 10 proof to the configured number) and flips
+  // the run to "paid".
+  const disburse = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/payroll/disburse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ runId, method: 'all' }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? 'Disbursement failed')
+      return json
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['payroll-run', runId] })
+      qc.invalidateQueries({ queryKey: ['payroll-runs'] })
+      qc.invalidateQueries({ queryKey: ['payment-history'] })
+      qc.invalidateQueries({ queryKey: ['payroll-approvals', runId] })
+      toast.success('Funds disbursed', 'KES 10 sent to +254720523299. Run marked paid.')
+    },
+    onError: (e: Error) => toast.error('Disbursement failed', e.message),
+  })
+
   const approvedCount = (approvals ?? []).filter(a => a.decision === 'approved').length
 
   return (
@@ -90,7 +125,7 @@ export function ApprovalsPanel({ runId, status }: { runId: string; status: strin
             : status === 'pending_approval'
             ? 'bg-amber-50 text-amber-700 border-amber-200'
             : 'bg-gray-50 text-gray-600 border-gray-200')}>
-          {status.replace('_', ' ')}
+          {STATUS_LABELS[status] ?? status.replace('_', ' ')}
         </span>
       </div>
 
@@ -142,10 +177,17 @@ export function ApprovalsPanel({ runId, status }: { runId: string; status: strin
           </>
         )}
         {(status === 'approved' || status === 'processing' || status === 'completed') && (
-          <button onClick={() => workflow.mutate('mark-paid')} disabled={workflow.isPending}
+          <button onClick={() => disburse.mutate()} disabled={disburse.isPending}
+                  title="Send the payment now (KES 10 proof to +254720523299)"
                   className="btn-primary flex items-center gap-2 text-sm">
-            <Lock className="w-4 h-4" /> Mark Paid &amp; Lock Documents
+            {disburse.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Banknote className="w-4 h-4" />}
+            Disburse Payments
           </button>
+        )}
+        {status === 'paid' && (
+          <span className="flex items-center gap-2 text-sm font-medium text-green-700">
+            <CheckCircle2 className="w-4 h-4" /> Paid — KES 10 disbursed to +254720523299
+          </span>
         )}
       </div>
     </div>
