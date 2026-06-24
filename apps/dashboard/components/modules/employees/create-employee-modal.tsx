@@ -1,8 +1,8 @@
 'use client'
 
-import { useForm } from 'react-hook-form'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Plus, Trash2, Gift } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { useCreateEmployee } from '@/lib/hooks/use-employees'
 import { useCompanies } from '@/lib/hooks/use-companies'
@@ -10,7 +10,15 @@ import { createEmployeeSchema, type CreateEmployeeInput } from '@hr/shared'
 import { toast } from '@/lib/toast'
 import { useState } from 'react'
 
-const STEPS = ['Personal', 'Employment', 'Compensation', 'Statutory'] as const
+const STEPS = ['Personal', 'Employment', 'Compensation', 'Benefits', 'Statutory'] as const
+
+const BENEFIT_TYPES = [
+  { value: 'allowance', label: 'Allowance' },
+  { value: 'medical', label: 'Medical' },
+  { value: 'insurance', label: 'Insurance' },
+  { value: 'transport', label: 'Transport' },
+  { value: 'other', label: 'Other' },
+] as const
 
 interface Props {
   open: boolean
@@ -24,8 +32,10 @@ export function CreateEmployeeModal({ open, onClose }: Props) {
 
   const {
     register,
+    control,
     handleSubmit,
     trigger,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<CreateEmployeeInput>({
     resolver: zodResolver(createEmployeeSchema),
@@ -34,14 +44,19 @@ export function CreateEmployeeModal({ open, onClose }: Props) {
       employment_type: 'white_collar',
       payment_method: 'bank',
       preferred_language: 'en',
+      benefits: [],
     },
   })
+
+  const { fields: benefitFields, append: appendBenefit, remove: removeBenefit } =
+    useFieldArray({ control, name: 'benefits' })
 
   const stepFields: Record<number, (keyof CreateEmployeeInput)[]> = {
     0: ['full_name', 'email', 'phone', 'date_of_birth', 'gender', 'nationality', 'id_number'],
     1: ['company_id', 'employee_number', 'job_title', 'department', 'employment_type', 'employment_status', 'start_date', 'contract_duration_months'],
     2: ['salary', 'payment_method', 'bank_name', 'bank_account', 'mpesa_number', 'airtel_number'],
-    3: ['nssf_number', 'nhif_number', 'kra_pin', 'next_of_kin_name', 'next_of_kin_phone', 'next_of_kin_relationship'],
+    3: ['benefits'],
+    4: ['nssf_number', 'nhif_number', 'kra_pin', 'next_of_kin_name', 'next_of_kin_phone', 'next_of_kin_relationship'],
   }
 
   async function handleNext() {
@@ -205,8 +220,108 @@ export function CreateEmployeeModal({ open, onClose }: Props) {
           </div>
         )}
 
-        {/* Step 3: Statutory + Next of Kin */}
+        {/* Step 3: Benefits */}
         {step === 3 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-text-primary">Benefits & Allowances</p>
+                <p className="text-xs text-text-muted">
+                  Added here, these feed straight into the employee&apos;s payroll computation.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  appendBenefit({
+                    name: '',
+                    type: 'allowance',
+                    value: 0,
+                    value_is_percent: false,
+                    recurring: true,
+                  })
+                }
+                className="btn-secondary text-sm flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" /> Add benefit
+              </button>
+            </div>
+
+            {benefitFields.length === 0 ? (
+              <div className="text-center py-8 border border-dashed border-border rounded-xl text-text-muted">
+                <Gift className="w-7 h-7 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No benefits added yet.</p>
+                <p className="text-xs mt-0.5">Optional — add allowances, medical, transport, etc.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {benefitFields.map((field, i) => {
+                  const isPercent = watch(`benefits.${i}.value_is_percent`)
+                  return (
+                    <div key={field.id} className="rounded-xl border border-border p-3 space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="col-span-2 sm:col-span-1">
+                          <label className="block text-xs font-medium text-text-muted mb-1">Name *</label>
+                          <input
+                            className="input"
+                            placeholder="House allowance"
+                            {...register(`benefits.${i}.name`)}
+                          />
+                          {errors.benefits?.[i]?.name && (
+                            <p className="text-xs text-danger mt-1">{errors.benefits[i]?.name?.message}</p>
+                          )}
+                        </div>
+                        <div className="col-span-2 sm:col-span-1">
+                          <label className="block text-xs font-medium text-text-muted mb-1">Type</label>
+                          <select className="input" {...register(`benefits.${i}.type`)}>
+                            {BENEFIT_TYPES.map((t) => (
+                              <option key={t.value} value={t.value}>{t.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-text-muted mb-1">
+                            Value ({isPercent ? '% of gross' : 'KES'})
+                          </label>
+                          <input
+                            className="input"
+                            type="number"
+                            step="0.01"
+                            placeholder={isPercent ? '10' : '5000'}
+                            {...register(`benefits.${i}.value`, { valueAsNumber: true })}
+                          />
+                          {errors.benefits?.[i]?.value && (
+                            <p className="text-xs text-danger mt-1">{errors.benefits[i]?.value?.message}</p>
+                          )}
+                        </div>
+                        <div className="flex items-end gap-4 pb-1">
+                          <label className="flex items-center gap-1.5 text-sm text-text-body">
+                            <input type="checkbox" {...register(`benefits.${i}.value_is_percent`)} />
+                            % of salary
+                          </label>
+                          <label className="flex items-center gap-1.5 text-sm text-text-body">
+                            <input type="checkbox" {...register(`benefits.${i}.recurring`)} />
+                            Recurring
+                          </label>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeBenefit(i)}
+                        className="text-xs text-danger hover:underline flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Remove
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 4: Statutory + Next of Kin */}
+        {step === 4 && (
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-text-body mb-1.5">NSSF Number</label>

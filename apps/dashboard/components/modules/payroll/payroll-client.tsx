@@ -7,6 +7,7 @@ import {
   usePaymentHistory,
   usePayEmployees,
   type PaymentMethodType,
+  type EmployeeSalaryRow,
 } from '@/lib/hooks/use-payroll'
 import { useStore } from '@/lib/store'
 import { toast } from '@/lib/toast'
@@ -28,6 +29,7 @@ import { EmployeeSalaryTable } from './employee-salary-table'
 import { PaymentHistoryTable } from './payment-history-table'
 import { PayEmployeesModal } from './pay-employees-modal'
 import { PayrollApprovalsList } from './payroll-approvals-list'
+import { EmployeeRecordModal } from './employee-record-modal'
 
 const TABS = [
   { id: 'employees', label: 'Pay Employees', icon: Users },
@@ -43,6 +45,7 @@ export function PayrollClient() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [departmentFilter, setDepartmentFilter] = useState<string | null>(null)
   const [payModalOpen, setPayModalOpen] = useState(false)
+  const [recordEmployee, setRecordEmployee] = useState<EmployeeSalaryRow | null>(null)
 
   const activeCompanyId = useStore((s) => s.activeCompanyId)
 
@@ -271,6 +274,7 @@ export function PayrollClient() {
           onPaySelected={() => setPayModalOpen(true)}
           onPayAll={handlePayAll}
           onPayDepartment={handlePayDepartment}
+          onRowClick={setRecordEmployee}
         />
       ) : activeTab === 'approvals' ? (
         <PayrollApprovalsList companyId={activeCompanyId} />
@@ -285,6 +289,23 @@ export function PayrollClient() {
         totalAmount={selectedTotal}
         onClose={() => setPayModalOpen(false)}
         onConfirm={handlePaySelected}
+      />
+
+      {/* Employee record modal (row click) — summary, salary, deductions,
+          history, and single-employee Send for Approval. */}
+      <EmployeeRecordModal
+        employee={recordEmployee}
+        history={historyRecords}
+        open={!!recordEmployee}
+        onClose={() => setRecordEmployee(null)}
+        isSending={payEmployees.isPending}
+        onSendForApproval={(emp) => {
+          // Reuse the exact same approval/signing flow as the bulk action by
+          // selecting just this one employee and opening the pay modal.
+          setSelectedIds(new Set([emp.id]))
+          setRecordEmployee(null)
+          setPayModalOpen(true)
+        }}
       />
     </div>
   )

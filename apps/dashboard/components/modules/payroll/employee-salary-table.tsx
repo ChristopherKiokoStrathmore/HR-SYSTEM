@@ -20,6 +20,7 @@ interface EmployeeSalaryTableProps {
   onPaySelected: () => void
   onPayAll: () => void
   onPayDepartment: (department: string) => void
+  onRowClick?: (employee: EmployeeSalaryRow) => void
 }
 
 export function EmployeeSalaryTable({
@@ -34,6 +35,7 @@ export function EmployeeSalaryTable({
   onPaySelected,
   onPayAll,
   onPayDepartment,
+  onRowClick,
 }: EmployeeSalaryTableProps) {
   const [search, setSearch] = useState('')
 
@@ -223,10 +225,13 @@ export function EmployeeSalaryTable({
                   NSSF
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wide">
-                  NHIF
+                  SHA
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wide">
-                  HELB
+                  Housing Levy
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wide">
+                  Total DED
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-text-muted uppercase tracking-wide">
                   Net Pay
@@ -239,7 +244,7 @@ export function EmployeeSalaryTable({
             <tbody className="divide-y divide-border">
               {filteredEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-12 text-center text-text-muted">
+                  <td colSpan={12} className="px-4 py-12 text-center text-text-muted">
                     <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p>No employees found</p>
                     {search && (
@@ -257,15 +262,17 @@ export function EmployeeSalaryTable({
                   return (
                     <tr
                       key={emp.id}
+                      onClick={() => onRowClick?.(emp)}
                       className={cn(
                         'hover:bg-surface-alt/50 transition-colors',
+                        onRowClick && 'cursor-pointer',
                         isSelected && 'bg-accent/5'
                       )}
                     >
                       <td className="px-4 py-3">
                         {isPending ? (
                           <button
-                            onClick={() => onToggleSelect(emp.id)}
+                            onClick={(e) => { e.stopPropagation(); onToggleSelect(emp.id) }}
                             className="text-text-muted hover:text-accent transition-colors"
                           >
                             {isSelected ? (
@@ -307,6 +314,16 @@ export function EmployeeSalaryTable({
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-red-600">
                         {formatKES(emp.helb ?? 0)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-red-600 font-medium">
+                        {formatKES(
+                          emp.total_deductions ??
+                            (emp.paye ?? 0) +
+                              (emp.nssf ?? 0) +
+                              (emp.nhif ?? 0) +
+                              (emp.helb ?? 0) +
+                              (emp.other_deductions ?? 0)
+                        )}
                       </td>
                       <td className="px-4 py-3 text-right font-mono font-medium text-text-primary">
                         {formatKES(emp.net_salary ?? emp.salary)}

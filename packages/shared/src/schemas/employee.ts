@@ -1,5 +1,16 @@
 import { z } from 'zod'
 
+export const benefitSchema = z.object({
+  name: z.string().min(1, 'Benefit name is required'),
+  type: z.enum(['allowance', 'medical', 'insurance', 'transport', 'other']),
+  value: z.number().nonnegative('Value must be 0 or more'),
+  // When true, `value` is a percentage of gross salary instead of a KES amount.
+  value_is_percent: z.boolean().default(false),
+  recurring: z.boolean().default(true),
+})
+
+export type BenefitInput = z.infer<typeof benefitSchema>
+
 export const createEmployeeSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
@@ -37,6 +48,7 @@ export const createEmployeeSchema = z.object({
   next_of_kin_phone: z.string().optional().nullable(),
   next_of_kin_relationship: z.string().optional().nullable(),
   preferred_language: z.enum(['en', 'sw']).default('en'),
+  benefits: z.array(benefitSchema).optional().default([]),
 })
 
 export const updateEmployeeSchema = createEmployeeSchema.partial().extend({
