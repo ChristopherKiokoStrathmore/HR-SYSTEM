@@ -203,6 +203,21 @@ export function PayrollRunDetailClient({ runId }: { runId: string }) {
           <p className="text-sm text-text-muted mt-0.5">{records.length} employee{records.length !== 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-3">
+          {pendingRecords.length > 0 && (
+            <button
+              onClick={() => { selectAllPending(); setDisburseModal(true) }}
+              disabled={!canDisburse || disburse.isPending}
+              title={canDisburse
+                ? `Disburse ${pendingRecords.length} pending payment${pendingRecords.length !== 1 ? 's' : ''}`
+                : 'Disabled until the employer signs the payroll via DocuSeal'}
+              className="btn-primary text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {disburse.isPending
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <CreditCard className="w-4 h-4" />}
+              Disburse Payments
+            </button>
+          )}
           <ShareButton module="payroll" objectId={runId}
                        title={`Payroll ${monthYearLabel(run.period_month, run.period_year)}`} />
           <StatusBadge status={run.status} />
@@ -269,7 +284,7 @@ export function PayrollRunDetailClient({ runId }: { runId: string }) {
             className="btn-primary text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <CreditCard className="w-4 h-4" />
-            Release Payment
+            Disburse Payments
           </button>
         </div>
       )}
@@ -298,8 +313,8 @@ export function PayrollRunDetailClient({ runId }: { runId: string }) {
                 <th className="px-4 py-3 text-right">Gross</th>
                 <th className="px-4 py-3 text-right">PAYE</th>
                 <th className="px-4 py-3 text-right">NSSF</th>
-                <th className="px-4 py-3 text-right">NHIF</th>
-                <th className="px-4 py-3 text-right">HELB</th>
+                <th className="px-4 py-3 text-right">SHA</th>
+                <th className="px-4 py-3 text-right">Housing Levy</th>
                 <th className="px-4 py-3 text-right">Other</th>
                 <th className="px-4 py-3 text-right">Total Ded.</th>
                 <th className="px-4 py-3 text-right">Net</th>
