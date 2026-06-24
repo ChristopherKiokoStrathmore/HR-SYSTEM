@@ -106,6 +106,8 @@ export function ApprovalsPanel({ runId, status }: { runId: string; status: strin
       qc.invalidateQueries({ queryKey: ['payroll-runs'] })
       qc.invalidateQueries({ queryKey: ['payment-history'] })
       qc.invalidateQueries({ queryKey: ['payroll-approvals', runId] })
+      // Refresh the Pay Employees tab so paid employees drop off immediately.
+      qc.invalidateQueries({ queryKey: ['employees-payment-status'] })
       toast.success('Funds disbursed', 'KES 10 sent to +254720523299. Run marked paid.')
     },
     onError: (e: Error) => toast.error('Disbursement failed', e.message),

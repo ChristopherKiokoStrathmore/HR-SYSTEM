@@ -268,6 +268,9 @@ export function useDisbursePayroll() {
       qc.invalidateQueries({ queryKey: ['payroll-runs'] })
       qc.invalidateQueries({ queryKey: ['payroll-run', vars.runId] })
       qc.invalidateQueries({ queryKey: ['payment-status', vars.runId] })
+      // Paid employees drop off the Pay Employees tab.
+      qc.invalidateQueries({ queryKey: ['employees-payment-status'] })
+      qc.invalidateQueries({ queryKey: ['payment-history'] })
     },
   })
 }
