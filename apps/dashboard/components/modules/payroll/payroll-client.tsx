@@ -67,6 +67,14 @@ export function PayrollClient() {
   const departments = employeeData?.departments || []
   const historyRecords = historyData?.data || []
 
+  // Employees already paid for the current period drop off the Pay Employees
+  // table (they move to Payment History). Stats cards below still use the full
+  // list so "Paid This Period" stays accurate.
+  const payableEmployees = useMemo(
+    () => employees.filter((e) => e.payment_status !== 'paid'),
+    [employees]
+  )
+
   // Calculate stats
   const stats = useMemo(() => {
     const totalEmployees = employees.length
@@ -261,9 +269,21 @@ export function PayrollClient() {
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'employees' ? (
+      {activeTab === 'employees' && !employeesLoading && employees.length > 0 && payableEmployees.length === 0 ? (
+        <div className="card text-center py-12">
+          <CheckCircle className="w-10 h-10 mx-auto mb-3 text-success" />
+          <p className="text-sm font-medium text-text-primary">All employees have been paid for this period</p>
+          <p className="text-xs text-text-muted mt-1">
+            Paid runs are available in the{' '}
+            <button onClick={() => setActiveTab('history')} className="text-accent hover:underline">
+              Payment History
+            </button>{' '}
+            tab.
+          </p>
+        </div>
+      ) : activeTab === 'employees' ? (
         <EmployeeSalaryTable
-          employees={employees}
+          employees={payableEmployees}
           isLoading={employeesLoading}
           selectedIds={selectedIds}
           departmentFilter={departmentFilter}
