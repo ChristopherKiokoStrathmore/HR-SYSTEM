@@ -79,7 +79,11 @@ export async function POST(req: NextRequest) {
       existingRuns = response
     }
 
-    const currentPeriodRun = existingRuns.find((run) => {
+    // Payroll is batched: a period can hold several runs (pay group A, then
+    // later group B). Find a run we can still send for signing; if a batch is
+    // signed and awaiting disbursement, point the user there; otherwise start a
+    // fresh run for this batch (terminal paid/completed runs don't block it).
+    const periodRuns = existingRuns.filter((run) => {
       if (run.period_month !== undefined && run.period_year !== undefined) {
         return run.period_month === periodMonth && run.period_year === periodYear
       }
@@ -90,49 +94,51 @@ export async function POST(req: NextRequest) {
       return false
     })
 
-    // A run can only be sent for signing while it's draft/calculated/
-    // pending_approval. If this period's run is already approved/processing/
-    // paid/completed, it must NOT be re-submitted (Django rejects it with a
-    // cryptic "Run is {status}" error) and must NEVER be deleted below — it may
-    // hold real payments. Surface a clear message instead.
     const SUBMITTABLE_STATUSES = ['draft', 'calculated', 'pending_approval']
-    if (currentPeriodRun && !SUBMITTABLE_STATUSES.includes(currentPeriodRun.status)) {
+    const submittableRun = periodRuns.find((r) => SUBMITTABLE_STATUSES.includes(r.status))
+    const awaitingDisburse = periodRuns.find((r) =>
+      ['approved', 'processing'].includes(r.status)
+    )
+
+    // A signed batch must be disbursed before another can be sent.
+    if (!submittableRun && awaitingDisburse) {
       return NextResponse.json(
         {
           error:
-            `Payroll for ${periodMonth}/${periodYear} is already "${currentPeriodRun.status}" ` +
-            `and can't be re-sent for approval. Open that run to disburse or review it.`,
+            `A payroll batch for ${periodMonth}/${periodYear} is already approved and ` +
+            `awaiting disbursement. Open that run and press Disburse Payments first.`,
         },
         { status: 409 }
       )
     }
 
     const isRunUsable =
-      currentPeriodRun &&
-      (currentPeriodRun.status === 'draft' ||
-        (currentPeriodRun.record_count && currentPeriodRun.record_count > 0))
+      submittableRun &&
+      (submittableRun.status === 'draft' ||
+        (submittableRun.record_count && submittableRun.record_count > 0))
 
     let payrollRunId: string | null = null
 
-    if (currentPeriodRun && !isRunUsable) {
+    if (submittableRun && !isRunUsable) {
       // Empty, non-draft run — remove so we can rebuild it cleanly
       try {
-        await hrApiDelete(`/payroll-runs/${currentPeriodRun.id}/`)
+        await hrApiDelete(`/payroll-runs/${submittableRun.id}/`)
       } catch {
         /* non-fatal */
       }
     }
 
     if (isRunUsable) {
-      payrollRunId = currentPeriodRun!.id
-      if (currentPeriodRun!.status === 'draft') {
+      payrollRunId = submittableRun!.id
+      // Re-scope a reusable draft/calculated run to exactly this batch.
+      if (submittableRun!.status === 'draft' || submittableRun!.status === 'calculated') {
         await hrApiPost(`/payroll-runs/${payrollRunId}/calculate/`, {
           company_id: companyId,
           employee_ids: employeeIds,
         })
       }
     } else {
-      // Create + calculate a fresh run
+      // Create + calculate a fresh run for this batch
       try {
         const newRun = await hrApiPost<{ id: string }>('/payroll-runs/', {
           company_id: companyId,
