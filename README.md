@@ -2,6 +2,8 @@
 
 HR Lifecycle Management System — Turborepo monorepo with an Admin Dashboard (Next.js) and Employee PWA (Next.js).
 
+**Live demo:** [https://hr-system-dashboard-sheerlogic.vercel.app](https://hr-system-dashboard-sheerlogic.vercel.app) — opens the admin dashboard sign-in page.
+
 ---
 
 ## Repository structure
